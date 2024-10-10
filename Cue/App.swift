@@ -5,7 +5,7 @@ import CueApp
 struct MainApp: App {
     var body: some Scene {
         WindowGroup {
-             CueAppView()
+             CueAppView().preferredColorScheme(.dark)
         }
     }
 }

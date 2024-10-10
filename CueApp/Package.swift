@@ -13,9 +13,10 @@ let package = Package(
             targets: ["CueApp"])
     ],
     targets: [
+        .target(name: "Theme"),
         .target(
             name: "CueApp",
-            dependencies: [],
+            dependencies: ["Theme"],
             path: "Sources/CueApp"),
         .testTarget(
             name: "CueAppTests",
