@@ -1,10 +1,11 @@
 import SwiftUI
+import CueApp
 
 @main
-struct CueApp: App {
+struct MainApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+             CueAppView()
         }
     }
 }

@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3A2098D22CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
+		3A2098D32CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
+		3A2098D42CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
+		3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */ = {isa = PBXBuildFile; productRef = 3A2098D62CB74D0800FEB48E /* CueApp */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		3A2098732CB7392A00FEB48E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +34,7 @@
 		3A2098612CB7392900FEB48E /* Cue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A2098722CB7392A00FEB48E /* CueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A20987C2CB7392A00FEB48E /* CueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A2098D12CB74CC400FEB48E /* CueApp */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = CueApp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +84,7 @@
 		3A2098582CB7392900FEB48E = {
 			isa = PBXGroup;
 			children = (
+				3A2098D12CB74CC400FEB48E /* CueApp */,
 				3A2098632CB7392900FEB48E /* Cue */,
 				3A2098752CB7392A00FEB48E /* CueTests */,
 				3A20987F2CB7392A00FEB48E /* CueUITests */,
@@ -112,6 +122,7 @@
 			);
 			name = Cue;
 			packageProductDependencies = (
+				3A2098D62CB74D0800FEB48E /* CueApp */,
 			);
 			productName = Cue;
 			productReference = 3A2098612CB7392900FEB48E /* Cue.app */;
@@ -195,6 +206,9 @@
 			);
 			mainGroup = 3A2098582CB7392900FEB48E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				3A2098D02CB74BD700FEB48E /* XCLocalSwiftPackageReference "CueApp" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3A2098622CB7392900FEB48E /* Products */;
 			projectDirPath = "";
@@ -212,6 +226,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3A2098D32CB74CC400FEB48E /* CueApp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,6 +234,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3A2098D42CB74CC400FEB48E /* CueApp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -226,6 +242,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3A2098D22CB74CC400FEB48E /* CueApp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,7 +423,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
@@ -446,7 +463,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
@@ -466,7 +483,6 @@
 		3A20988A2CB7392A00FEB48E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -488,7 +504,6 @@
 		3A20988B2CB7392A00FEB48E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -589,6 +604,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		3A2098D02CB74BD700FEB48E /* XCLocalSwiftPackageReference "CueApp" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = CueApp;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3A2098D62CB74D0800FEB48E /* CueApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3A2098D02CB74BD700FEB48E /* XCLocalSwiftPackageReference "CueApp" */;
+			productName = CueApp;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3A2098592CB7392900FEB48E /* Project object */;
 }
