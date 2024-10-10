@@ -4,3 +4,4 @@ xcuserdata/
 *.xcarchive
 xcuserdata/
 Package.resolved
+**/Debug.xcconfig
