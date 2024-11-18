@@ -37,6 +37,7 @@ public func DecodeULaw(_ sample: UInt8) -> Int16 {
     return value
 }
 
+#if os(iOS)
 extension AudioStreamPlayer {
     func decodeG711(data: Data, decoder: (UInt8) -> Int16) -> Data {
         var pcmData = Data(capacity: data.count * 2)
@@ -144,3 +145,4 @@ extension AudioStreamPlayer {
         }
     }
 }
+#endif

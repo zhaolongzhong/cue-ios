@@ -1,3 +1,4 @@
+#if os(iOS)
 import SwiftUI
 import OpenAI
 import AVFoundation
@@ -6,11 +7,13 @@ import os.log
 
 public struct CueAppView: View {
     public init() {}
-    @State private var newMessage: String = ""
+    @EnvironmentObject private var authService: AuthService
+    @EnvironmentObject private var conversationManager: ConversationManager
+    @State private var inputMessage: String = ""
     @State private var newAudio: Data?
     @State private var authToken: String = ""
     @State private var showingTokenManagement = false
-    @State private var conversation: Conversation?
+    @FocusState private var isFocused: Bool
 
     @StateObject private var audioPlayer = AudioStreamPlayer()
     @State private var lastProcessedEntryId: String?
@@ -23,7 +26,7 @@ public struct CueAppView: View {
     private let logger = Logger(subsystem: "CueAppView", category: "CueAppView")
 
     private var messages: [Item.Message] {
-        conversation?.entries.compactMap {
+        self.conversationManager.conversation?.entries.compactMap {
             if case let .message(message) = $0 {
                 return message
             }
@@ -32,39 +35,57 @@ public struct CueAppView: View {
     }
 
     public var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                if authToken.isEmpty {
-                    Text("Please set your API token to start chatting")
-                        .foregroundColor(.secondary)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(messages, id: \.id) { message in
-                                MessageRowView(message: message, audioPlayer: audioPlayer)
-                            }
-                        }
-                        .padding()
-                    }
+        VStack(spacing: 0) {
+            HStack {
+                Text("Chat")
+                    .font(.title)
+                    .padding()
+                Spacer()
+                optionsMenu
+                    .padding()
+            }
 
-                    messageInputSection
+            if authToken.isEmpty {
+                Text("Please set your API token to start chatting")
+                    .foregroundColor(.secondary)
+            } else {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(messages, id: \.id) { message in
+                            MessageRowView(message: message, audioPlayer: audioPlayer)
+                        }
+                    }
+                    .padding()
                 }
+
+                MessageInputViewAudio(
+                    inputMessage: $inputMessage,
+                    isFocused: _isFocused,
+                    isEnabled: true,
+                    isRecording: isRecording,
+                    onSend: sendMessage,
+                    onAudioButtonPressed: handleRecordingButton
+                )
             }
-            .navigationTitle("Chat")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: optionsMenu)
-            .sheet(isPresented: $showingTokenManagement) {
-                TokenManagementView(authToken: $authToken)
-            }
+        }
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .sheet(isPresented: $showingTokenManagement) {
+            TokenManagementView(authToken: $authToken)
         }
         .onChange(of: authToken) { _, newValue in
             if !newValue.isEmpty {
-                conversation = Conversation(authToken: newValue)
+                self.conversationManager.initialize(authToken: newValue)
             }
         }
-        .onChange(of: conversation?.entries) { _, _ in
+        .onChange(of: self.conversationManager.conversation?.entries) { _, _ in
             DispatchQueue.main.async {
                 processNewAudioEntries()
+            }
+        }
+        .onChange(of: authService.isAuthenticated) { _, isAuthenticated in
+            if !isAuthenticated {
+                cleanup()
             }
         }
         .onAppear {
@@ -74,37 +95,6 @@ public struct CueAppView: View {
                 authToken = apiKey
             }
         }
-    }
-
-    private var messageInputSection: some View {
-        HStack(spacing: 12) {
-            HStack {
-                TextField("Chat", text: $newMessage, onCommit: { sendMessage() })
-                    .frame(height: 40)
-                    .submitLabel(.send)
-
-                if !newMessage.isEmpty {
-                    Button(action: sendMessage) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 28, height: 28)
-                            .foregroundStyle(.white, .blue)
-                    }
-                }
-
-                Button(action: handleRecordingButton) {
-                    Image(systemName: isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                        .resizable()
-                        .frame(width: 28, height: 28)
-                        .foregroundStyle(.blue)
-                }
-            }
-            .padding(.leading)
-            .padding(.trailing, 6)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(.quaternary, lineWidth: 1))
-        }
-        .padding()
     }
 
     private var optionsMenu: some View {
@@ -124,34 +114,6 @@ public struct CueAppView: View {
     }
 }
 
-struct MessageRowView: View {
-    let message: Item.Message
-    @ObservedObject var audioPlayer: AudioStreamPlayer
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text(message.role.rawValue)
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            ForEach(message.content, id: \.id) { content in
-                switch content {
-                case .text(let text), .input_text(let text):
-                    Text(text)
-                case .audio(let audio), .input_audio(let audio):
-                    if let transcript = audio.transcript {
-                        Text(transcript)
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(8)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-    }
-}
-
 extension CueAppView {
     private func handleRecordingButton() {
         if isRecording {
@@ -166,23 +128,23 @@ extension CueAppView {
     }
 
     private func sendMessage() {
-        guard newMessage != "", let conversation = conversation else { return }
+        guard inputMessage != "", let conversation = self.conversationManager.conversation else { return }
 
         Task {
-            try await conversation.send(from: .user, text: newMessage)
-            newMessage = ""
+            try await conversation.send(from: .user, text: inputMessage)
+            inputMessage = ""
         }
     }
 
     private func sendAudio() {
-        guard let audio = newAudio, let conversation = conversation else { return }
+        guard let audio = newAudio, let conversation = self.conversationManager.conversation else { return }
         Task {
             try await conversation.send(audioDelta: audio, commit: true)
         }
     }
 
     private func processNewAudioEntries() {
-        guard let entries = conversation?.entries else { return }
+        guard let entries = self.conversationManager.conversation?.entries else { return }
         let newEntries = entries.drop(while: { $0.id != lastProcessedEntryId })
         logger.info("processNewAudioEntries entries size: \(entries.count) newEntries size: \(newEntries.count), newEntries:\(newEntries)")
 
@@ -210,3 +172,44 @@ extension CueAppView {
         lastProcessedEntryId = entries.last?.id
     }
 }
+
+extension CueAppView {
+    private func cleanup() {
+        // Stop any ongoing recording
+        if isRecording {
+            audioRecorder.stopRecording()
+            isRecording = false
+        }
+
+        // Cancel any ongoing audio processing
+        audioProcessingTask?.cancel()
+        audioProcessingTask = nil
+
+        // Clear conversation and state on a background thread
+        self.conversationManager.cleanup()
+
+        // The rest of the state updates can remain on the main thread
+        inputMessage = ""
+        newAudio = nil
+        lastProcessedEntryId = nil
+        processedEntryIds.removeAll()
+        authToken = ""
+
+        // Clean up audio player
+        Task {
+            await audioPlayer.cleanup()
+        }
+
+        // Deactivate audio session
+
+        Task {
+            do {
+                try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+                logger.debug("Audio session deactivated successfully")
+            } catch {
+                logger.error("Failed to deactivate audio session: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+#endif

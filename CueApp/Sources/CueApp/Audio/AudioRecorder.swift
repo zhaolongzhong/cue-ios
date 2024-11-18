@@ -1,3 +1,4 @@
+#if os(iOS)
 import AVFoundation
 import SwiftUI
 import os.log
@@ -82,3 +83,4 @@ class AudioRecorder: ObservableObject, @unchecked Sendable {
         }
     }
 }
+#endif

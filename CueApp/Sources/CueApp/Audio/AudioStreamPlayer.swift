@@ -1,3 +1,4 @@
+#if os(iOS)
 import AVFoundation
 import Combine
 import os.log
@@ -24,6 +25,11 @@ class QueueBuffer {
             }
             print("QueueBuffer dequeue: Dequeued \(availableCount) samples. Queue count: \(self.queue.count)")
             return result
+        }
+    }
+    func clear() {
+        accessQueue.sync {
+            queue.removeAll()
         }
     }
 
@@ -81,14 +87,6 @@ class AudioStreamPlayer: ObservableObject, @unchecked Sendable {
         setupAudioSession(sampleRate: avAudioFormat.sampleRate)
         setupAudioChain()
         startAudioProcessing()
-    }
-
-    deinit {
-        isRunning = false
-        flushBuffer()
-        stop()
-        engine.stop()
-        NotificationCenter.default.removeObserver(self)
     }
 
     private func setupAudioSession(sampleRate: Double) {
@@ -301,4 +299,38 @@ class AudioStreamPlayer: ObservableObject, @unchecked Sendable {
             }
         }
     }
+
+    private var cleanupComplete = false
+
+    func cleanup() async {
+        guard !cleanupComplete else { return }
+
+        // 1. Stop monitoring first
+        isRunning = false
+
+        // 2. Stop playback and clear scheduling state
+        playerNode.stop()
+        isPlaying = false
+        isScheduling = false
+
+        // 3. Clear all buffers
+        queueBuffer.clear()
+        lastAudioChunk = nil
+        lastProcessedLength = 0
+
+        // 4. Let the run loop process the state changes
+        try? await Task.sleep(for: .milliseconds(50))
+
+        // 5. Stop and detach nodes
+        engine.stop()
+        engine.detach(playerNode)
+        engine.detach(mixer)
+
+        // 6. Reset format
+        currentFormat = .pcm16bit24kHz
+
+        cleanupComplete = true
+    }
+
 }
+#endif
