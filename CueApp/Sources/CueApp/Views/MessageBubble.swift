@@ -27,7 +27,7 @@ struct MessageBubble: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var bubbleColor: Color {
-        return message.isUser ? AppTheme.Colors.Message.userBubble : AppTheme.Colors.background
+        return message.isUser ? AppTheme.Colors.Message.userBubble.opacity(0.5) : AppTheme.Colors.background
     }
 
     var borderColor: Color {
@@ -78,10 +78,10 @@ struct MessageBubble: View {
 
     func copyToPasteboard() {
         #if os(iOS)
-        UIPasteboard.general.string = message.content.getText()
+        UIPasteboard.general.string = message.getText()
         #elseif os(macOS)
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(message.content, forType: .string)
+        NSPasteboard.general.setString(message.getText(), forType: .string)
         #endif
     }
 
@@ -92,7 +92,8 @@ struct MessageBubble: View {
             }
 
             Markdown(message.getText())
-                .markdownTheme(markdownTheme)
+//                .markdownTheme(markdownTheme)
+                .textSelection(.enabled)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(bubbleColor)

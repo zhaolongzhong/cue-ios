@@ -45,18 +45,18 @@ class ChatViewModel: ObservableObject {
 
         if let conversationId = defaultConversation?.id {
             self.messageModels = await loadMessagesFromDb(conversationId: conversationId)
-//            let messages = await fetchMessages(conversationId: conversationId)
-//
-//            if messages.count > 0 {
-//                do {
-//                    for message in messages {
-//                        AppLog.log.debug("\(String(describing: message.id)): \(message.author.role) - \(message.content.getText())")
-//                        try messageModelStore.save(message)
-//                    }
-//                } catch {
-//                    print("Database error: \(error)")
-//                }
-//            }
+            let messages = await fetchMessages(conversationId: conversationId)
+
+            if messages.count > 0 {
+                do {
+                    for message in messages {
+                        AppLog.log.debug("\(String(describing: message.id)): \(message.author.role) - \(message.content.getText())")
+                        try messageModelStore.save(message)
+                    }
+                } catch {
+                    print("Database error: \(error)")
+                }
+            }
             do {
                 // Fetch all messages in a conversation
                 self.messageModels = await loadMessagesFromDb(conversationId: conversationId)

@@ -55,7 +55,6 @@ extension MessageContent {
     func getText() -> String {
         var text = content.getText()
         if !text.isEmpty {
-
             return text
         }
         if let toolCalls = toolCalls {

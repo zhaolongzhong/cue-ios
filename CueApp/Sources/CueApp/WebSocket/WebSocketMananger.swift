@@ -22,7 +22,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
     // Flag to control reconnection attempts
     private var shouldReconnect: Bool = true
     private let pingInterval: TimeInterval = 30.0 // Protocol-level ping every 60 seconds
-    private let pongTimeout: TimeInterval = 35.0  // Slightly more than ping interval
+    private let pongTimeout: TimeInterval = 40.0  // Slightly more than ping interval
     private var lastPongReceived: Date = Date()
     private let timeoutInterval: TimeInterval = TimeInterval.infinity // No timeout
     private var keepAliveTimer: Timer?
