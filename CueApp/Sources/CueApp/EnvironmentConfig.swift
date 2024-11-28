@@ -38,14 +38,12 @@ final class EnvironmentConfig: URLConfiguration, Sendable {
             var domain: String = try Configuration.value(for: "BASE_URL")
 
             // Determine the schemes based on the domain
-            let scheme = domain.contains("localhost") ? "http" : "https"
-            let wsScheme = domain.contains("localhost") ? "ws" : "wss"
+            let scheme = domain.contains("localhost") || domain.starts(with: "192") ? "http" : "https"
+            let wsScheme = domain.contains("localhost") || domain.starts(with: "192") ? "ws" : "wss"
 
-//            #if os(macOS)
             if domain.contains("localhost") {
                 domain = domain.replacingOccurrences(of: "localhost", with: "127.0.0.1")
             }
-//            #endif
 
             // Construct the base URLs
             self.baseAPIURLValue = "\(scheme)://\(domain)/api/v1"

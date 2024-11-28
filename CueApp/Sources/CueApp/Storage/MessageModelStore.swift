@@ -65,7 +65,7 @@ class MessageModelStore {
     func save(_ message: MessageModel) throws {
         try dbPool.write { db in
             let record = try MessageModelRecord(message: message)
-            try record.insert(db)
+            try record.save(db, onConflict: .replace)
         }
     }
 
@@ -134,10 +134,6 @@ class MessageModelStore {
             table.column("metadata", .blob)
             table.column("createdAt", .datetime).notNull()
             table.column("updatedAt", .datetime).notNull()
-
-//            // Add indexes for better query performance
-//            table.index(["conversationId"])
-//            table.index(["createdAt"])
         }
     }
 }

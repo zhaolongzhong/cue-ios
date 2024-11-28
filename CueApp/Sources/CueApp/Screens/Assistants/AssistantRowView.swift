@@ -1,6 +1,3 @@
-//
-//  AssistantRowView.swift
-//
 import SwiftUI
 
 struct AssistantRowView: View {
@@ -19,12 +16,13 @@ struct AssistantRowView: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("id:\(assistant.id)")
-                    .font(.footnote).foregroundColor(.gray)
                 Text(assistant.name)
                     .font(.body)
-                Text("runner id: \(status?.runnerId ?? "")")
-                    .font(.subheadline).foregroundColor(.gray)
+                if let status = status {
+                    Text("Runner: ...\(status.runnerId?.suffix(4) ?? "")")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
             }
 
             Spacer()

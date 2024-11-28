@@ -1,71 +1,81 @@
 import SwiftUI
 
-public struct MessagesListView: View {
+struct MessagesListView: View {
     let messages: [MessageModel]
     let shouldAutoScroll: Bool
-    
-    @State private var hasScrolledToBottom = false
-    @State private var lastMessageId: Message.ID?
-    
-    public var body: some View {
+
+    @State private var scrollProxy: ScrollViewProxy?
+    @State private var hasInitialized = false
+    @State private var isUserScrolling = false
+
+    var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
+                    // Flexible spacer to push content to bottom
+                    Spacer(minLength: 0)
+                        .frame(maxHeight: .infinity)
+
                     ForEach(messages) { message in
                         MessageBubble(message: message)
                     }
-                    
-                    Color.clear
-                        .frame(height: 1)
-                        .id(ScrollAnchor.id)
                 }
-                .padding(.vertical, 8)
+                .padding(.bottom, 10)
+                .padding(.top, 8)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             #if os(iOS)
             .simultaneousGesture(
-                DragGesture().onChanged { _ in
-                    dismissKeyboard()
-                }
-            )
-            #endif
-            .onChange(of: messages) { oldMessages, newMessages in
-                let hasNewMessages = newMessages.count > oldMessages.count
-                let currentLastMessageId = newMessages.last?.id
-                
-                // For new messages after initial load
-                if hasScrolledToBottom && shouldAutoScroll && hasNewMessages {
-                    withAnimation {
-                        proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
+                DragGesture(minimumDistance: 10)
+                    .onChanged { _ in
+                        isUserScrolling = true
+                        dismissKeyboard()
                     }
-                }
-                
-                lastMessageId = currentLastMessageId
-                
-                // Initial load: scroll to bottom without animation
-                if !hasScrolledToBottom && !newMessages.isEmpty {
-                    proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
-                    hasScrolledToBottom = true
-                }
-            }
-            // Initial position at bottom when view appears
-            .task {
-                if !messages.isEmpty && !hasScrolledToBottom {
-                    proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
-                    hasScrolledToBottom = true
-                }
-            }
-            .gesture(
-                DragGesture()
-                    .onEnded { value in
-                        if value.translation.height < -50 && value.velocity.height < -200 {
-                            withAnimation {
-                                proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
-                            }
+                    .onEnded { _ in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            isUserScrolling = false
                         }
                     }
             )
+            #endif
+            .onAppear {
+                scrollProxy = proxy
+
+                // Only attempt to scroll if we have messages
+                if shouldAutoScroll && !hasInitialized && !messages.isEmpty {
+                    performInitialScroll()
+                }
+            }
+            .onChange(of: messages) { oldMessages, newMessages in
+                // If this is the first time we're getting messages and we haven't scrolled yet
+                if oldMessages.isEmpty && !newMessages.isEmpty && shouldAutoScroll && !hasInitialized {
+                    performInitialScroll()
+                    return
+                }
+
+                guard !newMessages.isEmpty else { return }
+
+                let hasNewMessages = newMessages.count > oldMessages.count
+                let isAtBottom = shouldAutoScroll && (hasInitialized || hasNewMessages)
+
+                if isAtBottom && !isUserScrolling {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(newMessages.last?.id, anchor: .bottom)
+                        }
+                    }
+                }
+            }
         }
-        .background(AppTheme.Colors.background)
+    }
+
+    private func performInitialScroll() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation {
+                scrollProxy?.scrollTo(messages.last?.id, anchor: .bottom)
+            }
+            hasInitialized = true
+        }
     }
 
     #if os(iOS)
@@ -90,16 +100,6 @@ struct SendButton: View {
                 .foregroundStyle(.white, isEnabled ? .blue : .gray)
         }
         .disabled(!isEnabled)
-    }
-}
-
-struct ScrollAnchor: View {
-    static let id = "ScrollAnchor"
-
-    var body: some View {
-        Color.clear
-            .frame(height: 1)
-            .id(Self.id)
     }
 }
 

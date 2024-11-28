@@ -148,4 +148,16 @@ class AssistantsViewModel: ObservableObject {
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
     }
+
+    func updateAssistant(id: String, name: String) async {
+        do {
+            _ = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
+            DispatchQueue.main.async {
+                self.assistants = self.assistantService.assistants
+            }
+        } catch {
+            self.error = error
+            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+        }
+    }
 }

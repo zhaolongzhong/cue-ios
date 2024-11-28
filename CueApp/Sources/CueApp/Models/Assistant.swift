@@ -8,6 +8,10 @@ struct AssistantMetadata: Codable {
     }
 }
 
+struct AssistantMetadataUpdate: Codable, Sendable {
+    let isPrimary: Bool?
+}
+
 struct Assistant: Codable, Identifiable {
     let id: String
     let name: String
