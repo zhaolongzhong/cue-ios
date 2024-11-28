@@ -3,10 +3,10 @@ import SwiftUI
 public struct MessagesListView: View {
     let messages: [MessageModel]
     let shouldAutoScroll: Bool
-
-    // Store the last message ID to detect new messages
+    
+    @State private var hasScrolledToBottom = false
     @State private var lastMessageId: Message.ID?
-
+    
     public var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -14,7 +14,7 @@ public struct MessagesListView: View {
                     ForEach(messages) { message in
                         MessageBubble(message: message)
                     }
-                    // Invisible anchor view at the bottom
+                    
                     Color.clear
                         .frame(height: 1)
                         .id(ScrollAnchor.id)
@@ -29,33 +29,34 @@ public struct MessagesListView: View {
             )
             #endif
             .onChange(of: messages) { oldMessages, newMessages in
-                // Determine if new messages were added
                 let hasNewMessages = newMessages.count > oldMessages.count
-
-                // Get the last message ID
                 let currentLastMessageId = newMessages.last?.id
-
-                // Only auto-scroll if enabled and there are new messages
-                if shouldAutoScroll && hasNewMessages {
+                
+                // For new messages after initial load
+                if hasScrolledToBottom && shouldAutoScroll && hasNewMessages {
                     withAnimation {
                         proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
                     }
                 }
-
-                // Update the last message ID
+                
                 lastMessageId = currentLastMessageId
-            }
-            // Initial scroll when view appears
-            .onAppear {
-                if shouldAutoScroll && !messages.isEmpty {
+                
+                // Initial load: scroll to bottom without animation
+                if !hasScrolledToBottom && !newMessages.isEmpty {
                     proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
+                    hasScrolledToBottom = true
                 }
             }
-            // Handle manual scroll to bottom gesture
+            // Initial position at bottom when view appears
+            .task {
+                if !messages.isEmpty && !hasScrolledToBottom {
+                    proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
+                    hasScrolledToBottom = true
+                }
+            }
             .gesture(
                 DragGesture()
                     .onEnded { value in
-                        // If user quickly drags down, scroll to bottom
                         if value.translation.height < -50 && value.velocity.height < -200 {
                             withAnimation {
                                 proxy.scrollTo(ScrollAnchor.id, anchor: .bottom)
@@ -75,7 +76,6 @@ public struct MessagesListView: View {
                                      for: nil)
     }
     #endif
-
 }
 
 struct SendButton: View {
