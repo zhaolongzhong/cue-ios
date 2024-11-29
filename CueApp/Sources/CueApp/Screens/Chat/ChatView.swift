@@ -2,12 +2,15 @@ import SwiftUI
 
 struct ChatView: View {
     @StateObject private var viewModel: ChatViewModel
+    let assistantsViewModel: AssistantsViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
     @FocusState private var isFocused: Bool
 
     init(assistant: AssistantStatus,
          status: ClientStatus?,
-         webSocketStore: WebSocketManagerStore) {
+         webSocketStore: WebSocketManagerStore, assistantsViewModel: AssistantsViewModel) {
+        self.assistantsViewModel = assistantsViewModel
+
         _viewModel = StateObject(wrappedValue:
             ChatViewModel(
                 assistant: assistant,
@@ -26,6 +29,7 @@ struct ChatView: View {
             .overlay(
                 LoadingOverlay(isVisible: viewModel.isLoading)
             )
+            .background(Color.gray.opacity(0.1))
 
             MessageInputView(
                 inputMessage: $viewModel.inputMessage,
@@ -34,7 +38,21 @@ struct ChatView: View {
                 onSend: viewModel.handleSendMessage
             )
         }
+        .background(Color(uiColor: .systemBackground))
         .navigationTitle(viewModel.assistant.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink(destination: AssistantDetailView(
+                    assistantsViewModel: self.assistantsViewModel,
+                    assistant: viewModel.assistant,
+                    status: viewModel.status,
+                    onUpdate: handleAssistantUpdate)) {
+                    Image(systemName: "ellipsis")
+                }
+            }
+        }
         .task {
             await viewModel.setupChat()
         }
@@ -49,5 +67,9 @@ struct ChatView: View {
                 message: Text(alert.message)
             )
         }
+    }
+
+    private func handleAssistantUpdate(updatedAssistant: AssistantStatus) {
+        viewModel.updateAssistant(updatedAssistant)
     }
 }

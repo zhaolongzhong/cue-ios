@@ -99,7 +99,7 @@ class AssistantsViewModel: ObservableObject {
     private func updateAssistants(with assistants: [Assistant]) async {
         self.assistants = assistants
         let clientStatuses = webSocketStore.manager?.clientStatuses ?? []
-        await updateAssistantStatuses(assistants: assistants, clientStatuses: clientStatuses)
+        await updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
     }
 
     func fetchAssistants() async {
@@ -147,5 +147,25 @@ class AssistantsViewModel: ObservableObject {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
+    }
+
+    func getAssistantStatus(id: String) -> AssistantStatus? {
+        return assistantStatuses.first { $0.id == id }
+    }
+
+    func updateAssistant(id: String, name: String) async -> AssistantStatus? {
+        do {
+            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
+            await updateAssistants(with: assistants)
+
+            guard let assistant = updatedAssistant else {
+                return nil
+            }
+            return getAssistantStatus(id: assistant.id)
+        } catch {
+            self.error = error
+            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+        }
+        return nil
     }
 }

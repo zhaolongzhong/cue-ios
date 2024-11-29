@@ -12,13 +12,14 @@ struct AssistantsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List(viewModel.assistantStatuses) { assistant in
                 NavigationLink(
                     destination: ChatView(
                         assistant: assistant,
                         status: viewModel.getClientStatus(for: assistant),
-                        webSocketStore: self.webSocketStore
+                        webSocketStore: self.webSocketStore,
+                        assistantsViewModel: viewModel
                     )
                 ) {
                     AssistantRowView(
@@ -56,7 +57,9 @@ struct AssistantsView: View {
             .navigationTitle("Assistants")
             #if os(iOS)
             .listStyle(InsetGroupedListStyle())
+            .toolbarBackground(.visible, for: .navigationBar)
             #endif
         }
+        .navigationViewStyle(.stack)
     }
 }

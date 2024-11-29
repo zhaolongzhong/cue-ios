@@ -158,4 +158,28 @@ public class AssistantService: ObservableObject {
     func getDefaultAssistantId() -> String? {
         return defaultAssistantId
     }
+
+    func updateAssistant(id: String, name: String?, metadata: AssistantMetadataUpdate?) async throws -> Assistant? {
+        do {
+            let assistant: Assistant = try await NetworkClient.shared.request(
+                AssistantEndpoint.update(
+                    id: id,
+                    name: name,
+                    metadata: metadata
+                )
+            )
+            if let index = self.assistants.firstIndex(where: { $0.id == id }) {
+                self.assistants[index] = assistant
+            } else {
+                self.assistants.append(assistant)
+            }
+
+            return assistant
+        } catch NetworkError.httpError(let code, _) where code == 404 {
+            throw AssistantError.notFound
+        } catch {
+            logger.error("Update assistant error: \(error.localizedDescription)")
+            throw AssistantError.networkError
+        }
+    }
 }

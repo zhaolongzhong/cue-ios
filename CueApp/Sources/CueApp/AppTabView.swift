@@ -20,7 +20,7 @@ public struct AppTabView: View {
             #if os(iOS)
             CueAppView()
                 .tabItem {
-                    Label("Chat", systemImage: "bubble.left.and.bubble.right")
+                    Label("Chat", systemImage: "wand.and.stars")
                 }
                 .tag(TabSelection.chat)
             #endif

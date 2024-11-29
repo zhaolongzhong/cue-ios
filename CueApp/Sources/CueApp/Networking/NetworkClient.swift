@@ -17,7 +17,6 @@ actor NetworkClient {
         self.session = URLSession(configuration: configuration)
 
         self.decoder = JSONDecoder()
-//        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         self.encoder = JSONEncoder()
         self.encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -33,9 +32,6 @@ actor NetworkClient {
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
-        }
-        if let jsonString = String(data: data, encoding: .utf8) {
-            logger.debug("Received JSON: \(jsonString)")
         }
 
         switch httpResponse.statusCode {

@@ -7,6 +7,7 @@ enum AssistantEndpoint {
     case listAssistantConversations(id: String, isPrimary: Bool?, skip: Int, limit: Int)
     case listMessages(conversationId: String, skip: Int, limit: Int)
     case getMessage(id: String)
+    case update(id: String, name: String?, metadata: AssistantMetadataUpdate?)
     case delete(id: String)
     case createConversation(assistantId: String, isPriamary: Bool)
 }
@@ -38,6 +39,8 @@ extension AssistantEndpoint: Endpoint {
             return "\(baseUrl)?\(queryString)"
         case let .listMessages(conversationId, skip, limit):
             return "/conversations/\(conversationId)/messages?skip=\(skip)&limit=\(limit)"
+        case let .update(id, _, _):
+            return "/assistants/\(id)"
         case let .delete(id):
             return "/assistants/\(id)"
         case .createConversation:
@@ -53,6 +56,8 @@ extension AssistantEndpoint: Endpoint {
             return .post
         case .get, .getMessage, .list, .listAssistantConversations, .listMessages:
             return .get
+        case .update:
+            return .put
         case .delete:
             return .delete
         }
@@ -74,6 +79,21 @@ extension AssistantEndpoint: Endpoint {
             var params: [String: Any] = ["title": "Default"]
             params["assistant_id"] = assistantId
             params["metadata"] = ["is_primary": is_primary]
+            return try? JSONSerialization.data(withJSONObject: params)
+        case let .update(id, name, metadata):
+            var params: [String: Any] = [:]
+            if let name = name {
+                params["name"] = name
+            }
+
+            if let metadata = metadata {
+                if let metadataData = try? JSONEncoder().encode(metadata) {
+                    if let metadataDict = try? JSONSerialization.jsonObject(with: metadataData, options: []) as? [String: Any] {
+                        params["metadata"] = metadataDict
+                    }
+                }
+            }
+
             return try? JSONSerialization.data(withJSONObject: params)
         }
     }

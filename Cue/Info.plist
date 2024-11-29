@@ -6,5 +6,12 @@
 	<string>${OPENAI_API_KEY}</string>
 	<key>BASE_URL</key>
 	<string>${BASE_URL}</string>
+	<key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
 </dict>
 </plist>

@@ -98,10 +98,7 @@ struct MessageBubble: View {
                 .padding(.vertical, 10)
                 .background(bubbleColor)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(borderColor, lineWidth: 1)
-                ).contextMenu {
+                .contextMenu {
                     Button(action: copyToPasteboard) {
                                             Label("Copy", systemImage: "doc.on.doc")
                                         }
