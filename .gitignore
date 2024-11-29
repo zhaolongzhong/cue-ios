@@ -5,3 +5,4 @@ xcuserdata/
 xcuserdata/
 Package.resolved
 **/Debug.xcconfig
+**/Release.xcconfig
