@@ -10,6 +10,7 @@ enum AssistantEndpoint {
     case update(id: String, name: String?, metadata: AssistantMetadataUpdate?)
     case delete(id: String)
     case createConversation(assistantId: String, isPriamary: Bool)
+    case generateToken
 }
 
 extension AssistantEndpoint: Endpoint {
@@ -47,12 +48,14 @@ extension AssistantEndpoint: Endpoint {
             return "/conversations"
         case let .getMessage(id):
             return "/messages/\(id)"
+        case .generateToken:
+            return "/auth/token"
         }
     }
 
     var method: HTTPMethod {
         switch self {
-        case .create, .createConversation:
+        case .create, .createConversation, .generateToken:
             return .post
         case .get, .getMessage, .list, .listAssistantConversations, .listMessages:
             return .get
@@ -73,7 +76,7 @@ extension AssistantEndpoint: Endpoint {
             var params: [String: Any] = ["name": name]
             params["metadata"] = ["is_primary": isPrimary]
             return try? JSONSerialization.data(withJSONObject: params)
-        case .get, .getMessage, .list, .listAssistantConversations, .listMessages, .delete:
+        case .get, .getMessage, .list, .listAssistantConversations, .listMessages, .delete, .generateToken:
             return nil
         case let .createConversation(assistantId, is_primary):
             var params: [String: Any] = ["title": "Default"]
@@ -87,14 +90,12 @@ extension AssistantEndpoint: Endpoint {
             }
 
             if let metadata = metadata {
-                // Convert the AssistantMetadataUpdate struct to JSON
                 if let metadataData = try? JSONEncoder().encode(metadata) {
                     if let metadataDict = try? JSONSerialization.jsonObject(with: metadataData, options: []) as? [String: Any] {
                         params["metadata"] = metadataDict
                     }
                 }
             }
-
             return try? JSONSerialization.data(withJSONObject: params)
         }
     }

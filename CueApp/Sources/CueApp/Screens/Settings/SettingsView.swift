@@ -13,10 +13,14 @@ struct SettingsView_iOS: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Account")) {
+                Section("Account") {
                     if let user = viewModel.currentUser {
                         UserInfoView(email: user.email, name: user.name)
                     }
+                }
+
+                Section("Access Token") {
+                    TokenGenerationView(viewModel: viewModel)
                 }
 
                 Section {
@@ -54,7 +58,7 @@ struct SettingsView_macOS: View {
             }
 
             List {
-                Section(header: Text("Account")) {
+                Section("Account") {
                     if let user = viewModel.currentUser {
                         UserInfoView(email: user.email, name: user.name)
                             .listRowBackground(Color.clear)
@@ -71,7 +75,7 @@ struct SettingsView_macOS: View {
                     .listRowBackground(Color.clear)
                 }
             }
-            .listStyle(InsetListStyle())
+            .listStyle(.inset)
             .background(Color.clear)
         }
         .frame(maxWidth: 500)
