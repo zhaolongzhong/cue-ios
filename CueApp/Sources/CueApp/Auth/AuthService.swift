@@ -9,6 +9,7 @@ enum AuthError: LocalizedError {
     case emailAlreadyExists
     case unauthorized
     case unknown
+    case tokenGenerationFailed
 
     var errorDescription: String? {
         switch self {
@@ -22,6 +23,8 @@ enum AuthError: LocalizedError {
             return "Email already exists"
         case .unauthorized:
             return "Unauthorized access"
+        case .tokenGenerationFailed:
+            return "Failed to generate access token"
         case .unknown:
             return "An unknown error occurred"
         }
@@ -33,6 +36,7 @@ public class AuthService: ObservableObject {
     public init() {}
     @Published public var isAuthenticated = false
     @Published private(set) var currentUser: User?
+    @Published private(set) var isGeneratingToken = false
 
     private let logger = Logger(subsystem: "AuthService", category: "Auth")
 
@@ -45,7 +49,6 @@ public class AuthService: ObservableObject {
             UserDefaults.standard.set(response.accessToken, forKey: "API_KEY")
             isAuthenticated = true
 
-            // Fetch user profile after successful login
             await fetchUserProfile()
 
             return response.accessToken
@@ -68,7 +71,6 @@ public class AuthService: ObservableObject {
             UserDefaults.standard.set(response.accessToken, forKey: "API_KEY")
             isAuthenticated = true
 
-            // Fetch user profile after successful signup
             await fetchUserProfile()
 
             return response.accessToken
@@ -80,14 +82,20 @@ public class AuthService: ObservableObject {
         }
     }
 
+    func generateToken() async throws -> String {
+        isGeneratingToken = true
+        defer { isGeneratingToken = false }
+
+        do {
+            let response: TokenResponse = try await NetworkClient.shared.request(AssistantEndpoint.generateToken)
+            return response.accessToken
+        } catch {
+            logger.error("Token generation error: \(error.localizedDescription)")
+            throw AuthError.tokenGenerationFailed
+        }
+    }
+
     func logout() async {
-//        do {
-//            try await NetworkClient.shared.requestWithEmptyResponse(AuthEndpoint.logout)
-//        } catch {
-//            logger.error("Logout error: \(error.localizedDescription)")
-//        }
-//        
-        // Clear local state regardless of network request success
         UserDefaults.standard.removeObject(forKey: "API_KEY")
         isAuthenticated = false
         currentUser = nil
@@ -96,7 +104,6 @@ public class AuthService: ObservableObject {
     func checkAuthStatus() {
         if let token = UserDefaults.standard.string(forKey: "API_KEY"), !token.isEmpty {
             isAuthenticated = true
-            // Fetch user profile in background
             Task {
                 await fetchUserProfile()
             }
