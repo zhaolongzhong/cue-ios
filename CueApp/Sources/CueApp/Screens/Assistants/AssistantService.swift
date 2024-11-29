@@ -181,16 +181,10 @@ public class AssistantService: ObservableObject {
                     metadata: metadata
                 )
             )
-
-            DispatchQueue.main.async {
-                // Update the assistant in the local list
-                if let index = self.assistants.firstIndex(where: { $0.id == id }) {
-                    print("inx update index\(index)")
-                    self.assistants[index] = assistant
-                } else {
-                    print("inx update append")
-                    self.assistants.append(assistant)
-                }
+            if let index = self.assistants.firstIndex(where: { $0.id == id }) {
+                self.assistants[index] = assistant
+            } else {
+                self.assistants.append(assistant)
             }
 
             return assistant

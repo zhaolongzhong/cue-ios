@@ -18,7 +18,8 @@ struct AssistantsView: View {
                     destination: ChatView(
                         assistant: assistant,
                         status: viewModel.getClientStatus(for: assistant),
-                        webSocketStore: self.webSocketStore
+                        webSocketStore: self.webSocketStore,
+                        assistantsViewModel: viewModel
                     )
                 ) {
                     AssistantRowView(

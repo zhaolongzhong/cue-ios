@@ -2,8 +2,9 @@ import SwiftUI
 
 struct AssistantDetailView: View {
     let assistantsViewModel: AssistantsViewModel
-    let assistant: AssistantStatus
+    @State var assistant: AssistantStatus  // Changed to @State
     let status: ClientStatus?
+    let onUpdate: (AssistantStatus) -> Void
     @State private var showingNameEdit = false
     @State private var newName = ""
 
@@ -25,7 +26,13 @@ struct AssistantDetailView: View {
             Button("Cancel", role: .cancel) { }
             Button("Update") {
                 Task {
-                    await assistantsViewModel.updateAssistant(id: assistant.id, name: newName)
+                    guard let updatedAssistant = await assistantsViewModel.updateAssistant(id: assistant.id, name: newName) else {
+                        AppLog.log.error("Error when update assistant.")
+                        return
+                    }
+                    debugPrint("AssistantDetailView updatedAssistant: \(updatedAssistant)")
+                    self.assistant = updatedAssistant
+                    onUpdate(updatedAssistant)
                 }
             }
         } message: {

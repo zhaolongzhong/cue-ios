@@ -2,13 +2,15 @@ import SwiftUI
 
 struct ChatView: View {
     @StateObject private var viewModel: ChatViewModel
-    @StateObject private var assistantsViewModel: AssistantsViewModel
+    let assistantsViewModel: AssistantsViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
     @FocusState private var isFocused: Bool
 
     init(assistant: AssistantStatus,
          status: ClientStatus?,
-         webSocketStore: WebSocketManagerStore) {
+         webSocketStore: WebSocketManagerStore, assistantsViewModel: AssistantsViewModel) {
+        self.assistantsViewModel = assistantsViewModel
+
         _viewModel = StateObject(wrappedValue:
             ChatViewModel(
                 assistant: assistant,
@@ -16,7 +18,6 @@ struct ChatView: View {
                 webSocketStore: webSocketStore
             )
         )
-        _assistantsViewModel = StateObject(wrappedValue: AssistantsViewModel(webSocketStore: webSocketStore))
     }
 
     var body: some View {
@@ -43,7 +44,11 @@ struct ChatView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: AssistantDetailView(assistantsViewModel: self.assistantsViewModel, assistant: viewModel.assistant, status: viewModel.status)) {
+                NavigationLink(destination: AssistantDetailView(
+                    assistantsViewModel: self.assistantsViewModel,
+                    assistant: viewModel.assistant,
+                    status: viewModel.status,
+                    onUpdate: handleAssistantUpdate)) {
                     Image(systemName: "ellipsis")
                 }
             }
@@ -62,5 +67,9 @@ struct ChatView: View {
                 message: Text(alert.message)
             )
         }
+    }
+
+    private func handleAssistantUpdate(updatedAssistant: AssistantStatus) {
+        viewModel.updateAssistant(updatedAssistant)
     }
 }

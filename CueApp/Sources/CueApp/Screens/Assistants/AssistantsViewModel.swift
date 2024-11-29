@@ -93,13 +93,15 @@ class AssistantsViewModel: ObservableObject {
             )
         }
         let sortedStatuses = updatedStatuses.sorted { $0.isOnline && !$1.isOnline }
+        AppLog.log.debug(("inx assistantStatuses updated: \(sortedStatuses)"))
         assistantStatuses = sortedStatuses
     }
 
     private func updateAssistants(with assistants: [Assistant]) async {
+        debugPrint("inx updatedAssistant ... \(assistants.last)")
         self.assistants = assistants
         let clientStatuses = webSocketStore.manager?.clientStatuses ?? []
-        await updateAssistantStatuses(assistants: assistants, clientStatuses: clientStatuses)
+        await updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
     }
 
     func fetchAssistants() async {
@@ -149,15 +151,25 @@ class AssistantsViewModel: ObservableObject {
         }
     }
 
-    func updateAssistant(id: String, name: String) async {
+    func getAssistantStatus(id: String) -> AssistantStatus? {
+        return assistantStatuses.first { $0.id == id }
+    }
+
+    func updateAssistant(id: String, name: String) async -> AssistantStatus? {
         do {
-            _ = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
-            DispatchQueue.main.async {
-                self.assistants = self.assistantService.assistants
+            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
+
+            debugPrint("inx updatedAssistant done: \(assistantService.assistants.last)")
+            await updateAssistants(with: assistants)
+
+            guard let assistant = updatedAssistant else {
+                return nil
             }
+            return getAssistantStatus(id: assistant.id)
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
+        return nil
     }
 }

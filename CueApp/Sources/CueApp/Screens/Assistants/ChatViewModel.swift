@@ -7,8 +7,8 @@ class ChatViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var errorAlert: ErrorAlert?
     @Published var inputMessage: String = ""
+    @Published private(set) var assistant: AssistantStatus
 
-    let assistant: AssistantStatus
     let status: ClientStatus?
     private let webSocketStore: WebSocketManagerStore
     private let messageModelStore: MessageModelStore
@@ -173,6 +173,10 @@ class ChatViewModel: ObservableObject {
             message: messageToSend,
             recipient: status?.runnerId ?? "default_assistant_id"
         )
+    }
+
+    func updateAssistant(_ newAssistant: AssistantStatus) {
+        assistant = newAssistant
     }
 
     // MARK: - Error Handling
