@@ -70,7 +70,7 @@ struct AssistantsView: View {
                 .toolbarBackground(.visible, for: .navigationBar)
                 #endif
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .automatic) {
                         Button {
                             isShowingNameDialog = true
                         } label: {
@@ -79,7 +79,9 @@ struct AssistantsView: View {
                     }
                 }
             }
+            #if os(iOS)
             .navigationViewStyle(.stack)
+            #endif
             .deleteConfirmation(
                 isPresented: Binding(
                     get: { viewModel.assistantToDelete != nil },

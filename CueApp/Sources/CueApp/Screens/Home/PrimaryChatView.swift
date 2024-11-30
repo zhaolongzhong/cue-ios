@@ -16,7 +16,9 @@ struct PrimaryChatView: View {
                     .id(primary.id)
                 }
             }
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     HStack {

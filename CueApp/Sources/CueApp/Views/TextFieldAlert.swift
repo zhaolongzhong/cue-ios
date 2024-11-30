@@ -65,7 +65,7 @@ struct CenteredAlert<Content: View>: View {
                 .padding(.horizontal)
             }
             .padding()
-            .background(Color(UIColor.systemBackground))
+            .background(AppTheme.Colors.background)
             .cornerRadius(12)
             .shadow(radius: 10)
             .frame(maxWidth: 300)
@@ -110,6 +110,10 @@ struct TextFieldAlert: View {
             content: {
                 TextField("Enter text", text: $text)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    #if os(iOS)
+                    .autocapitalization(.none)
+                    #endif
+                    .disableAutocorrection(true)
             },
             primaryButton: AlertButton(
                 title: "Confirm"
@@ -123,7 +127,7 @@ struct TextFieldAlert: View {
                 title: "Cancel",
                 style: .cancel
             ) {
-                text = ""
+                isPresented = false
             }
         )
     }

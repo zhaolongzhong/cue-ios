@@ -19,7 +19,11 @@ struct AssistantDetailView: View {
             }
         }
         .navigationTitle("Assistant Details")
+        #if os(iOS)
         .listStyle(.insetGrouped)
+        #else
+        .listStyle(.automatic)
+        #endif
         .alert("Update Name", isPresented: $showingNameEdit) {
             TextField("Name", text: $newName)
             Button("Cancel", role: .cancel) { }

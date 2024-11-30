@@ -36,12 +36,14 @@ struct ChatView: View {
                 onSend: viewModel.handleSendMessage
             )
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(AppTheme.Colors.background)
         .navigationTitle(viewModel.assistant.name)
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.visible, for: .navigationBar)
+        #endif
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .automatic) {
                 NavigationLink(destination: AssistantDetailView(
                     assistantsViewModel: self.assistantsViewModel,
                     assistant: viewModel.assistant,

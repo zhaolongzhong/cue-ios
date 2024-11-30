@@ -19,6 +19,19 @@ struct SettingsView_iOS: View {
                     }
                 }
 
+                Section("Configuration") {
+                    NavigationLink {
+                        APIKeysManagementView()
+                    } label: {
+                        HStack {
+                            Text("API Keys")
+                            Spacer()
+                            Image(systemName: "key.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 Section("Access Token") {
                     TokenGenerationView(viewModel: viewModel)
                 }
@@ -43,6 +56,7 @@ struct SettingsView_iOS: View {
 struct SettingsView_macOS: View {
     @StateObject private var viewModel: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isShowingAPIKeys = false
 
     init(authService: AuthService) {
         _viewModel = StateObject(wrappedValue: SettingsViewModel(authService: authService))
@@ -50,19 +64,30 @@ struct SettingsView_macOS: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Settings")
-                    .font(.title)
-                    .padding()
-                Spacer()
-            }
-
             List {
                 Section("Account") {
                     if let user = viewModel.currentUser {
                         UserInfoView(email: user.email, name: user.name)
-                            .listRowBackground(Color.clear)
                     }
+                }
+
+                Section("Configuration") {
+                    Button {
+                        isShowingAPIKeys = true
+                    } label: {
+                        HStack {
+                            Text("API Keys")
+                            Spacer()
+                            Image(systemName: "key.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                }
+
+                Section("Access Token") {
+                    TokenGenerationView(viewModel: viewModel)
                 }
 
                 Section {
@@ -72,7 +97,6 @@ struct SettingsView_macOS: View {
                             dismiss()
                         }
                     }
-                    .listRowBackground(Color.clear)
                 }
             }
             .listStyle(.inset)
@@ -80,6 +104,9 @@ struct SettingsView_macOS: View {
         }
         .frame(maxWidth: 500)
         .frame(maxWidth: .infinity, alignment: .center)
+        .sheet(isPresented: $isShowingAPIKeys) {
+            APIKeysManagementView()
+        }
     }
 }
 #endif
