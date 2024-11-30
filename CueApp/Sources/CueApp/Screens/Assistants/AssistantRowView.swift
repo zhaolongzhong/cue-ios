@@ -27,6 +27,12 @@ struct AssistantRowView: View {
 
             Spacer()
 
+            if assistant.assistant.metadata?.isPrimary == true {
+                Image(systemName: "star.fill")
+                    .foregroundColor(.yellow)
+                    .font(.system(size: 14))
+            }
+
             Circle()
                 .fill(assistant.isOnline ? Color.green : Color.gray)
                 .frame(width: 10, height: 10)

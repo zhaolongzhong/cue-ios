@@ -3,7 +3,6 @@ import SwiftUI
 struct AssistantDetailView: View {
     let assistantsViewModel: AssistantsViewModel
     @State var assistant: AssistantStatus
-    let status: ClientStatus?
     let onUpdate: (AssistantStatus) -> Void
     @State private var showingNameEdit = false
     @State private var newName = ""

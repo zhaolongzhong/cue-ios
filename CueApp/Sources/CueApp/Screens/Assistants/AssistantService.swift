@@ -132,7 +132,7 @@ public class AssistantService: ObservableObject {
     func createAssistant(name: String?, isPrimary: Bool = false) async throws -> String {
         do {
             let assistant: Assistant = try await NetworkClient.shared.request(
-                AssistantEndpoint.create(name: name ?? "primary_assistant", isPrimary: isPrimary)
+                AssistantEndpoint.create(name: name ?? "Untitled", isPrimary: isPrimary)
             )
             defaultAssistantId = assistant.id
             assistants.append(assistant)
@@ -168,11 +168,7 @@ public class AssistantService: ObservableObject {
                     metadata: metadata
                 )
             )
-            if let index = self.assistants.firstIndex(where: { $0.id == id }) {
-                self.assistants[index] = assistant
-            } else {
-                self.assistants.append(assistant)
-            }
+            _ = try await self.listAssistants()
 
             return assistant
         } catch NetworkError.httpError(let code, _) where code == 404 {

@@ -10,6 +10,10 @@ struct AssistantMetadata: Codable {
 
 struct AssistantMetadataUpdate: Codable, Sendable {
     let isPrimary: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case isPrimary = "is_primary"
+    }
 }
 
 struct Assistant: Codable, Identifiable {

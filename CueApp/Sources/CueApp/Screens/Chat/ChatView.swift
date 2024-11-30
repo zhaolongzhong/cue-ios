@@ -7,15 +7,13 @@ struct ChatView: View {
     @FocusState private var isFocused: Bool
 
     init(assistant: AssistantStatus,
-         status: ClientStatus?,
-         webSocketStore: WebSocketManagerStore, assistantsViewModel: AssistantsViewModel) {
+         webSocketManagerStore: WebSocketManagerStore, assistantsViewModel: AssistantsViewModel) {
         self.assistantsViewModel = assistantsViewModel
 
         _viewModel = StateObject(wrappedValue:
             ChatViewModel(
                 assistant: assistant,
-                status: status,
-                webSocketStore: webSocketStore
+                webSocketManagerStore: webSocketManagerStore
             )
         )
     }
@@ -47,7 +45,6 @@ struct ChatView: View {
                 NavigationLink(destination: AssistantDetailView(
                     assistantsViewModel: self.assistantsViewModel,
                     assistant: viewModel.assistant,
-                    status: viewModel.status,
                     onUpdate: handleAssistantUpdate)) {
                     Image(systemName: "ellipsis")
                 }

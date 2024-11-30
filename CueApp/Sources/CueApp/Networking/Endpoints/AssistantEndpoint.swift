@@ -83,7 +83,7 @@ extension AssistantEndpoint: Endpoint {
             params["assistant_id"] = assistantId
             params["metadata"] = ["is_primary": is_primary]
             return try? JSONSerialization.data(withJSONObject: params)
-        case let .update(id, name, metadata):
+        case let .update(_, name, metadata):
             var params: [String: Any] = [:]
             if let name = name {
                 params["name"] = name

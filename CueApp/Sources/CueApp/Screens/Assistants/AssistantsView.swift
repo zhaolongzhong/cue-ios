@@ -2,64 +2,160 @@ import SwiftUI
 import Combine
 
 struct AssistantsView: View {
-    @StateObject private var viewModel: AssistantsViewModel
-    @EnvironmentObject private var authService: AuthService
-    private let webSocketStore: WebSocketManagerStore
+    @ObservedObject private var viewModel: AssistantsViewModel
+    @State private var isShowingNameDialog = false
+    @State private var newAssistantName = ""
 
-    init(webSocketStore: WebSocketManagerStore) {
-        self.webSocketStore = webSocketStore
-        _viewModel = StateObject(wrappedValue: AssistantsViewModel(webSocketStore: webSocketStore))
+    init(viewModel: AssistantsViewModel) {
+        self.viewModel = viewModel
+    }
+
+    private var sortedAssistants: [AssistantStatus] {
+        viewModel.assistantStatuses.sorted { first, second in
+            if first.assistant.metadata?.isPrimary == true {
+                return true
+            }
+            if second.assistant.metadata?.isPrimary == true {
+                return false
+            }
+            return first.isOnline && !second.isOnline
+        }
     }
 
     var body: some View {
-        NavigationStack {
-            List(viewModel.assistantStatuses) { assistant in
-                NavigationLink(
-                    destination: ChatView(
-                        assistant: assistant,
-                        status: viewModel.getClientStatus(for: assistant),
-                        webSocketStore: self.webSocketStore,
-                        assistantsViewModel: viewModel
-                    )
-                ) {
-                    AssistantRowView(
-                        assistant: assistant,
-                        status: viewModel.getClientStatus(for: assistant)
-                    )
-                }
-                .contextMenu {
-                    Button(role: .destructive, action: {
-                        Task {
-                            await viewModel.deleteAssistant(assistant)
+        ZStack {
+            NavigationStack {
+                List(sortedAssistants) { assistant in
+                    NavigationLink(
+                        destination: ChatView(
+                            assistant: assistant,
+                            webSocketManagerStore: viewModel.webSocketManagerStore,
+                            assistantsViewModel: viewModel
+                        )
+                    ) {
+                        AssistantRowView(
+                            assistant: assistant,
+                            status: viewModel.getClientStatus(for: assistant)
+                        )
+                    }
+                    .contextMenu {
+                        if assistant.assistant.metadata?.isPrimary != true {
+                            AssistantContextMenu(
+                                assistant: assistant,
+                                viewModel: viewModel
+                            )
                         }
-                    }) {
-                        Label("Delete", systemImage: "trash")
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if assistant.assistant.metadata?.isPrimary != true {
+                            Button(role: .destructive) {
+                                viewModel.assistantToDelete = assistant
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive, action: {
-                        Task {
-                            await viewModel.deleteAssistant(assistant)
+                .refreshable {
+                    viewModel.refreshAssistants()
+                }
+                .overlay {
+                    if viewModel.isLoading {
+                        ProgressView()
+                    }
+                }
+                .navigationTitle("Assistants")
+                #if os(iOS)
+                .listStyle(InsetGroupedListStyle())
+                .toolbarBackground(.visible, for: .navigationBar)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            isShowingNameDialog = true
+                        } label: {
+                            Image(systemName: "plus")
                         }
-                    }) {
-                        Label("Delete", systemImage: "trash")
                     }
                 }
             }
-            .refreshable {
-                viewModel.refreshAssistants()
-            }
-            .overlay {
-                if viewModel.isLoading {
-                    ProgressView()
+            .navigationViewStyle(.stack)
+            .deleteConfirmation(
+                isPresented: Binding(
+                    get: { viewModel.assistantToDelete != nil },
+                    set: { if !$0 { viewModel.assistantToDelete = nil } }
+                ),
+                assistant: viewModel.assistantToDelete,
+                onDelete: { assistant in
+                    Task {
+                        await viewModel.deleteAssistant(assistant)
+                        viewModel.assistantToDelete = nil
+                    }
+                }
+            )
+
+            if isShowingNameDialog {
+                TextFieldAlert(
+                    isPresented: $isShowingNameDialog,
+                    text: $newAssistantName,
+                    title: "New Assistant",
+                    message: "Enter a name for the new assistant"
+                ) { name in
+                    Task {
+                        await viewModel.createAssistant(name: name)
+                    }
                 }
             }
-            .navigationTitle("Assistants")
-            #if os(iOS)
-            .listStyle(InsetGroupedListStyle())
-            .toolbarBackground(.visible, for: .navigationBar)
-            #endif
         }
-        .navigationViewStyle(.stack)
+    }
+}
+
+// MARK: - Helper Views
+private struct AssistantContextMenu: View {
+    let assistant: AssistantStatus
+    @ObservedObject var viewModel: AssistantsViewModel
+
+    var body: some View {
+        Group {
+            Button {
+                Task {
+                    _ = await viewModel.setPrimaryAssistant(id: assistant.id)
+                }
+            } label: {
+                Label("Set as Primary", systemImage: "star.fill")
+            }
+
+            Button(role: .destructive) {
+                viewModel.assistantToDelete = assistant
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+}
+
+// MARK: - View Extensions
+extension View {
+    func deleteConfirmation(
+        isPresented: Binding<Bool>,
+        assistant: AssistantStatus?,
+        onDelete: @escaping (AssistantStatus) -> Void
+    ) -> some View {
+        confirmationDialog(
+            "Delete Assistant",
+            isPresented: isPresented,
+            titleVisibility: .visible
+        ) {
+            if let assistant = assistant {
+                Button("Delete", role: .destructive) {
+                    onDelete(assistant)
+                }
+                Button("Cancel", role: .cancel) {
+                    isPresented.wrappedValue = false
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete this assistant? This action cannot be undone.")
+        }
     }
 }

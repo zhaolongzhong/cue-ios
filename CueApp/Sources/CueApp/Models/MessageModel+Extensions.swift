@@ -217,7 +217,7 @@ extension MessageModel {
     }
 
     func isToolMessage() -> Bool {
-        if let toolResponse = self.metadata?.payload?.toToolResponse() {
+        if let _ = self.metadata?.payload?.toToolResponse() {
             return true
         }
         switch self.content.content {

@@ -4,27 +4,33 @@ enum TabSelection: String {
     case chat = "Chat"
     case assistants = "Assistants"
     case settings = "Settings"
-    case web = "WebSocket"
 }
 
 public struct AppTabView: View {
     @State private var selectedTab: TabSelection = .chat
+    @StateObject private var assistantsViewModel: AssistantsViewModel
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var conversationManager: ConversationManager
-    @EnvironmentObject private var webSocketManagerStore: WebSocketManagerStore
+    @StateObject private var webSocketManagerStore: WebSocketManagerStore
 
-    public init() {}
+    public init(webSocketManagerStore: WebSocketManagerStore) {
+        _webSocketManagerStore = StateObject(wrappedValue: webSocketManagerStore)
+        _assistantsViewModel = StateObject(
+            wrappedValue: AssistantsViewModel(
+                assistantService: AssistantService(),
+                webSocketManagerStore: webSocketManagerStore
+            )
+        )
+    }
 
     public var body: some View {
         TabView(selection: $selectedTab) {
-            #if os(iOS)
-            CueAppView()
+            PrimaryChatView(webSocketManagerStore: self.webSocketManagerStore, assistantsViewModel: assistantsViewModel)
                 .tabItem {
                     Label("Chat", systemImage: "wand.and.stars")
                 }
                 .tag(TabSelection.chat)
-            #endif
-            AssistantsView(webSocketStore: webSocketManagerStore)
+            AssistantsView(viewModel: assistantsViewModel)
                 .tabItem {
                     Label("Assistants", systemImage: "bubble.left.and.bubble.right")
                 }

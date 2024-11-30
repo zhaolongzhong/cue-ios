@@ -7,15 +7,17 @@ class AssistantsViewModel: ObservableObject {
     @Published private(set) var assistantStatuses: [AssistantStatus] = []
     @Published private(set) var isLoading = false
     @Published private(set) var error: Error?
+    @Published var primaryAssistant: AssistantStatus?
+    @Published var assistantToDelete: AssistantStatus?
 
     private let assistantService: AssistantService
-    private let webSocketStore: WebSocketManagerStore
+    let webSocketManagerStore: WebSocketManagerStore
     private var cancellables = Set<AnyCancellable>()
 
     init(assistantService: AssistantService = AssistantService(),
-         webSocketStore: WebSocketManagerStore) {
+         webSocketManagerStore: WebSocketManagerStore) {
         self.assistantService = assistantService
-        self.webSocketStore = webSocketStore
+        self.webSocketManagerStore = webSocketManagerStore
         setupClientStatusSubscriptions()
         Task {
             await fetchAssistants()
@@ -24,7 +26,7 @@ class AssistantsViewModel: ObservableObject {
 
     private func setupClientStatusSubscriptions() {
         // Subscribe to WebSocket status updates
-        webSocketStore.$manager
+        webSocketManagerStore.$manager
             .compactMap { $0 }
             .flatMap { manager -> AnyPublisher<[ClientStatus], Never> in
                 manager.$clientStatuses
@@ -86,19 +88,18 @@ class AssistantsViewModel: ObservableObject {
             return AssistantStatus(
                 id: assistant.id,
                 name: assistant.name,
-                clientId: clientStatus?.id ?? "",
-                isOnline: clientStatus?.isOnline ?? false,
-                avatarUrl: nil,
-                description: clientStatus?.runnerId ?? ""
+                assistant: assistant,
+                clientStatus: clientStatus
             )
         }
         let sortedStatuses = updatedStatuses.sorted { $0.isOnline && !$1.isOnline }
         assistantStatuses = sortedStatuses
+        updatePrimaryAssistant()
     }
 
     private func updateAssistants(with assistants: [Assistant]) async {
         self.assistants = assistants
-        let clientStatuses = webSocketStore.manager?.clientStatuses ?? []
+        let clientStatuses = webSocketManagerStore.manager?.clientStatuses ?? []
         await updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
     }
 
@@ -107,8 +108,7 @@ class AssistantsViewModel: ObservableObject {
         error = nil
 
         do {
-            let assistants = try await assistantService.listAssistants()
-            await updateAssistants(with: assistants)
+            _ = try await assistantService.listAssistants()
         } catch {
             self.error = error
             AppLog.log.error("Error fetching assistants: \(error.localizedDescription)")
@@ -124,7 +124,7 @@ class AssistantsViewModel: ObservableObject {
     }
 
     func getClientStatus(for assistant: AssistantStatus) -> ClientStatus? {
-        webSocketStore.manager?.clientStatuses.first { $0.clientId == assistant.clientId }
+        webSocketManagerStore.manager?.clientStatuses.first { $0.clientId == assistant.clientStatus?.clientId }
     }
 
     // MARK: - Assistant Management
@@ -149,6 +149,16 @@ class AssistantsViewModel: ObservableObject {
         }
     }
 
+    func createAssistant(name: String) async {
+        do {
+            _ = try await assistantService.createAssistant(name: name, isPrimary: false)
+            await fetchAssistants()
+        } catch {
+            self.error = error
+            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+        }
+    }
+
     func getAssistantStatus(id: String) -> AssistantStatus? {
         return assistantStatuses.first { $0.id == id }
     }
@@ -156,7 +166,7 @@ class AssistantsViewModel: ObservableObject {
     func updateAssistant(id: String, name: String) async -> AssistantStatus? {
         do {
             let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
-            await updateAssistants(with: assistants)
+            await fetchAssistants()
 
             guard let assistant = updatedAssistant else {
                 return nil
@@ -167,5 +177,30 @@ class AssistantsViewModel: ObservableObject {
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
         return nil
+    }
+
+    func setPrimaryAssistant(id: String) async -> AssistantStatus? {
+        do {
+            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: true))
+            await fetchAssistants()
+
+            guard let assistant = updatedAssistant else {
+                return nil
+            }
+            return getAssistantStatus(id: assistant.id)
+        } catch {
+            self.error = error
+            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+        }
+        return nil
+    }
+
+    private func updatePrimaryAssistant() {
+        if let currentPrimaryId = primaryAssistant?.id,
+           let updatedPrimary = assistantStatuses.first(where: { $0.id == currentPrimaryId && $0.assistant.metadata?.isPrimary == true }) {
+            primaryAssistant = updatedPrimary
+        } else {
+            primaryAssistant = assistantStatuses.first(where: { $0.assistant.metadata?.isPrimary == true })
+        }
     }
 }

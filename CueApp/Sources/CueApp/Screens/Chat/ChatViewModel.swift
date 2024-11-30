@@ -9,19 +9,16 @@ class ChatViewModel: ObservableObject {
     @Published var inputMessage: String = ""
     @Published private(set) var assistant: AssistantStatus
 
-    let status: ClientStatus?
-    private let webSocketStore: WebSocketManagerStore
+    private let webSocketManagerStore: WebSocketManagerStore
     private let messageModelStore: MessageModelStore
     private let assistantService: AssistantService
     private var defaultConversation: ConversationModel?
 
     init(assistant: AssistantStatus,
-         status: ClientStatus?,
-         webSocketStore: WebSocketManagerStore) {
+         webSocketManagerStore: WebSocketManagerStore) {
         self.assistantService = AssistantService()
         self.assistant = assistant
-        self.status = status
-        self.webSocketStore = webSocketStore
+        self.webSocketManagerStore = webSocketManagerStore
 
         do {
             self.messageModelStore = try MessageModelStore()
@@ -33,7 +30,7 @@ class ChatViewModel: ObservableObject {
     }
 
     var isInputEnabled: Bool {
-        webSocketStore.connectionState == .connected && !isLoading
+        webSocketManagerStore.connectionState == .connected && !isLoading
     }
 
     // MARK: - Setup
@@ -116,7 +113,7 @@ class ChatViewModel: ObservableObject {
     }
 
     private func setupMessageHandler() {
-        webSocketStore.addMessageHandler { [weak self] messagePayload in
+        webSocketManagerStore.addMessageHandler { [weak self] messagePayload in
             guard let self = self else { return }
 
             guard let conversationId = self.defaultConversation?.id else {
@@ -157,21 +154,17 @@ class ChatViewModel: ObservableObject {
 
     private func sendMessage() async throws {
         guard !inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        guard let assistantId = status?.assistantId else {
-            AppLog.log.error("Assistant id is nil")
-            return
-        }
 
         let messageToSend = inputMessage
         _ = Message(
-            assistantId: assistantId,
+            assistantId: assistant.id,
             content: messageToSend,
             isFromUser: true
         )
 
-        webSocketStore.send(
+        webSocketManagerStore.send(
             message: messageToSend,
-            recipient: status?.runnerId ?? "default_assistant_id"
+            recipient: assistant.clientStatus?.runnerId ?? "default_assistant_id"
         )
     }
 
@@ -190,6 +183,6 @@ class ChatViewModel: ObservableObject {
 
     // MARK: - Cleanup
     func cleanup() {
-        webSocketStore.removeMessageHandler()
+        webSocketManagerStore.removeMessageHandler()
     }
 }
