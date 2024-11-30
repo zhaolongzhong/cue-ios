@@ -26,4 +26,20 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if let window = NSApplication.shared.windows.first {
+            window.setContentSize(NSSize(width: 1200, height: 800))
+            window.minSize = NSSize(width: 800, height: 600)
+            window.center()
+
+            // Set up toolbar
+            let toolbar = NSToolbar(identifier: "MainToolbar")
+            toolbar.allowsUserCustomization = true
+            toolbar.autosavesConfiguration = true
+            window.toolbar = toolbar
+        }
+    }
+}
+
 #endif

@@ -8,6 +8,7 @@ class ChatViewModel: ObservableObject {
     @Published var errorAlert: ErrorAlert?
     @Published var inputMessage: String = ""
     @Published private(set) var assistant: AssistantStatus
+    @Published var showAssistantDetails = false
 
     private let webSocketManagerStore: WebSocketManagerStore
     private let messageModelStore: MessageModelStore
@@ -26,7 +27,6 @@ class ChatViewModel: ObservableObject {
             AppLog.websocket.error("Database initialization failed: \(error)")
             self.messageModelStore = try! MessageModelStore()
         }
-
     }
 
     var isInputEnabled: Bool {

@@ -10,7 +10,7 @@ struct AssistantsView: View {
         self.viewModel = viewModel
     }
 
-    private var sortedAssistants: [AssistantStatus] {
+    public var sortedAssistants: [AssistantStatus] {
         viewModel.assistantStatuses.sorted { first, second in
             if first.assistant.metadata?.isPrimary == true {
                 return true
@@ -108,56 +108,6 @@ struct AssistantsView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-// MARK: - Helper Views
-private struct AssistantContextMenu: View {
-    let assistant: AssistantStatus
-    @ObservedObject var viewModel: AssistantsViewModel
-
-    var body: some View {
-        Group {
-            Button {
-                Task {
-                    _ = await viewModel.setPrimaryAssistant(id: assistant.id)
-                }
-            } label: {
-                Label("Set as Primary", systemImage: "star.fill")
-            }
-
-            Button(role: .destructive) {
-                viewModel.assistantToDelete = assistant
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-    }
-}
-
-// MARK: - View Extensions
-extension View {
-    func deleteConfirmation(
-        isPresented: Binding<Bool>,
-        assistant: AssistantStatus?,
-        onDelete: @escaping (AssistantStatus) -> Void
-    ) -> some View {
-        confirmationDialog(
-            "Delete Assistant",
-            isPresented: isPresented,
-            titleVisibility: .visible
-        ) {
-            if let assistant = assistant {
-                Button("Delete", role: .destructive) {
-                    onDelete(assistant)
-                }
-                Button("Cancel", role: .cancel) {
-                    isPresented.wrappedValue = false
-                }
-            }
-        } message: {
-            Text("Are you sure you want to delete this assistant? This action cannot be undone.")
         }
     }
 }

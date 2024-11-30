@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-class AssistantsViewModel: ObservableObject {
+public class AssistantsViewModel: ObservableObject {
     @Published private(set) var assistants: [Assistant] = []
     @Published private(set) var assistantStatuses: [AssistantStatus] = []
     @Published private(set) var isLoading = false

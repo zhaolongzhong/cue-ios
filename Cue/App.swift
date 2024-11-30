@@ -36,15 +36,9 @@ struct iOSApp: App {
 }
 
 #else
-
-import SwiftUI
-import CueApp
-import AppKit
-
 @main
 struct macOSApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) var appDelegate
-
     @StateObject private var authService = AuthService()
     @StateObject private var conversationManager = ConversationManager()
     @StateObject private var webSocketStore = WebSocketManagerStore()
@@ -56,19 +50,21 @@ struct macOSApp: App {
                 .environmentObject(conversationManager)
                 .environmentObject(webSocketStore)
         }
-        .windowStyle(DefaultWindowStyle()) // Apply Default Window Style
-        .windowToolbarStyle(UnifiedWindowToolbarStyle()) // Apply Unified Toolbar Style
-    }
-}
-
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Configure the main window
-        if let window = NSApplication.shared.windows.first {
-            window.setContentSize(NSSize(width: 800, height: 600))
-            window.center()
-            window.title = "My macOS App"
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
+        .commands {
+            SidebarCommands()
+            ToolbarCommands()
         }
+
+        WindowGroup(id: "settings-window") {
+            SettingsView()
+                .environmentObject(authService)
+                .frame(minWidth: 500, minHeight: 300)
+        }
+        .defaultSize(width: 600, height: 400)
+        .windowStyle(.titleBar)
+        .windowResizability(.contentSize)
     }
 }
 #endif
