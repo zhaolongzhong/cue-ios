@@ -36,39 +36,36 @@ struct iOSApp: App {
 }
 
 #else
-
-import SwiftUI
-import CueApp
-import AppKit
-
 @main
 struct macOSApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) var appDelegate
-
     @StateObject private var authService = AuthService()
     @StateObject private var conversationManager = ConversationManager()
-    @StateObject private var webSocketStore = WebSocketManagerStore()
+    @StateObject private var webSocketManagerStore = WebSocketManagerStore()
 
     var body: some Scene {
         WindowGroup {
             AuthenticatedView()
                 .environmentObject(authService)
                 .environmentObject(conversationManager)
-                .environmentObject(webSocketStore)
+                .environmentObject(webSocketManagerStore)
         }
-        .windowStyle(DefaultWindowStyle()) // Apply Default Window Style
-        .windowToolbarStyle(UnifiedWindowToolbarStyle()) // Apply Unified Toolbar Style
-    }
-}
+//        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
+        .commands {
+            SidebarCommands()
+            ToolbarCommands()
+        }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Configure the main window
-        if let window = NSApplication.shared.windows.first {
-            window.setContentSize(NSSize(width: 800, height: 600))
-            window.center()
-            window.title = "My macOS App"
+        WindowGroup(id: "settings-window") {
+            SettingsView()
+                .environmentObject(authService)
+                .frame(minWidth: 500, minHeight: 300)
         }
+        .defaultSize(width: 1200, height: 800)
+        .windowStyle(.titleBar)
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
     }
 }
 #endif

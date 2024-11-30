@@ -259,3 +259,24 @@ extension Content: Equatable {
         }
     }
 }
+
+extension MessageModel {
+    enum Role: String {
+        case user = "user"
+        case assistant = "assistant"
+        case tool = "tool"
+
+        var isUser: Bool {
+            self == .user
+        }
+    }
+
+    var role: Role {
+        Role(rawValue: author.role) ?? .assistant
+    }
+
+    var isUser: Bool {
+        let res = self.role.isUser && !(self.isToolCall() || self.isToolMessage())
+        return res
+    }
+}

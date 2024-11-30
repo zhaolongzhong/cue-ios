@@ -42,6 +42,7 @@ public struct AppTabView: View {
                 }
                 .tag(TabSelection.settings)
         }
+        .accentColor(Color(.darkGray))
         .onAppear {
 
         }
@@ -50,13 +51,5 @@ public struct AppTabView: View {
                 webSocketManagerStore.initialize(for: userId)
             }
         }
-        #if os(macOS)
-        .onChange(of: selectedTab) { _, newTab in
-            if let window = NSApplication.shared.windows.first {
-                window.title = newTab.rawValue
-            }
-        }
-        .frame(minWidth: 800, minHeight: 600)
-        #endif
     }
 }

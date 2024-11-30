@@ -7,9 +7,9 @@ struct ChatView: View {
     @FocusState private var isFocused: Bool
 
     init(assistant: AssistantStatus,
-         webSocketManagerStore: WebSocketManagerStore, assistantsViewModel: AssistantsViewModel) {
+         webSocketManagerStore: WebSocketManagerStore,
+         assistantsViewModel: AssistantsViewModel) {
         self.assistantsViewModel = assistantsViewModel
-
         _viewModel = StateObject(wrappedValue:
             ChatViewModel(
                 assistant: assistant,
@@ -28,6 +28,7 @@ struct ChatView: View {
                 LoadingOverlay(isVisible: viewModel.isLoading)
             )
             .background(Color.gray.opacity(0.1))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             MessageInputView(
                 inputMessage: $viewModel.inputMessage,
@@ -37,13 +38,14 @@ struct ChatView: View {
             )
         }
         .background(AppTheme.Colors.background)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(viewModel.assistant.name)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
         #endif
         .toolbar {
-            ToolbarItem(placement: .automatic) {
+            #if os(iOS)
+            ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink(destination: AssistantDetailView(
                     assistantsViewModel: self.assistantsViewModel,
                     assistant: viewModel.assistant,
@@ -51,7 +53,27 @@ struct ChatView: View {
                     Image(systemName: "ellipsis")
                 }
             }
+            #else
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    viewModel.showAssistantDetails = true
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+            }
+            #endif
         }
+        #if !os(iOS)
+        .sheet(isPresented: $viewModel.showAssistantDetails) {
+            AssistantDetailView(
+                assistantsViewModel: self.assistantsViewModel,
+                assistant: viewModel.assistant,
+                onUpdate: handleAssistantUpdate
+            )
+            .frame(minWidth: 400, minHeight: 300)
+            .presentationCompactAdaptation(.popover)
+        }
+        #endif
         .task {
             await viewModel.setupChat()
         }

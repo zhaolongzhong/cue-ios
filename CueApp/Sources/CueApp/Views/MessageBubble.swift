@@ -1,114 +1,163 @@
 import SwiftUI
-import MarkdownUI
 
-extension MessageModel {
-    enum Role: String {
-        case user = "user"
-        case assistant = "assistant"
-        case tool = "tool"
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
-        var isUser: Bool {
-            self == .user
-        }
-    }
-
-    var role: Role {
-        Role(rawValue: author.role) ?? .assistant
-    }
-
-    var isUser: Bool {
-        let res = self.role.isUser && !(self.isToolCall() || self.isToolMessage())
-        return res
-    }
-
-}
 struct MessageBubble: View {
     let message: MessageModel
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovering = false
 
     var bubbleColor: Color {
-        return message.isUser ? AppTheme.Colors.Message.userBubble.opacity(0.5) : AppTheme.Colors.background
+        return message.isUser ? AppTheme.Colors.Message.userBubble.opacity(0.2) : AppTheme.Colors.background
     }
-
-    var borderColor: Color {
-        return message.isUser ? .clear : AppTheme.Colors.Message.bubbleBorder
-    }
-
-    var markdownTheme: Theme {
-        Theme()
-            .text {
-                ForegroundColor(textColor)
-            }
-            .code {
-                FontFamilyVariant(.monospaced)
-                ForegroundColor(textColor)
-                BackgroundColor(codeBackgroundColor)
-            }
-            .strong {
-                FontWeight(.semibold)
-                ForegroundColor(textColor)
-            }
-            .emphasis {
-                FontStyle(.italic)
-                ForegroundColor(textColor)
-            }
-            .link {
-                ForegroundColor(message.isUser ? .white : .accentColor)
-            }
-    }
-
-    var textColor: Color {
-        if message.isUser {
-            return .white
-        } else {
-            return colorScheme == .light ? .primary : .white
-        }
-    }
-
-    var codeBackgroundColor: Color {
-            switch message.role {
-            case .user:
-                return Color.white.opacity(0.2)
-            case .assistant, .tool:
-                return colorScheme == .light ?
-                    Color.black.opacity(0.05) :
-                    Color.white.opacity(0.1)
-            }
-        }
 
     func copyToPasteboard() {
-        #if os(iOS)
-        UIPasteboard.general.string = message.getText()
-        #elseif os(macOS)
+        #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(message.getText(), forType: .string)
+        #else
+        UIPasteboard.general.string = message.getText()
         #endif
     }
 
     var body: some View {
         HStack {
-            if message.isUser {
-                Spacer()
-            }
 
-            Markdown(message.getText())
-//                .markdownTheme(markdownTheme)
-                .textSelection(.enabled)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(bubbleColor)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-                .contextMenu {
-                    Button(action: copyToPasteboard) {
-                                            Label("Copy", systemImage: "doc.on.doc")
-                                        }
+            VStack(spacing: 0) {
+                HStack {
+                    if message.isUser {
+                        Spacer()
+                    }
+                    MessageBubbleContent(message: message)
+                        .padding(.horizontal, message.isUser ? 12 : 8)
+                        .padding(.vertical, message.isUser ? 8 : 4)
+                        .background(message.isUser ? bubbleColor : .clear)
+                        .clipShape(RoundedRectangle(cornerRadius: message.isUser ? 12 : 0))
+                    if !message.isUser {
+                        Spacer()
+                    }
                 }
 
-            if !message.isUser {
-                Spacer()
+                // Bottom section with copy button
+                HStack {
+                    if message.isUser {
+                        Spacer()
+                    }
+                    if isHovering {
+                        Button(action: copyToPasteboard) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 0)
+                        .transition(.opacity)
+
+                    }
+                    if !message.isUser {
+                        Spacer()
+                    }
+                }
+                .frame(height: 28)
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.vertical, 0)
+        #if os(macOS)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovering = hovering
+            }
+        }
+        #endif
+    }
+}
+
+private struct MessageBubbleContent: View {
+    let message: MessageModel
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let text = message.getText()
+        let segments = extractSegments(from: text)
+
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(segments.indices, id: \.self) { index in
+                switch segments[index] {
+                case .text(let content):
+                    StyledTextView(content: content, colorScheme: colorScheme)
+                case .code(let language, let code):
+                    CodeBlockView(language: language, code: code)
+                }
+            }
+
+        }
+    }
+
+    private func copyToPasteboard() {
+        #if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(message.getText(), forType: .string)
+        #else
+        UIPasteboard.general.string = message.getText()
+        #endif
+    }
+
+    enum MessageSegment {
+        case text(String)
+        case code(language: String, code: String)
+    }
+
+    private func extractSegments(from text: String) -> [MessageSegment] {
+        var segments: [MessageSegment] = []
+        var currentIndex = text.startIndex
+
+        let pattern = "```([a-zA-Z]*)\\n([\\s\\S]*?)```"
+        let regex = try! NSRegularExpression(pattern: pattern)
+        let range = NSRange(text.startIndex..., in: text)
+        let matches = regex.matches(in: text, range: range)
+
+        for match in matches {
+            // Add text before code block
+            if let textRange = Range(NSRange(location: NSRange(currentIndex..., in: text).location,
+                                           length: match.range.location - NSRange(currentIndex..., in: text).location), in: text) {
+                let textContent = String(text[textRange])
+                let cleanedContent = textContent.replacingOccurrences(
+                    of: "\\n\\s*$",
+                    with: "",
+                    options: .regularExpression
+                )
+                if !cleanedContent.isEmpty {
+                    segments.append(.text(cleanedContent))
+                }
+            }
+
+            // Add code block
+            if let languageRange = Range(match.range(at: 1), in: text),
+               let codeRange = Range(match.range(at: 2), in: text) {
+                let language = String(text[languageRange])
+                let code = String(text[codeRange])
+                segments.append(.code(language: language, code: code))
+            }
+
+            if let matchRange = Range(match.range, in: text) {
+                currentIndex = matchRange.upperBound
+            }
+        }
+
+        // Add remaining text
+        if currentIndex < text.endIndex {
+            let remainingText = String(text[currentIndex...])
+            if !remainingText.isEmpty {
+                segments.append(.text(remainingText))
+            }
+        }
+
+        return segments
     }
 }

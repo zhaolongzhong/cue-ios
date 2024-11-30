@@ -8,7 +8,12 @@ public struct AuthenticatedView: View {
     public var body: some View {
         Group {
             if authService.isAuthenticated {
+                #if os(iOS)
                 AppTabView(webSocketManagerStore: webSocketManagerStore)
+                #else
+                MainWindowView(webSocketManagerStore: webSocketManagerStore)
+                                    .environmentObject(authService)
+                #endif
             } else {
                 LoginView()
             }

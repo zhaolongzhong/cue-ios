@@ -68,7 +68,7 @@ extension AuthEndpoint: Endpoint {
             return formBody.data(using: .utf8)
 
         case let .signup(email, password, inviteCode):
-            var params: [String: String] = ["username": email, "password": password]
+            var params: [String: String] = ["email": email, "password": password]
             if let inviteCode = inviteCode {
                 params["inviteCode"] = inviteCode
             }

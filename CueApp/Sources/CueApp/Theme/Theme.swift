@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 // Main theme namespace
@@ -5,7 +6,7 @@ public enum AppTheme {
     // MARK: - Colors
     public enum Colors {
         // Background colors
-        static var background: Color {
+        public static var background: Color {
             #if os(iOS)
             Color(uiColor: .systemBackground)
             #else
@@ -13,7 +14,7 @@ public enum AppTheme {
             #endif
         }
 
-        static var secondaryBackground: Color {
+        public static var secondaryBackground: Color {
             #if os(iOS)
             Color(uiColor: .secondarySystemBackground)
             #else
@@ -21,9 +22,22 @@ public enum AppTheme {
             #endif
         }
 
+        // Toolbar background
+        public static var toolbarBackground: Color {
+            #if os(iOS)
+            Color(uiColor: .systemBackground)
+                .opacity(0.9)
+            #else
+            Color(nsColor: .windowBackgroundColor)
+                .opacity(0.95)
+            #endif
+        }
+
+        public static let lightGray = Color("LightGray")
+
         // Message colors
         enum Message {
-            static let userBubble = Color.accentColor
+            static let userBubble = Color(.lightGray)
 
             static var assistantBubble: Color {
                 #if os(iOS)

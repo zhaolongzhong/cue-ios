@@ -62,18 +62,12 @@ public class AuthService: ObservableObject {
         }
     }
 
-    func signup(email: String, password: String, inviteCode: String?) async throws -> String {
+    func signup(email: String, password: String, inviteCode: String?) async throws {
         do {
-            let response: TokenResponse = try await NetworkClient.shared.request(
+            let _: User = try await NetworkClient.shared.request(
                 AuthEndpoint.signup(email: email, password: password, inviteCode: inviteCode)
             )
-
-            UserDefaults.standard.set(response.accessToken, forKey: "API_KEY")
-            isAuthenticated = true
-
-            await fetchUserProfile()
-
-            return response.accessToken
+            _ = try await login(email: email, password: password)
         } catch NetworkError.httpError(let code, _) where code == 409 {
             throw AuthError.emailAlreadyExists
         } catch {

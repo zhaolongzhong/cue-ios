@@ -16,28 +16,34 @@ struct MessageInputView: View {
                     .textFieldStyle(.plain)
                     .padding(10)
                     .background(
-                        RoundedRectangle(cornerRadius: 20)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(Color(white: colorScheme == .light ? 0.95 : 0.15))
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .padding(.leading)
                     .focused($isFocused)
 
                 Button(action: onSend) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(
-                            inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? .secondary
-                            : .accentColor
+                    Circle()
+                        .fill(isMessageValid ? Color(white: 0.3) : Color.gray.opacity(0.8))
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
                         )
                 }
-                .disabled(inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .padding(.horizontal)
+                .disabled(!isMessageValid)
+                .buttonStyle(.plain)
+                .padding(.trailing, 8)
             }
             .padding(.vertical, 8)
         }
         .background(AppTheme.Colors.background)
+    }
+
+    private var isMessageValid: Bool {
+        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3
     }
 }
 
