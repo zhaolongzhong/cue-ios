@@ -67,6 +67,7 @@ struct AssistantsView: View {
                 .navigationTitle("Assistants")
                 #if os(iOS)
                 .listStyle(InsetGroupedListStyle())
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.visible, for: .navigationBar)
                 #endif
                 .toolbar {

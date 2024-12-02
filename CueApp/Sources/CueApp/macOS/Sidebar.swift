@@ -34,9 +34,6 @@ struct Sidebar: View {
             .listStyle(.sidebar)
             .listRowInsets(EdgeInsets())
             .scrollContentBackground(.hidden)
-            #if os(macOS)
-            .toolbarBackground(.clear, for: .windowToolbar)
-            #endif
 
             HStack {
                 UserAvatarMenu()
@@ -44,7 +41,7 @@ struct Sidebar: View {
             }
             .padding(.all, 4)
         }
-        .background(AppTheme.Colors.background)
+        .background(AppTheme.Colors.secondaryBackground)
         .navigationTitle("Cue")
         .toolbar {
             ToolbarItem {

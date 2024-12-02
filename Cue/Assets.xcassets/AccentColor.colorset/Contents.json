@@ -1,10 +1,6 @@
 {
   "colors" : [
     {
-      "color" : {
-        "platform" : "osx",
-        "reference" : "alternatingContentBackgroundColor"
-      },
       "idiom" : "universal"
     },
     {

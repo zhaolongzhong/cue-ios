@@ -24,9 +24,6 @@ public struct MainWindowView: View {
                 assistantsViewModel: assistantsViewModel,
                 selectedAssistant: $selectedAssistant
             )
-            #if os(macOS)
-            .toolbarBackground(.clear, for: .windowToolbar)
-            #endif
         } detail: {
             NavigationStack {
                 DetailContent(
@@ -34,9 +31,7 @@ public struct MainWindowView: View {
                     assistantsViewModel: assistantsViewModel
                 )
             }
-            #if os(macOS)
-            .toolbarBackground(Color.white, for: .windowToolbar)
-            #endif
+            .background(AppTheme.Colors.background)
         }
         .onChange(of: authService.currentUser) { _, newUser in
             if let userId = newUser?.id {
@@ -52,8 +47,6 @@ private struct DetailContent: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
-
             if let assistant = selectedAssistant {
                 ChatView(
                     assistant: assistant,

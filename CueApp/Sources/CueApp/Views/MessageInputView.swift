@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if os(iOS)
 struct MessageInputView: View {
     @Binding var inputMessage: String
     @FocusState var isFocused: Bool
@@ -12,8 +13,9 @@ struct MessageInputView: View {
             Divider()
 
             HStack {
-                TextField("Type a message...", text: $inputMessage)
+                TextField("Type a message...", text: $inputMessage, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .lineLimit(1...5)
                     .padding(10)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
@@ -22,20 +24,8 @@ struct MessageInputView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .padding(.leading)
                     .focused($isFocused)
-
-                Button(action: onSend) {
-                    Circle()
-                        .fill(isMessageValid ? Color(white: 0.3) : Color.gray.opacity(0.8))
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                        )
-                }
-                .disabled(!isMessageValid)
-                .buttonStyle(.plain)
-                .padding(.trailing, 8)
+                SendButton(isEnabled: isMessageValid, action: onSend)
+                    .padding(.trailing, 8)
             }
             .padding(.vertical, 8)
         }
@@ -46,44 +36,60 @@ struct MessageInputView: View {
         inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3
     }
 }
-
-public struct MessageInputViewAudio: View {
+#else
+import SwiftUI
+struct MessageInputView: View {
     @Binding var inputMessage: String
     @FocusState var isFocused: Bool
     let isEnabled: Bool
-    let isRecording: Bool
     let onSend: () -> Void
-    let onAudioButtonPressed: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
-    public var body: some View {
-        HStack(spacing: 12) {
-            HStack {
-                TextField("Chat", text: $inputMessage, onCommit: { onSend() })
-                    .frame(height: 40)
-                    .submitLabel(.send)
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
 
-                if !inputMessage.isEmpty {
-                    Button(action: onSend) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 28, height: 28)
-                            .foregroundStyle(.white, .blue)
+            HStack {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $inputMessage)
+                        .font(.system(size: 15))
+                        .frame(minHeight: 50, maxHeight: 200)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .scrollContentBackground(.hidden)
+
+                    if inputMessage.isEmpty {
+                        Text("Type a message...")
+                            .padding(.horizontal, 4)
+                            .font(.system(size: 15))
+                            .foregroundColor(Color(.placeholderTextColor))
+                            .allowsHitTesting(false)
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppTheme.Colors.Input.background(for: colorScheme))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5)
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.leading)
+                .focused($isFocused)
 
-                Button(action: onAudioButtonPressed) {
-                    Image(systemName: isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                        .resizable()
-                        .frame(width: 28, height: 28)
-                        .foregroundStyle(.blue)
-                }
+                SendButton(isEnabled: isMessageValid, action: onSend)
+                    .padding(.trailing, 8)
+                    .keyboardShortcut(.return, modifiers: [])
             }
-            .padding(.leading)
-            .padding(.trailing, 6)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(.quaternary, lineWidth: 1))
+            .padding(.vertical, 8)
         }
-        .padding()
+        .background(AppTheme.Colors.background)
+    }
+
+    private var isMessageValid: Bool {
+        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3
     }
 }
+#endif

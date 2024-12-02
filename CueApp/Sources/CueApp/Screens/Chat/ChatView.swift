@@ -20,6 +20,12 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            #if os(macOS)
+            Rectangle()
+                .fill(AppTheme.Colors.separator.opacity(0.5))
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
+            #endif
             MessagesListView(
                 messages: viewModel.messageModels,
                 shouldAutoScroll: shouldAutoScroll
@@ -37,7 +43,7 @@ struct ChatView: View {
                 onSend: viewModel.handleSendMessage
             )
         }
-        .background(AppTheme.Colors.background)
+        .background(AppTheme.Colors.secondaryBackground)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(viewModel.assistant.name)
         #if os(iOS)
@@ -45,7 +51,7 @@ struct ChatView: View {
         #endif
         .toolbar {
             #if os(iOS)
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .automatic) {
                 NavigationLink(destination: AssistantDetailView(
                     assistantsViewModel: self.assistantsViewModel,
                     assistant: viewModel.assistant,

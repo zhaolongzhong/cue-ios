@@ -86,6 +86,11 @@ struct SettingsView_iOS: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            #if os(iOS)
+            .listStyle(InsetGroupedListStyle())
+            .toolbarBackground(.visible, for: .navigationBar)
+            #endif
         }
     }
 }

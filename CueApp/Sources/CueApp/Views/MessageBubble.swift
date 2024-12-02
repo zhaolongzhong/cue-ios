@@ -37,33 +37,15 @@ struct MessageBubble: View {
                         .padding(.vertical, message.isUser ? 8 : 4)
                         .background(message.isUser ? bubbleColor : .clear)
                         .clipShape(RoundedRectangle(cornerRadius: message.isUser ? 12 : 0))
+                        .textSelection(.enabled) 
                     if !message.isUser {
                         Spacer()
                     }
                 }
-
-                // Bottom section with copy button
-                HStack {
-                    if message.isUser {
-                        Spacer()
-                    }
-                    if isHovering {
-                        Button(action: copyToPasteboard) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 0)
-                        .transition(.opacity)
-
-                    }
-                    if !message.isUser {
-                        Spacer()
-                    }
+                CopyButton(message: message) {
+                    copyToPasteboard()
                 }
-                .frame(height: 28)
+
             }
         }
         .padding(.horizontal, 8)
@@ -150,11 +132,18 @@ private struct MessageBubbleContent: View {
             }
         }
 
-        // Add remaining text
+        // Add remaining text, cleaning up extra newlines
         if currentIndex < text.endIndex {
             let remainingText = String(text[currentIndex...])
             if !remainingText.isEmpty {
-                segments.append(.text(remainingText))
+                let cleanedContent = remainingText.replacingOccurrences(
+                    of: "^\\s*\\n+",  // Remove leading newlines
+                    with: "",
+                    options: .regularExpression
+                )
+                if !cleanedContent.isEmpty {
+                    segments.append(.text(cleanedContent))
+                }
             }
         }
 
