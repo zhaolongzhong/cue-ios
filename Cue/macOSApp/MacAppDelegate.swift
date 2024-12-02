@@ -8,8 +8,9 @@ import CueApp
 
 class MacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillResignActive(_ notification: Notification) {
-        AppLog.log.debug("applicationWillResignActive")
-        NotificationCenter.default.post(name: .appDidEnterBackground, object: nil)
+        // Keep active when it's not focused so we can keep the websocket connected
+//        AppLog.log.debug("applicationWillResignActive")
+//        NotificationCenter.default.post(name: .appDidEnterBackground, object: nil)
     }
 
     func applicationWillBecomeActive(_ notification: Notification) {

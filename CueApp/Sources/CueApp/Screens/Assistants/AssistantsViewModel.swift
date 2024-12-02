@@ -36,6 +36,7 @@ public class AssistantsViewModel: ObservableObject {
             .sink { [weak self] clientStatuses in
                 guard let self = self else { return }
                 Task {
+                    AppLog.log.debug("clientStatuses updated, updateAssistantStatuses")
                     await self.updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
                 }
 
@@ -93,6 +94,7 @@ public class AssistantsViewModel: ObservableObject {
             )
         }
         let sortedStatuses = updatedStatuses.sorted { $0.isOnline && !$1.isOnline }
+        debugPrint("sortedStatuses: \(sortedStatuses)")
         assistantStatuses = sortedStatuses
         updatePrimaryAssistant()
     }

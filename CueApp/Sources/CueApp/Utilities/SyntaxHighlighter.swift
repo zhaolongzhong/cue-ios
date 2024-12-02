@@ -41,6 +41,20 @@ public var languageDefinitions: [String: LanguageDefinition] {
                       "await", "async", "null", "undefined", "true", "false"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"|'[^'\\n]*'|`[^`]*`"
+        ),
+        "typescript": LanguageDefinition(
+            keywords: ["break", "case", "catch", "class", "const", "continue", "debugger", "default",
+                      "delete", "do", "else", "export", "extends", "finally", "for", "function", "if",
+                      "import", "in", "instanceof", "new", "return", "super", "switch", "this", "throw",
+                      "try", "typeof", "var", "void", "while", "with", "yield", "let", "static", "enum",
+                      "await", "async", "null", "undefined", "true", "false",
+                      // TypeScript-specific keywords
+                      "interface", "type", "implements", "namespace", "module", "declare", "abstract",
+                      "as", "any", "boolean", "number", "string", "symbol", "never", "unknown",
+                      "object", "keyof", "readonly", "is", "unique", "infer", "public", "private",
+                      "protected", "override", "satisfies", "asserts", "out", "in"],
+            commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
+            stringPattern: "\"[^\"\\n]*\"|'[^'\\n]*'|`[^`]*`"
         )
     ]
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 public struct MainWindowView: View {
+    @StateObject private var webSocketManagerStore: WebSocketManagerStore
     @StateObject private var assistantsViewModel: AssistantsViewModel
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var conversationManager: ConversationManager
@@ -8,6 +9,7 @@ public struct MainWindowView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     public init(webSocketManagerStore: WebSocketManagerStore) {
+        _webSocketManagerStore = StateObject(wrappedValue: webSocketManagerStore)
         _assistantsViewModel = StateObject(
             wrappedValue: AssistantsViewModel(
                 assistantService: AssistantService(),
@@ -35,6 +37,11 @@ public struct MainWindowView: View {
             #if os(macOS)
             .toolbarBackground(Color.white, for: .windowToolbar)
             #endif
+        }
+        .onChange(of: authService.currentUser) { _, newUser in
+            if let userId = newUser?.id {
+                webSocketManagerStore.initialize(for: userId)
+            }
         }
     }
 }

@@ -37,6 +37,7 @@ public class WebSocketManagerStore: ObservableObject {
     }
 
     func initialize(for userId: String) {
+        AppLog.log.debug("WebSocketStore: initialize")
         guard manager == nil else { return }
 
         lastUserId = userId

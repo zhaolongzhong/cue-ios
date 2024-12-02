@@ -13,10 +13,11 @@ public struct AssistantStatus: Identifiable {
 
 extension AssistantStatus: Hashable {
     public static func == (lhs: AssistantStatus, rhs: AssistantStatus) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.clientStatus == rhs.clientStatus
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(clientStatus)
     }
 }
