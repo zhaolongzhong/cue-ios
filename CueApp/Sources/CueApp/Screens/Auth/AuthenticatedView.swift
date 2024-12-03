@@ -1,25 +1,50 @@
 import SwiftUI
+
 public struct AuthenticatedView: View {
-    @EnvironmentObject private var authService: AuthService
-    @EnvironmentObject private var webSocketManagerStore: WebSocketManagerStore
+    @EnvironmentObject private var dependencies: AppDependencies
 
     public init() {}
 
     public var body: some View {
+        AuthenticatedContent(viewModel: dependencies.appState)
+    }
+}
+
+private struct AuthenticatedContent: View {
+    @ObservedObject var viewModel: AppStateViewModel
+    @EnvironmentObject private var dependencies: AppDependencies
+
+    init(viewModel: AppStateViewModel) {
+        self.viewModel = viewModel
+    }
+
+    var body: some View {
         Group {
-            if authService.isAuthenticated {
+            if viewModel.isLoading {
                 #if os(iOS)
-                AppTabView(webSocketManagerStore: webSocketManagerStore)
+                ProgressView()
+                    .progressViewStyle(.circular)  // Specify style for iOS
                 #else
-                MainWindowView(webSocketManagerStore: webSocketManagerStore)
-                                    .environmentObject(authService)
+                ProgressView("Loading...")
+                #endif
+            } else if viewModel.isAuthenticated {
+                #if os(iOS)
+                AppTabView()
+                    .environmentObject(dependencies)
+                    .environmentObject(viewModel)
+                #else
+                MainWindowView()
+                    .environmentObject(dependencies)
+                    .environmentObject(viewModel)
+                    .environmentObject(dependencies.viewModelFactory.makeAssistantsViewModel())
                 #endif
             } else {
                 LoginView()
+                    .environmentObject(dependencies)
             }
         }
         .onAppear {
-            authService.checkAuthStatus()
+            viewModel.checkAuthStatus()
         }
     }
 }

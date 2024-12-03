@@ -14,7 +14,7 @@ public class AssistantsViewModel: ObservableObject {
     let webSocketManagerStore: WebSocketManagerStore
     private var cancellables = Set<AnyCancellable>()
 
-    init(assistantService: AssistantService = AssistantService(),
+    init(assistantService: AssistantService,
          webSocketManagerStore: WebSocketManagerStore) {
         self.assistantService = assistantService
         self.webSocketManagerStore = webSocketManagerStore
@@ -204,5 +204,14 @@ public class AssistantsViewModel: ObservableObject {
         } else {
             primaryAssistant = assistantStatuses.first(where: { $0.assistant.metadata?.isPrimary == true })
         }
+    }
+}
+
+extension ViewModelFactory {
+    func makeAssistantsViewModel() -> AssistantsViewModel {
+        AssistantsViewModel(
+            assistantService: dependencies.assistantService,
+            webSocketManagerStore: dependencies.webSocketStore
+        )
     }
 }

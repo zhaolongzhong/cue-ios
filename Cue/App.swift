@@ -7,10 +7,7 @@ import AVFoundation
 @main
 struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-
-    @StateObject private var authService = AuthService()
-    @StateObject private var conversationManager = ConversationManager()
-    @StateObject private var webSocketStore = WebSocketManagerStore()
+    @StateObject private var dependencies = AppDependencies()
 
     init() {
         setupAudioSession()
@@ -19,9 +16,8 @@ struct iOSApp: App {
     var body: some Scene {
         WindowGroup {
             AuthenticatedView()
-                .environmentObject(authService)
-                .environmentObject(conversationManager)
-                .environmentObject(webSocketStore)
+                .environmentObject(dependencies)
+                .environmentObject(dependencies.conversationManager)
         }
     }
 
@@ -39,18 +35,13 @@ struct iOSApp: App {
 @main
 struct macOSApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) var appDelegate
-    @StateObject private var authService = AuthService()
-    @StateObject private var conversationManager = ConversationManager()
-    @StateObject private var webSocketManagerStore = WebSocketManagerStore()
+    @StateObject private var dependencies = AppDependencies()
 
     var body: some Scene {
         WindowGroup {
             AuthenticatedView()
-                .environmentObject(authService)
-                .environmentObject(conversationManager)
-                .environmentObject(webSocketManagerStore)
+                .environmentObject(dependencies)
         }
-//        .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
         .commands {
             SidebarCommands()
@@ -59,7 +50,7 @@ struct macOSApp: App {
 
         WindowGroup(id: "settings-window") {
             SettingsView()
-                .environmentObject(authService)
+                .environmentObject(dependencies)
                 .frame(minWidth: 500, minHeight: 300)
         }
         .defaultSize(width: 1200, height: 800)

@@ -5,18 +5,41 @@ import UIKit
 
 struct SignUpView: View {
     @Environment(\.presentationMode) var presentationMode
-    @StateObject private var viewModel = SignUpViewModel()
+    @EnvironmentObject private var dependencies: AppDependencies
+
+    var body: some View {
+        let viewModel = dependencies.viewModelFactory.makeSignUpViewModel()
+        SignUpContent(
+            viewModel: viewModel,
+            presentationMode: presentationMode
+        )
+    }
+}
+
+private struct SignUpContent: View {
+    @ObservedObject var viewModel: SignUpViewModel
+    let presentationMode: Binding<PresentationMode>
 
     var body: some View {
         #if os(iOS)
-        iOSSignUpContent
+        iOSContent(
+            viewModel: viewModel,
+            presentationMode: presentationMode
+        )
         #else
-        macOSSignUpContent
+        macOSContent(
+            viewModel: viewModel,
+            presentationMode: presentationMode
+        )
         #endif
     }
+}
 
-    // MARK: - iOS Content
-    private var iOSSignUpContent: some View {
+// MARK: - iOS Content
+private struct iOSContent: View {
+    @ObservedObject var viewModel: SignUpViewModel
+   let presentationMode: Binding<PresentationMode>
+    var body: some View {
         NavigationView {
             VStack(spacing: 24) {
                 Image(systemName: "person.crop.circle.badge.plus")
@@ -99,9 +122,13 @@ struct SignUpView: View {
             #endif
         }
     }
+}
 
     // MARK: - macOS Content
-    private var macOSSignUpContent: some View {
+private struct macOSContent: View {
+    @ObservedObject var viewModel: SignUpViewModel
+    let presentationMode: Binding<PresentationMode>
+    var body: some View {
         VStack(spacing: 16) { // Reduced spacing from 20 to 16
             Image(systemName: "person.crop.circle.badge.plus")
                 .resizable()

@@ -37,3 +37,9 @@ class SettingsViewModel: ObservableObject {
         isGeneratingToken = false
     }
 }
+
+extension ViewModelFactory {
+    func makeSettingsViewModel() -> SettingsViewModel {
+        SettingsViewModel(authService: dependencies.authService)
+    }
+}

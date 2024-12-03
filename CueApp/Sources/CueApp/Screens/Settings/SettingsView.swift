@@ -1,16 +1,16 @@
 import SwiftUI
 
-@MainActor
 public struct SettingsView: View {
-    @EnvironmentObject private var authService: AuthService
+    @EnvironmentObject private var dependencies: AppDependencies
 
     public init() {}
 
     public var body: some View {
+        let viewModel = dependencies.viewModelFactory.makeSettingsViewModel()
         #if os(iOS)
-        SettingsView_iOS(authService: authService)
+        SettingsView_iOS(viewModel: viewModel)
         #else
-        SettingsView_macOS(authService: authService)
+        SettingsView_macOS(viewModel: viewModel)
         #endif
     }
 }
@@ -50,13 +50,12 @@ private struct LogoutSection: View {
 
 // MARK: - iOS Implementation
 #if os(iOS)
-@MainActor
 struct SettingsView_iOS: View {
-    @StateObject private var viewModel: SettingsViewModel
+    private let viewModel: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(authService: AuthService) {
-        _viewModel = StateObject(wrappedValue: SettingsViewModel(authService: authService))
+    init(viewModel: SettingsViewModel) {
+        self.viewModel = viewModel
     }
 
     var body: some View {
@@ -98,14 +97,13 @@ struct SettingsView_iOS: View {
 
 // MARK: - macOS Implementation
 #if os(macOS)
-@MainActor
 struct SettingsView_macOS: View {
-    @StateObject private var viewModel: SettingsViewModel
+    private let viewModel: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingAPIKeys = false
 
-    init(authService: AuthService) {
-        _viewModel = StateObject(wrappedValue: SettingsViewModel(authService: authService))
+    init(viewModel: SettingsViewModel) {
+        self.viewModel = viewModel
     }
 
     var body: some View {

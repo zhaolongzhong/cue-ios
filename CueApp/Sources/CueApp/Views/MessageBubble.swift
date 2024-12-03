@@ -37,7 +37,7 @@ struct MessageBubble: View {
                         .padding(.vertical, message.isUser ? 8 : 4)
                         .background(message.isUser ? bubbleColor : .clear)
                         .clipShape(RoundedRectangle(cornerRadius: message.isUser ? 12 : 0))
-                        .textSelection(.enabled) 
+                        .textSelection(.enabled)
                     if !message.isUser {
                         Spacer()
                     }

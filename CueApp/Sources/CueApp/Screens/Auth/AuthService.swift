@@ -95,7 +95,7 @@ public class AuthService: ObservableObject {
         currentUser = nil
     }
 
-    func checkAuthStatus() {
+    func checkAuthStatus() -> Bool {
         if let token = UserDefaults.standard.string(forKey: "API_KEY"), !token.isEmpty {
             isAuthenticated = true
             Task {
@@ -105,6 +105,7 @@ public class AuthService: ObservableObject {
             isAuthenticated = false
             currentUser = nil
         }
+        return isAuthenticated
     }
 
     private func fetchUserProfile() async {
@@ -126,23 +127,5 @@ struct TokenResponse: Codable {
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
-    }
-}
-
-struct User: Codable, Equatable, Identifiable {
-    let id: String
-    let email: String
-    let name: String?
-
-    enum CodingKeys: String, CodingKey {
-        case id = "id"
-        case email = "email"
-        case name = "name"
-    }
-
-    init(id: String, email: String, name: String? = nil) {
-        self.id = id
-        self.email = email
-        self.name = name
     }
 }

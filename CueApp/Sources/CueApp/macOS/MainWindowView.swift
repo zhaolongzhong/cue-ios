@@ -1,49 +1,38 @@
 import SwiftUI
 
 public struct MainWindowView: View {
-    @StateObject private var webSocketManagerStore: WebSocketManagerStore
-    @StateObject private var assistantsViewModel: AssistantsViewModel
-    @EnvironmentObject private var authService: AuthService
-    @EnvironmentObject private var conversationManager: ConversationManager
+    @EnvironmentObject private var dependencies: AppDependencies
+    @EnvironmentObject private var appStateViewModel: AppStateViewModel
+    @EnvironmentObject private var assistantViewModel: AssistantsViewModel
     @State private var selectedAssistant: AssistantStatus?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-
-    public init(webSocketManagerStore: WebSocketManagerStore) {
-        _webSocketManagerStore = StateObject(wrappedValue: webSocketManagerStore)
-        _assistantsViewModel = StateObject(
-            wrappedValue: AssistantsViewModel(
-                assistantService: AssistantService(),
-                webSocketManagerStore: webSocketManagerStore
-            )
-        )
-    }
 
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             Sidebar(
-                assistantsViewModel: assistantsViewModel,
+                assistantsViewModel: assistantViewModel,
                 selectedAssistant: $selectedAssistant
             )
         } detail: {
             NavigationStack {
                 DetailContent(
-                    selectedAssistant: selectedAssistant,
-                    assistantsViewModel: assistantsViewModel
+                    assistantsViewModel: assistantViewModel,
+                    selectedAssistant: selectedAssistant
                 )
             }
             .background(AppTheme.Colors.background)
         }
-        .onChange(of: authService.currentUser) { _, newUser in
+        .onChange(of: dependencies.authService.currentUser) { _, newUser in
             if let userId = newUser?.id {
-                webSocketManagerStore.initialize(for: userId)
+                assistantViewModel.webSocketManagerStore.initialize(for: userId)
             }
         }
     }
 }
 
 private struct DetailContent: View {
-    let selectedAssistant: AssistantStatus?
     let assistantsViewModel: AssistantsViewModel
+    let selectedAssistant: AssistantStatus?
 
     var body: some View {
         ZStack {

@@ -1,13 +1,20 @@
 import SwiftUI
 
+@MainActor
 class LoginViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var error: String?
     @Published var isLoading = false
 
+    private let authService: AuthService
+
+    init(authService: AuthService) {
+        self.authService = authService
+    }
+
     @MainActor
-    func login(authService: AuthService) async {
+    func login() async {
         guard !email.isEmpty, !password.isEmpty else {
             error = "Please fill in all fields"
             return
@@ -24,5 +31,11 @@ class LoginViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+}
+
+extension ViewModelFactory {
+    func makeLoginViewModel() -> LoginViewModel {
+        LoginViewModel(authService: dependencies.authService)
     }
 }

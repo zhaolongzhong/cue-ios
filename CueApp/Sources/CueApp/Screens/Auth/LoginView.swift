@@ -1,20 +1,51 @@
 import SwiftUI
 
+// Main View
 struct LoginView: View {
-    @EnvironmentObject private var authService: AuthService
-    @StateObject private var viewModel = LoginViewModel()
+    @EnvironmentObject private var dependencies: AppDependencies
     @State private var showSignUp = false
 
     var body: some View {
-        #if os(iOS)
-        iOSLoginContent
-        #else
-        macOSLoginContent
-        #endif
+        let viewModel = dependencies.viewModelFactory.makeLoginViewModel()
+        LoginContent(
+            viewModel: viewModel,
+            showSignUp: $showSignUp
+        )
+    }
+}
+
+// Content View
+private struct LoginContent: View {
+    @StateObject var viewModel: LoginViewModel
+    @Binding var showSignUp: Bool
+
+    init(viewModel: LoginViewModel, showSignUp: Binding<Bool>) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        _showSignUp = showSignUp
     }
 
-    // MARK: - iOS Content
-    private var iOSLoginContent: some View {
+    var body: some View {
+        #if os(iOS)
+        iOSLoginContent(
+            viewModel: viewModel,
+            showSignUp: $showSignUp
+        )
+        #else
+        macOSLoginContent(
+            viewModel: viewModel,
+            showSignUp: $showSignUp
+        )
+        #endif
+    }
+}
+
+// iOS Content
+#if os(iOS)
+private struct iOSLoginContent: View {
+    @ObservedObject var viewModel: LoginViewModel
+    @Binding var showSignUp: Bool
+
+    var body: some View {
         VStack(spacing: 24) {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .resizable()
@@ -30,11 +61,9 @@ struct LoginView: View {
             VStack(spacing: 16) {
                 TextField("Email", text: $viewModel.email)
                     .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
                     .textContentType(.emailAddress)
                     .autocapitalization(.none)
                     .keyboardType(.emailAddress)
-                    #endif
 
                 SecureField("Password", text: $viewModel.password)
                     .textFieldStyle(.roundedBorder)
@@ -50,7 +79,7 @@ struct LoginView: View {
 
             Button(action: {
                 Task {
-                    await viewModel.login(authService: authService)
+                    await viewModel.login()
                 }
             }) {
                 if viewModel.isLoading {
@@ -89,9 +118,16 @@ struct LoginView: View {
             SignUpView()
         }
     }
+}
+#endif
 
-    // MARK: - macOS Content
-    private var macOSLoginContent: some View {
+// macOS Content
+#if os(macOS)
+private struct macOSLoginContent: View {
+    @ObservedObject var viewModel: LoginViewModel
+    @Binding var showSignUp: Bool
+
+    var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .resizable()
@@ -123,7 +159,7 @@ struct LoginView: View {
             HStack(spacing: 12) {
                 Button("Sign In") {
                     Task {
-                        await viewModel.login(authService: authService)
+                        await viewModel.login()
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -139,9 +175,7 @@ struct LoginView: View {
             Button("Forgot Password?") {
                 // Handle forgot password
             }
-            #if os(macOS)
             .buttonStyle(.link)
-            #endif
             .controlSize(.small)
 
             Spacer()
@@ -152,9 +186,7 @@ struct LoginView: View {
                 Button("Sign Up") {
                     showSignUp = true
                 }
-                #if os(macOS)
                 .buttonStyle(.link)
-                #endif
                 .controlSize(.small)
             }
         }
@@ -165,3 +197,4 @@ struct LoginView: View {
         }
     }
 }
+#endif

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 class SignUpViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
@@ -7,6 +8,11 @@ class SignUpViewModel: ObservableObject {
     @Published var inviteCode = ""
     @Published var error: String?
     @Published var isLoading = false
+    private let authService: AuthService
+
+    init(authService: AuthService) {
+        self.authService = authService
+    }
 
     @MainActor
     func signUp() async {
@@ -29,7 +35,6 @@ class SignUpViewModel: ObservableObject {
         error = nil
 
         do {
-            let authService = AuthService()
             _ = try await authService.signup(
                 email: email,
                 password: password,
@@ -42,5 +47,11 @@ class SignUpViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+}
+
+extension ViewModelFactory {
+    func makeSignUpViewModel() -> SignUpViewModel {
+        SignUpViewModel(authService: dependencies.authService)
     }
 }

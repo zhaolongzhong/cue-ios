@@ -7,30 +7,21 @@ enum TabSelection: String {
 }
 
 public struct AppTabView: View {
+    @EnvironmentObject private var dependencies: AppDependencies
+    @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @State private var selectedTab: TabSelection = .chat
-    @StateObject private var assistantsViewModel: AssistantsViewModel
-    @EnvironmentObject private var authService: AuthService
-    @EnvironmentObject private var conversationManager: ConversationManager
-    @StateObject private var webSocketManagerStore: WebSocketManagerStore
 
-    public init(webSocketManagerStore: WebSocketManagerStore) {
-        _webSocketManagerStore = StateObject(wrappedValue: webSocketManagerStore)
-        _assistantsViewModel = StateObject(
-            wrappedValue: AssistantsViewModel(
-                assistantService: AssistantService(),
-                webSocketManagerStore: webSocketManagerStore
-            )
-        )
-    }
+    public init() { }
 
     public var body: some View {
+        let viewModel = dependencies.viewModelFactory.makeAssistantsViewModel()
         TabView(selection: $selectedTab) {
-            PrimaryChatView(webSocketManagerStore: self.webSocketManagerStore, assistantsViewModel: assistantsViewModel)
+            PrimaryChatView(webSocketManagerStore: self.dependencies.webSocketStore, assistantsViewModel: viewModel)
                 .tabItem {
                     Label("Chat", systemImage: "wand.and.stars")
                 }
                 .tag(TabSelection.chat)
-            AssistantsView(viewModel: assistantsViewModel)
+            AssistantsView(viewModel: viewModel)
                 .tabItem {
                     Label("Assistants", systemImage: "bubble.left.and.bubble.right")
                 }
@@ -46,9 +37,9 @@ public struct AppTabView: View {
         .onAppear {
 
         }
-        .onChange(of: authService.currentUser) { _, newUser in
+        .onChange(of: dependencies.authService.currentUser) { _, newUser in
             if let userId = newUser?.id {
-                webSocketManagerStore.initialize(for: userId)
+                viewModel.webSocketManagerStore.initialize(for: userId)
             }
         }
     }
