@@ -24,6 +24,18 @@ public class AssistantsViewModel: ObservableObject {
         }
     }
 
+    var sortedAssistants: [AssistantStatus] {
+        self.assistantStatuses.sorted { first, second in
+            if first.assistant.metadata?.isPrimary == true {
+                return true
+            }
+            if second.assistant.metadata?.isPrimary == true {
+                return false
+            }
+            return first.isOnline && !second.isOnline
+        }
+    }
+
     private func setupClientStatusSubscriptions() {
         // Subscribe to WebSocket status updates
         webSocketManagerStore.$manager

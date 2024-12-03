@@ -3,115 +3,153 @@ import SwiftUI
 struct MessagesListView: View {
     let messages: [MessageModel]
     let shouldAutoScroll: Bool
+    let onScrollProxyReady: (ScrollViewProxy) -> Void
 
     @State private var scrollProxy: ScrollViewProxy?
     @State private var hasInitialized = false
-    @State private var isUserScrolling = false
-    @State private var lastContentOffset: CGFloat = 0
-    @State private var isScrolling = false
-
-    // Add minimum height for content
-    private let minimumContentHeight: CGFloat = 600
+    @State private var showScrollButton = false
+    @State private var previousMessageCount = 0
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 2) {
-                        // Use GeometryReader for more precise spacing
-                        GeometryReader { contentGeometry in
-                            Color.clear.frame(height: max(0, contentGeometry.frame(in: .global).height))
-                        }
+        ZStack(alignment: .bottomTrailing) {
+            MessagesList(
+                messages: messages,
+                scrollProxy: $scrollProxy,
+                showScrollButton: $showScrollButton,
+                shouldAutoScroll: shouldAutoScroll,
+                onScrollProxyReady: onScrollProxyReady,
+                hasInitialized: $hasInitialized,
+                previousMessageCount: $previousMessageCount
+            )
 
-                        ForEach(messages) { message in
-                            MessageBubble(message: message)
-                                .id(message.id)
-                        }
-                    }
-                    .padding(.bottom, 10)
-                    .padding(.top, 8)
-                    // Use geometry reader's height instead of UIScreen
-                    .frame(maxWidth: .infinity, minHeight: max(geometry.size.height, minimumContentHeight))
+            if showScrollButton {
+                ScrollButton(isVisible: showScrollButton) {
+                    scrollToBottom()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AppTheme.Colors.background)
-                #if os(macOS)
-                .background(
-                    GeometryReader { geometry -> Color in
-                        DispatchQueue.main.async {
-                            let currentOffset = geometry.frame(in: .global).minY
-                            if abs(currentOffset - lastContentOffset) > 0.1 {
-                                isScrolling = true
-                                lastContentOffset = currentOffset
-                            } else {
-                                isScrolling = false
-                            }
-                        }
-                        return Color.clear
-                    }
-                )
-                .scrollDisabled(isScrolling && !hasInitialized)
-                #endif
-                #if os(iOS)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { _ in
-                            isUserScrolling = true
-                            dismissKeyboard()
-                        }
-                        .onEnded { _ in
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                isUserScrolling = false
-                            }
-                        }
-                )
-                #endif
-                .onAppear {
-                    scrollProxy = proxy
-
-                    if shouldAutoScroll && !hasInitialized && !messages.isEmpty {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            performInitialScroll()
-                        }
-                    }
-                }
-                .onChange(of: messages) { oldMessages, newMessages in
-                    guard !newMessages.isEmpty else { return }
-
-                    if oldMessages.isEmpty && !newMessages.isEmpty && shouldAutoScroll && !hasInitialized {
-                        performInitialScroll()
-                        return
-                    }
-
-                    let hasNewMessages = newMessages.count > oldMessages.count
-                    let isAtBottom = shouldAutoScroll && (hasInitialized || hasNewMessages)
-
-                    if isAtBottom && !isUserScrolling {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            scrollProxy?.scrollTo(newMessages.last?.id, anchor: .bottom)
-                        }
-                    }
-                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(0)
             }
         }
     }
 
-    private func performInitialScroll() {
+    private func scrollToBottom() {
+        guard let lastMessage = messages.last else { return }
+        scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
+    }
+}
+
+struct MessagesList: View {
+    let messages: [MessageModel]
+    @Binding var scrollProxy: ScrollViewProxy?
+    @Binding var showScrollButton: Bool
+    let shouldAutoScroll: Bool
+    let onScrollProxyReady: (ScrollViewProxy) -> Void
+    @Binding var hasInitialized: Bool
+    @Binding var previousMessageCount: Int
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                        MessageRow(message: message, index: index)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .onPreferenceChange(ViewVisibilityKey.self) { visibility in
+                if let lastVisibleIndex = visibility.last?.index {
+                    showScrollButton = lastVisibleIndex < Double(messages.count - 3)
+                }
+            }
+            .onAppear {
+                scrollProxy = proxy
+                onScrollProxyReady(proxy)
+                if shouldAutoScroll {
+                    scrollToLastMessage(proxy)
+                }
+                previousMessageCount = messages.count
+            }
+            .onChange(of: messages) { _, newMessages in
+                // Only auto-scroll if new messages were added (not removed or replaced)
+                if shouldAutoScroll && newMessages.count > previousMessageCount {
+                    // Check if we're already near the bottom before auto-scrolling
+                    if !showScrollButton {
+                        scrollToLastMessage(proxy)
+                    }
+                }
+                previousMessageCount = newMessages.count
+            }
+        }
+        .background(Color.clear)
+    }
+
+    private func scrollToLastMessage(_ proxy: ScrollViewProxy) {
+        guard let lastMessage = messages.last else { return }
         withAnimation(.easeOut(duration: 0.3)) {
-            scrollProxy?.scrollTo(messages.last?.id, anchor: .bottom)
+            proxy.scrollTo(lastMessage.id, anchor: .bottom)
         }
+        hasInitialized = true
+    }
+}
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            hasInitialized = true
+struct ScrollButton: View {
+    let isVisible: Bool
+    let action: () -> Void
+
+    var body: some View {
+        if isVisible {
+            Button(action: action) {
+                Circle()
+                    .fill(AppTheme.Colors.background)
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(AppTheme.Colors.primaryText)
+                    )
+                    .shadow(radius: 2)
+            }
+            .buttonStyle(.plain)
+            .padding()
+            .transition(.opacity)
         }
     }
+}
 
-    #if os(iOS)
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                     to: nil,
-                                     from: nil,
-                                     for: nil)
+struct ViewVisibility: Equatable {
+    let index: Double
+    let rect: CGRect
+}
+
+struct ViewVisibilityKey: PreferenceKey {
+    static let defaultValue: [ViewVisibility] = []
+
+    static func reduce(value: inout [ViewVisibility], nextValue: () -> [ViewVisibility]) {
+        value.append(contentsOf: nextValue())
     }
-    #endif
+}
+
+struct MessageVisibilityTracker: View {
+    let index: Int
+
+    var body: some View {
+        GeometryReader { geo in
+            Color.clear.preference(
+                key: ViewVisibilityKey.self,
+                value: [ViewVisibility(index: Double(index), rect: geo.frame(in: .global))]
+            )
+        }
+    }
+}
+
+struct MessageRow: View {
+    let message: MessageModel
+    let index: Int
+
+    var body: some View {
+        MessageBubble(message: message)
+            .id(message.id)
+            .background(MessageVisibilityTracker(index: index))
+    }
 }

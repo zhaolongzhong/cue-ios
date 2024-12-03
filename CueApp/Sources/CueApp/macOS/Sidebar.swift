@@ -9,31 +9,33 @@ struct Sidebar: View {
         VStack {
             List(selection: $selectedAssistant) {
                 Section("Assistants") {
-                    ForEach(assistantsViewModel.assistantStatuses.sorted { first, second in
-                        if first.assistant.metadata?.isPrimary == true {
-                            return true
-                        }
-                        if second.assistant.metadata?.isPrimary == true {
-                            return false
-                        }
-                        return first.isOnline && !second.isOnline
-                    }) { assistant in
+                    ForEach(assistantsViewModel.sortedAssistants) { assistant in
                         AssistantRow(
                             assistant: assistant,
                             viewModel: assistantsViewModel
                         )
                         .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                         .listItemTint(Color.clear)
                         .tag(assistant)
                     }
                 }
             }
-
-            .accentColor(AppTheme.Colors.lightGray)
-            .listStyle(.sidebar)
-            .listRowInsets(EdgeInsets())
             .scrollContentBackground(.hidden)
+            #if os(macOS)
+            .background(
+                VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+                    .ignoresSafeArea()
+            )
+            #endif
+            .accentColor(AppTheme.Colors.lightGray.opacity(0.5))
+            .listStyle(.sidebar)
+            .onChange(of: selectedAssistant) { _, newValue in
+                if newValue == nil && !assistantsViewModel.sortedAssistants.isEmpty {
+                    selectedAssistant = assistantsViewModel.sortedAssistants[0]
+                }
+            }
 
             HStack {
                 UserAvatarMenu()
@@ -41,7 +43,7 @@ struct Sidebar: View {
             }
             .padding(.all, 4)
         }
-        .background(AppTheme.Colors.secondaryBackground)
+        .background(Color.clear)
         .navigationTitle("Cue")
         .toolbar {
             ToolbarItem {
@@ -53,6 +55,11 @@ struct Sidebar: View {
                 isPresented: $isShowingNewAssistantSheet,
                 viewModel: assistantsViewModel
             )
+        }
+        .onAppear {
+            if selectedAssistant == nil && !assistantsViewModel.sortedAssistants.isEmpty {
+                selectedAssistant = assistantsViewModel.sortedAssistants[0]
+            }
         }
     }
 }

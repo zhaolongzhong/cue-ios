@@ -162,7 +162,7 @@ extension AppTheme {
         // Input field colors
         enum Input {
             static func background(for colorScheme: ColorScheme) -> Color {
-                colorScheme == .light ? Color(white: 0.95) : Color(white: 0.15)
+                inputFieldBackground
             }
 
             static func text(for colorScheme: ColorScheme) -> Color {

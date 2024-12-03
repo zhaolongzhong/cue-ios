@@ -4,7 +4,9 @@ struct ChatView: View {
     @StateObject private var viewModel: ChatViewModel
     let assistantsViewModel: AssistantsViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
+    @SceneStorage("chatScrollPosition") private var scrollPosition: String?
     @FocusState private var isFocused: Bool
+    @State private var scrollProxy: ScrollViewProxy?
 
     init(assistant: AssistantStatus,
          webSocketManagerStore: WebSocketManagerStore,
@@ -28,12 +30,17 @@ struct ChatView: View {
             #endif
             MessagesListView(
                 messages: viewModel.messageModels,
-                shouldAutoScroll: shouldAutoScroll
+                shouldAutoScroll: shouldAutoScroll,
+                onScrollProxyReady: { proxy in
+                    scrollProxy = proxy
+                }
             )
+            .padding(.horizontal, 10)
+            .background(Color.clear)
+            .id(viewModel.assistant.id) // Add this to preserve scroll position per chat
             .overlay(
                 LoadingOverlay(isVisible: viewModel.isLoading)
             )
-            .background(Color.gray.opacity(0.1))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             MessageInputView(
@@ -43,7 +50,7 @@ struct ChatView: View {
                 onSend: viewModel.handleSendMessage
             )
         }
-        .background(AppTheme.Colors.secondaryBackground)
+        .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(viewModel.assistant.name)
         #if os(iOS)

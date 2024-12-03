@@ -1,5 +1,4 @@
 import SwiftUI
-
 #if os(iOS)
 struct MessageInputView: View {
     @Binding var inputMessage: String
@@ -69,7 +68,7 @@ struct MessageInputView: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(AppTheme.Colors.Input.background(for: colorScheme))
+                        .fill(AppTheme.Colors.inputFieldBackground.opacity(0.5))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
                                 .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5)
@@ -85,7 +84,6 @@ struct MessageInputView: View {
             }
             .padding(.vertical, 8)
         }
-        .background(AppTheme.Colors.background)
     }
 
     private var isMessageValid: Bool {

@@ -43,6 +43,7 @@ struct macOSApp: App {
                 .environmentObject(dependencies)
         }
         .windowToolbarStyle(.unified)
+        .windowStyle(HiddenTitleBarWindowStyle())
         .commands {
             SidebarCommands()
             ToolbarCommands()
