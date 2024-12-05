@@ -13,7 +13,7 @@ class ChatViewModel: ObservableObject {
     private let webSocketManagerStore: WebSocketManagerStore
     private let messageModelStore: MessageModelStore
     private let assistantService: AssistantService
-    private var defaultConversation: ConversationModel?
+    private var primaryConversation: ConversationModel?
 
     init(assistant: AssistantStatus,
          webSocketManagerStore: WebSocketManagerStore) {
@@ -38,9 +38,9 @@ class ChatViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        self.defaultConversation = await fetchAssistantConversation(id: assistant.id)
+        self.primaryConversation = await fetchAssistantConversation(id: assistant.id)
 
-        if let conversationId = defaultConversation?.id {
+        if let conversationId = primaryConversation?.id {
             _ = await loadMessagesFromDb(conversationId: conversationId)
             let messages = await fetchMessages(conversationId: conversationId)
 
@@ -54,7 +54,7 @@ class ChatViewModel: ObservableObject {
                 }
                 _ = await loadMessagesFromDb(conversationId: conversationId)
             }
-            AppLog.log.debug("ChatViewModel: messages(\(self.defaultConversation!.id)) \(self.messageModels.count)")
+            AppLog.log.debug("ChatViewModel: messages(\(self.primaryConversation!.id)) \(self.messageModels.count)")
         }
         setupMessageHandler()
     }
@@ -74,6 +74,7 @@ class ChatViewModel: ObservableObject {
 
     private func fetchAssistantConversation(id: String) async -> ConversationModel? {
         isLoading = true
+        AppLog.log.debug("fetchAssistantConversation assistant id: \(id)")
 
         do {
             let conversations = try await assistantService.listAssistantConversations(id: id, isPrimary: true, skip: 0, limit: 20)
@@ -116,7 +117,7 @@ class ChatViewModel: ObservableObject {
         webSocketManagerStore.addMessageHandler { [weak self] messagePayload in
             guard let self = self else { return }
 
-            guard let conversationId = self.defaultConversation?.id else {
+            guard let conversationId = self.primaryConversation?.id else {
                 AppLog.log.error("Error in setupMessageHandler conversationId is nil")
                 return
             }

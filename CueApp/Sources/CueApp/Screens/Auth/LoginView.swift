@@ -191,9 +191,12 @@ private struct macOSLoginContent: View {
             }
         }
         .padding(24)
-        .frame(width: 340, height: 480)
         .sheet(isPresented: $showSignUp) {
             SignUpView()
+        }
+        .frame(minWidth: 340, minHeight: 480)
+        .onAppear {
+            setWindowSize(width: 340, height: 480)
         }
     }
 }

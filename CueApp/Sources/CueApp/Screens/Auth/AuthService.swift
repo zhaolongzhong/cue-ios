@@ -33,10 +33,17 @@ enum AuthError: LocalizedError {
 
 @MainActor
 public class AuthService: ObservableObject {
-    public init() {}
     @Published public var isAuthenticated = false
     @Published private(set) var currentUser: User?
     @Published private(set) var isGeneratingToken = false
+
+    public init() {
+        if let token = getAccessToken(), !token.isEmpty {
+            isAuthenticated = true
+        } else {
+            isAuthenticated = false
+        }
+    }
 
     private let logger = Logger(subsystem: "AuthService", category: "Auth")
 
@@ -46,11 +53,8 @@ public class AuthService: ObservableObject {
                 AuthEndpoint.login(email: email, password: password)
             )
 
-            UserDefaults.standard.set(response.accessToken, forKey: "API_KEY")
+            UserDefaults.standard.set(response.accessToken, forKey: "ACCESS_TOKEN_KEY")
             isAuthenticated = true
-
-            await fetchUserProfile()
-
             return response.accessToken
         } catch NetworkError.unauthorized {
             throw AuthError.invalidCredentials
@@ -90,32 +94,26 @@ public class AuthService: ObservableObject {
     }
 
     func logout() async {
-        UserDefaults.standard.removeObject(forKey: "API_KEY")
+        AppLog.log.debug("AuthService logout")
         isAuthenticated = false
+        UserDefaults.standard.removeObject(forKey: "ACCESS_TOKEN_KEY")
         currentUser = nil
     }
 
-    func checkAuthStatus() -> Bool {
-        if let token = UserDefaults.standard.string(forKey: "API_KEY"), !token.isEmpty {
-            isAuthenticated = true
-            Task {
-                await fetchUserProfile()
-            }
-        } else {
-            isAuthenticated = false
-            currentUser = nil
-        }
-        return isAuthenticated
+    func getAccessToken() -> String? {
+        return UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
     }
 
-    private func fetchUserProfile() async {
+    func fetchUserProfile() async -> User? {
         do {
             let user: User = try await NetworkClient.shared.request(AuthEndpoint.me)
             logger.debug("fetchUserProfile userid: \(user.email)")
             currentUser = user
+            return user
         } catch {
             logger.error("Logout error: \(error.localizedDescription)")
         }
+        return nil
     }
 }
 

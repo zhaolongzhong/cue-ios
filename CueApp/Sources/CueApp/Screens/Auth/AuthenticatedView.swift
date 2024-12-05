@@ -6,7 +6,7 @@ public struct AuthenticatedView: View {
     public init() {}
 
     public var body: some View {
-        AuthenticatedContent(viewModel: dependencies.appState)
+        AuthenticatedContent(viewModel: dependencies.appStateViewModel)
     }
 }
 
@@ -16,35 +16,33 @@ private struct AuthenticatedContent: View {
 
     init(viewModel: AppStateViewModel) {
         self.viewModel = viewModel
+        AppLog.log.debug("AuthenticatedContent initialized")
     }
 
     var body: some View {
         Group {
-            if viewModel.isLoading {
+            if viewModel.state.isLoading {
                 #if os(iOS)
                 ProgressView()
-                    .progressViewStyle(.circular)  // Specify style for iOS
+                    .progressViewStyle(.circular)
                 #else
                 ProgressView("Loading...")
                 #endif
-            } else if viewModel.isAuthenticated {
+            } else if viewModel.state.isAuthenticated {
                 #if os(iOS)
                 AppTabView()
-                    .environmentObject(dependencies)
                     .environmentObject(viewModel)
                 #else
                 MainWindowView()
-                    .environmentObject(dependencies)
                     .environmentObject(viewModel)
                     .environmentObject(dependencies.viewModelFactory.makeAssistantsViewModel())
                 #endif
             } else {
                 LoginView()
-                    .environmentObject(dependencies)
             }
         }
         .onAppear {
-            viewModel.checkAuthStatus()
+            AppLog.log.debug("AuthenticatedContent onAppear isAuthenticated: \(viewModel.state.isAuthenticated)")
         }
     }
 }

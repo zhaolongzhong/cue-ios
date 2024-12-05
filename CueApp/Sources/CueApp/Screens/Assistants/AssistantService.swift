@@ -26,9 +26,15 @@ enum AssistantError: LocalizedError {
 public class AssistantService: ObservableObject {
     public init() {}
     private let logger = Logger(subsystem: "AssistantService", category: "Assistant")
-    private var defaultAssistantId: String?
+    private var primaryAssistantId: String?
 
     @Published private(set) var assistants: [Assistant] = []
+
+    func cleanup() async {
+        AppLog.log.debug("AssistantService cleanup")
+        assistants = []
+        primaryAssistantId = nil
+    }
 
     func createAssistant(name: String, isPrimary: Bool) async throws -> Assistant {
         do {
@@ -64,6 +70,7 @@ public class AssistantService: ObservableObject {
     }
 
     func listAssistants(skip: Int = 0, limit: Int = 5) async throws -> [Assistant] {
+        AppLog.log.debug("AssistantService - listAssistants")
         do {
             let assistants: [Assistant] = try await NetworkClient.shared.request(
                 AssistantEndpoint.list(skip: skip, limit: limit)
@@ -77,6 +84,7 @@ public class AssistantService: ObservableObject {
     }
 
     func listAssistantConversations(id: String, isPrimary: Bool? = nil, skip: Int = 0, limit: Int = 10) async throws -> [ConversationModel] {
+        AppLog.log.debug("AssistantService - listAssistantConversations")
         do {
             let conversations: [ConversationModel] = try await NetworkClient.shared.request(
                 AssistantEndpoint.listAssistantConversations(id: id, isPrimary: isPrimary, skip: skip, limit: limit)
@@ -89,6 +97,7 @@ public class AssistantService: ObservableObject {
     }
 
     func listMessages(conversationId: String, skip: Int = 0, limit: Int = 20) async throws -> [MessageModel] {
+        AppLog.log.debug("AssistantService - listMessages")
         do {
             let messages: [MessageModel] = try await NetworkClient.shared.request(
                 AssistantEndpoint.listMessages(conversationId: conversationId, skip: skip, limit: limit)
@@ -118,8 +127,8 @@ public class AssistantService: ObservableObject {
                 AssistantEndpoint.delete(id: id)
             )
             assistants.removeAll { $0.id == id }
-            if defaultAssistantId == id {
-                defaultAssistantId = nil
+            if primaryAssistantId == id {
+                primaryAssistantId = nil
             }
         } catch NetworkError.httpError(let code, _) where code == 404 {
             throw AssistantError.notFound
@@ -134,7 +143,7 @@ public class AssistantService: ObservableObject {
             let assistant: Assistant = try await NetworkClient.shared.request(
                 AssistantEndpoint.create(name: name ?? "Untitled", isPrimary: isPrimary)
             )
-            defaultAssistantId = assistant.id
+            primaryAssistantId = assistant.id
             assistants.append(assistant)
             return assistant.id
         } catch {
@@ -155,8 +164,8 @@ public class AssistantService: ObservableObject {
         }
     }
 
-    func getDefaultAssistantId() -> String? {
-        return defaultAssistantId
+    func getPrimaryAssistantId() -> String? {
+        return primaryAssistantId
     }
 
     func updateAssistant(id: String, name: String?, metadata: AssistantMetadataUpdate?) async throws -> Assistant? {

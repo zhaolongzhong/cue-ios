@@ -9,15 +9,11 @@ struct ChatView: View {
     @State private var scrollProxy: ScrollViewProxy?
 
     init(assistant: AssistantStatus,
-         webSocketManagerStore: WebSocketManagerStore,
-         assistantsViewModel: AssistantsViewModel) {
+         chatViewModel: ChatViewModel,
+         assistantsViewModel: AssistantsViewModel, tag: String? = nil) {
         self.assistantsViewModel = assistantsViewModel
-        _viewModel = StateObject(wrappedValue:
-            ChatViewModel(
-                assistant: assistant,
-                webSocketManagerStore: webSocketManagerStore
-            )
-        )
+        _viewModel = StateObject(wrappedValue: chatViewModel)
+        AppLog.log.debug("ChatView init() call from: \(tag ?? "")")
     }
 
     var body: some View {
@@ -58,6 +54,7 @@ struct ChatView: View {
         .navigationTitle(viewModel.assistant.name)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
         #endif
         .toolbar {
             #if os(iOS)
@@ -90,8 +87,11 @@ struct ChatView: View {
             .presentationCompactAdaptation(.popover)
         }
         #endif
-        .task {
-            await viewModel.setupChat()
+        .onAppear {
+            Task {
+                AppLog.log.debug("Chatview onAppear setupChat assistant.id:\(viewModel.assistant.id)")
+                await viewModel.setupChat()
+            }
         }
         .onDisappear {
             viewModel.cleanup()

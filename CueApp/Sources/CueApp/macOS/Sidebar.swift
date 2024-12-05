@@ -57,6 +57,9 @@ struct Sidebar: View {
             )
         }
         .onAppear {
+            Task {
+                await assistantsViewModel.fetchAssistants(tag: "onAppear")
+            }
             if selectedAssistant == nil && !assistantsViewModel.sortedAssistants.isEmpty {
                 selectedAssistant = assistantsViewModel.sortedAssistants[0]
             }

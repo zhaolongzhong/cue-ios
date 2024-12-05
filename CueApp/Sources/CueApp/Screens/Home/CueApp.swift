@@ -89,7 +89,7 @@ public struct CueAppView: View {
             }
         }
         .onAppear {
-            authToken = UserDefaults.standard.string(forKey: "API_KEY") ?? ""
+            authToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY") ?? ""
             if authToken.isEmpty {
                 let apiKey = try! Configuration.value(for: "OPENAI_API_KEY") as String
                 authToken = apiKey

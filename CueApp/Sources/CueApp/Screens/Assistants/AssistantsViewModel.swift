@@ -19,9 +19,12 @@ public class AssistantsViewModel: ObservableObject {
         self.assistantService = assistantService
         self.webSocketManagerStore = webSocketManagerStore
         setupClientStatusSubscriptions()
-        Task {
-            await fetchAssistants()
-        }
+    }
+
+    func cleanup() {
+        AppLog.log.debug("AssistantsViewModel cleanup primaryAssistant to nil")
+        self.assistantStatuses.removeAll()
+        self.primaryAssistant = nil
     }
 
     var sortedAssistants: [AssistantStatus] {
@@ -60,7 +63,10 @@ public class AssistantsViewModel: ObservableObject {
             .sink { [weak self] assistants in
                 guard let self = self else { return }
                 Task {
-                    await self.updateAssistants(with: assistants)
+                    if !assistants.isEmpty {
+                        AppLog.log.debug("assistantService.$assistants changes, assistants size: \(assistants.count)")
+                        await self.updateAssistants(with: assistants)
+                    }
                 }
 
             }
@@ -78,6 +84,7 @@ public class AssistantsViewModel: ObservableObject {
     }
 
     private func updateAssistantStatuses(assistants: [Assistant], clientStatuses: [ClientStatus]) async {
+        AppLog.log.debug("updateAssistantStatuses")
         let unmatchedStatuses = findUnmatchedClientStatuses(assistants: assistants, clientStatuses: clientStatuses)
         if !unmatchedStatuses.isEmpty {
             AppLog.log.debug("Found \(unmatchedStatuses.count) client statuses without matching assistants:")
@@ -106,18 +113,19 @@ public class AssistantsViewModel: ObservableObject {
             )
         }
         let sortedStatuses = updatedStatuses.sorted { $0.isOnline && !$1.isOnline }
-        debugPrint("sortedStatuses: \(sortedStatuses)")
         assistantStatuses = sortedStatuses
         updatePrimaryAssistant()
     }
 
     private func updateAssistants(with assistants: [Assistant]) async {
+        AppLog.log.debug("updateAssistants")
         self.assistants = assistants
         let clientStatuses = webSocketManagerStore.manager?.clientStatuses ?? []
         await updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
     }
 
-    func fetchAssistants() async {
+    func fetchAssistants(tag: String? = nil) async {
+        AppLog.log.debug("fetchAssistants for: \(tag ?? "")")
         isLoading = true
         error = nil
 
@@ -132,8 +140,9 @@ public class AssistantsViewModel: ObservableObject {
     }
 
     func refreshAssistants() {
+        AppLog.log.debug("refreshAssistants")
         Task {
-            await fetchAssistants()
+            await fetchAssistants(tag: "refreshAssistants")
         }
     }
 
@@ -146,17 +155,18 @@ public class AssistantsViewModel: ObservableObject {
     func deleteAssistant(_ assistant: AssistantStatus) async {
         do {
             try await assistantService.deleteAssistant(id: assistant.id)
-            await fetchAssistants() // Refresh the list after deletion
+            await fetchAssistants(tag: "deleteAssistant")
         } catch {
             self.error = error
             AppLog.log.error("Error deleting assistant: \(error.localizedDescription)")
         }
     }
 
-    func createDefaultAssistant() async {
+    func createPrimaryAssistant() async {
+        AppLog.log.debug("createPrimaryAssistant")
         do {
             _ = try await assistantService.createAssistant(name: nil, isPrimary: true)
-            await fetchAssistants()
+            await fetchAssistants(tag: "createPrimaryAssistant")
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
@@ -166,7 +176,7 @@ public class AssistantsViewModel: ObservableObject {
     func createAssistant(name: String) async {
         do {
             _ = try await assistantService.createAssistant(name: name, isPrimary: false)
-            await fetchAssistants()
+            await fetchAssistants(tag: "createAssistant")
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
@@ -180,7 +190,7 @@ public class AssistantsViewModel: ObservableObject {
     func updateAssistant(id: String, name: String) async -> AssistantStatus? {
         do {
             let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
-            await fetchAssistants()
+            await fetchAssistants(tag: "updateAssistant")
 
             guard let assistant = updatedAssistant else {
                 return nil
@@ -196,7 +206,7 @@ public class AssistantsViewModel: ObservableObject {
     func setPrimaryAssistant(id: String) async -> AssistantStatus? {
         do {
             let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: true))
-            await fetchAssistants()
+            await fetchAssistants(tag: "setPrimaryAssistant")
 
             guard let assistant = updatedAssistant else {
                 return nil
@@ -216,14 +226,5 @@ public class AssistantsViewModel: ObservableObject {
         } else {
             primaryAssistant = assistantStatuses.first(where: { $0.assistant.metadata?.isPrimary == true })
         }
-    }
-}
-
-extension ViewModelFactory {
-    func makeAssistantsViewModel() -> AssistantsViewModel {
-        AssistantsViewModel(
-            assistantService: dependencies.assistantService,
-            webSocketManagerStore: dependencies.webSocketStore
-        )
     }
 }

@@ -7,6 +7,10 @@ public struct MainWindowView: View {
     @State private var selectedAssistant: AssistantStatus?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
+    #if os(macOS)
+    @State private var windowDelegate: WindowDelegate?
+    #endif
+
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             Sidebar(
@@ -21,7 +25,7 @@ public struct MainWindowView: View {
                 )
             }
         }
-        .onChange(of: dependencies.authService.currentUser) { _, newUser in
+        .onChange(of: appStateViewModel.state.currentUser) { _, newUser in
             if let userId = newUser?.id {
                 assistantsViewModel.webSocketManagerStore.initialize(for: userId)
             }
@@ -36,35 +40,70 @@ public struct MainWindowView: View {
                 selectedAssistant = assistantsViewModel.sortedAssistants.first
             }
         }
-    }
-}
-
-private struct DetailContent: View {
-    let assistantsViewModel: AssistantsViewModel
-    let selectedAssistant: AssistantStatus?
-
-    var body: some View {
-        ZStack {
-            if let assistant = selectedAssistant {
-                ChatView(
-                    assistant: assistant,
-                    webSocketManagerStore: assistantsViewModel.webSocketManagerStore,
-                    assistantsViewModel: assistantsViewModel
-                )
-                .id(assistant.id)
-            } else {
-                ContentUnavailableView(
-                    "No Assistant Selected",
-                    systemImage: "bubble.left.and.bubble.right",
-                    description: Text("Select an assistant to start chatting")
-                )
-            }
-        }
         #if os(macOS)
-        .background(
-            VisualEffectView(material: .windowBackground, blendingMode: .withinWindow)
-                .ignoresSafeArea()
+        .overlay(
+            WindowAccessor { window in
+                guard let window = window else { return }
+                // Load window state
+                loadWindowState(for: window)
+
+                // Assign delegate to handle window events
+                self.windowDelegate = WindowDelegate(saveState: { [weak window] in
+                    guard let window = window else { return }
+                    saveWindowState(for: window)
+                })
+                window.delegate = self.windowDelegate
+            }
         )
         #endif
     }
 }
+
+#if os(macOS)
+extension MainWindowView {
+    // MARK: - Window State Persistence
+
+    private func saveWindowState(for window: NSWindow) {
+
+        let frame = window.frame
+        UserDefaults.standard.set(frame.origin.x, forKey: "windowOriginX")
+        UserDefaults.standard.set(frame.origin.y, forKey: "windowOriginY")
+        UserDefaults.standard.set(frame.size.width, forKey: "windowWidth")
+        UserDefaults.standard.set(frame.size.height, forKey: "windowHeight")
+    }
+
+    private func loadWindowState(for window: NSWindow) {
+        let originX = UserDefaults.standard.double(forKey: "windowOriginX")
+        let originY = UserDefaults.standard.double(forKey: "windowOriginY")
+        let width = UserDefaults.standard.double(forKey: "windowWidth")
+        let height = UserDefaults.standard.double(forKey: "windowHeight")
+
+        if width > 0 && height > 0 && width > height {
+            let newFrame = NSRect(x: originX, y: originY, width: width, height: height)
+            window.setFrame(newFrame, display: true)
+        } else {
+            // Set default size if no saved state
+            window.setContentSize(NSSize(width: 800, height: 600))
+            window.center()
+        }
+    }
+
+    // MARK: - Window Delegate
+
+    private class WindowDelegate: NSObject, NSWindowDelegate {
+        var saveState: () -> Void
+
+        init(saveState: @escaping () -> Void) {
+            self.saveState = saveState
+        }
+
+        func windowDidMove(_ notification: Notification) {
+            saveState()
+        }
+
+        func windowDidResize(_ notification: Notification) {
+            saveState()
+        }
+    }
+}
+#endif

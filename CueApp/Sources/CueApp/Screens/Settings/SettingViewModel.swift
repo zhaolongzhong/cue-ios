@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-class SettingsViewModel: ObservableObject {
+public class SettingsViewModel: ObservableObject {
     @Published var currentUser: User?
     @Published var generatedToken: String?
     @Published var tokenError: String?
@@ -35,11 +35,5 @@ class SettingsViewModel: ObservableObject {
             tokenError = error.localizedDescription
         }
         isGeneratingToken = false
-    }
-}
-
-extension ViewModelFactory {
-    func makeSettingsViewModel() -> SettingsViewModel {
-        SettingsViewModel(authService: dependencies.authService)
     }
 }

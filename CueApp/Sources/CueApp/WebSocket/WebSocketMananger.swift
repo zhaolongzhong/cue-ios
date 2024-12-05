@@ -32,7 +32,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
 
     init(assistantId: String = "") {
         self.clientId = EnvironmentConfig.shared.clientId
-        self.accessToken = UserDefaults.standard.string(forKey: "API_KEY") ?? ""
+        self.accessToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY") ?? ""
 
         // Initialize the URLSession once
         let configuration = URLSessionConfiguration.default
@@ -144,6 +144,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
     }
 
     func disconnect() {
+        AppLog.log.debug("WebSocketManager disconnect")
         shouldReconnect = false
         reconnectTimer?.invalidate()
         reconnectTimer = nil

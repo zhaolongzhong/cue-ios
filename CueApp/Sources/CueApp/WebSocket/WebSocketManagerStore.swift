@@ -56,6 +56,7 @@ public class WebSocketManagerStore: ObservableObject {
     }
 
     func disconnect() {
+        AppLog.log.debug("WebSocketManagerStore disconnect")
         cancellables.removeAll()
         manager?.disconnect()
         manager = nil

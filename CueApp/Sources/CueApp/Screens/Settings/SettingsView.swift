@@ -2,13 +2,19 @@ import SwiftUI
 
 public struct SettingsView: View {
     @EnvironmentObject private var dependencies: AppDependencies
+    @EnvironmentObject private var appStateViewModel: AppStateViewModel
+    @StateObject private var viewModel: SettingsViewModel
 
-    public init() {}
+    public init(viewModelFactory: @escaping () -> SettingsViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory())
+        AppLog.log.debug("SettingsView init()")
+    }
 
     public var body: some View {
-        let viewModel = dependencies.viewModelFactory.makeSettingsViewModel()
         #if os(iOS)
-        SettingsView_iOS(viewModel: viewModel)
+        SettingsView_iOS(viewModel: viewModel).onAppear {
+            AppLog.log.debug("SettingsView onAppear")
+        }
         #else
         SettingsView_macOS(viewModel: viewModel)
         #endif

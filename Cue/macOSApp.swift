@@ -21,15 +21,14 @@ struct macOSApp: App {
         }
 
         WindowGroup(id: "settings-window") {
-            SettingsView()
+            SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
                 .environmentObject(dependencies)
                 .frame(minWidth: 500, minHeight: 300)
         }
-        .defaultSize(width: 1200, height: 800)
+        .defaultSize(width: 500, height: 400)
         .windowStyle(.titleBar)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
     }
 }
-
 #endif

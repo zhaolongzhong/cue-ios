@@ -23,7 +23,10 @@ actor NetworkClient {
     }
 
     func request<T: Codable>(_ endpoint: Endpoint) async throws -> T {
-        let token = UserDefaults.standard.string(forKey: "API_KEY")
+        let token = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
+        if endpoint.requiresAuth && (token == nil || token?.isEmpty == true) {
+            throw NetworkError.unauthorized
+        }
         let request = try endpoint.urlRequest(with: token)
 
         logger.debug("Making request to \(request.url?.absoluteString ?? "unknown URL")")
@@ -68,7 +71,7 @@ actor NetworkClient {
     }
 
     func requestWithEmptyResponse(_ endpoint: Endpoint) async throws {
-        let token = UserDefaults.standard.string(forKey: "API_KEY")
+        let token = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
         let request = try endpoint.urlRequest(with: token)
 
         logger.debug("Making request to \(request.url?.absoluteString ?? "unknown URL")")
@@ -94,7 +97,7 @@ actor NetworkClient {
     }
 
     func upload(_ endpoint: Endpoint, data: Data, mimeType: String) async throws -> Data {
-        let token = UserDefaults.standard.string(forKey: "API_KEY")
+        let token = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
         var request = try endpoint.urlRequest(with: token)
 
         let boundary = UUID().uuidString
