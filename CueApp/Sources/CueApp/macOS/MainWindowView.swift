@@ -62,7 +62,7 @@ private struct DetailContent: View {
         }
         #if os(macOS)
         .background(
-            VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+            VisualEffectView(material: .windowBackground, blendingMode: .withinWindow)
                 .ignoresSafeArea()
         )
         #endif

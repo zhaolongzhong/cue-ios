@@ -155,7 +155,7 @@ class ChatViewModel: ObservableObject {
     private func sendMessage() async throws {
         guard !inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        let messageToSend = inputMessage
+        let messageToSend = inputMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         _ = Message(
             assistantId: assistant.id,
             content: messageToSend,

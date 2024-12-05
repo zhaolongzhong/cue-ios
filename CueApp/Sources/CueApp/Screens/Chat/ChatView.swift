@@ -37,7 +37,7 @@ struct ChatView: View {
             )
             .padding(.horizontal, 10)
             .background(Color.clear)
-            .id(viewModel.assistant.id) // Add this to preserve scroll position per chat
+            .id(viewModel.assistant.id)
             .overlay(
                 LoadingOverlay(isVisible: viewModel.isLoading)
             )
@@ -47,7 +47,10 @@ struct ChatView: View {
                 inputMessage: $viewModel.inputMessage,
                 isFocused: _isFocused,
                 isEnabled: viewModel.isInputEnabled,
-                onSend: viewModel.handleSendMessage
+                onSend: {
+                    viewModel.handleSendMessage()
+                    scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
+                }
             )
         }
         .background(Color.clear)
