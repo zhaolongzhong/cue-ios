@@ -14,6 +14,7 @@ class ChatViewModel: ObservableObject {
     private let messageModelStore: MessageModelStore
     private let assistantService: AssistantService
     private var primaryConversation: ConversationModel?
+    private var cancellables = Set<AnyCancellable>()
 
     init(assistant: AssistantStatus,
          webSocketManagerStore: WebSocketManagerStore) {
@@ -27,6 +28,38 @@ class ChatViewModel: ObservableObject {
             AppLog.websocket.error("Database initialization failed: \(error)")
             self.messageModelStore = try! MessageModelStore()
         }
+        setupClientStatusSubscriptions()
+    }
+
+    private func setupClientStatusSubscriptions() {
+        webSocketManagerStore.$manager
+            .compactMap { $0 }
+            .flatMap { manager -> AnyPublisher<[ClientStatus], Never> in
+                manager.$clientStatuses
+                    .receive(on: DispatchQueue.main)
+                    .eraseToAnyPublisher()
+            }
+            .sink { [weak self] clientStatuses in
+                guard let self = self else { return }
+                Task {
+                    AppLog.log.debug("clientStatuses updated, updateAssistantStatuses")
+                    let assistantStatus = self.assistant
+                    if let clientStatus = clientStatuses.filter({ status in
+                        status.assistantId == assistantStatus.assistant.id
+                    }).first {
+                        if assistantStatus.clientStatus != clientStatus {
+                            self.assistant = AssistantStatus(
+                                id: assistantStatus.assistant.id,
+                                name: assistantStatus.assistant.name,
+                                assistant: assistantStatus.assistant,
+                                clientStatus: clientStatus
+                            )
+                        }
+                    }
+                }
+
+            }
+            .store(in: &cancellables)
     }
 
     var isInputEnabled: Bool {
@@ -163,9 +196,13 @@ class ChatViewModel: ObservableObject {
             isFromUser: true
         )
 
+        guard let runnerId = assistant.clientStatus?.runnerId else {
+            AppLog.log.error("Client status is nil")
+            return
+        }
         webSocketManagerStore.send(
             message: messageToSend,
-            recipient: assistant.clientStatus?.runnerId ?? "default_assistant_id"
+            recipient: runnerId
         )
     }
 

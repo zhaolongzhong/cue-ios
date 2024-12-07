@@ -1,4 +1,5 @@
 import SwiftUI
+import CueOpenAI
 
 public struct MainWindowView: View {
     @EnvironmentObject private var dependencies: AppDependencies

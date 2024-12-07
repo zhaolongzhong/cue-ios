@@ -1,34 +1,54 @@
 import Foundation
+// import CueOpenAI
 
-struct ToolCall: Codable, Sendable, Equatable {
-    let id: String
-    let type: String
-    let function: Function
+public struct ToolCall: Codable, Sendable, Equatable {
+    public let id: String
+    public let type: String
+    public let function: Function
 
-    static func == (lhs: ToolCall, rhs: ToolCall) -> Bool {
+    public init(id: String, type: String, function: Function) {
+        self.id = id
+        self.type = type
+        self.function = function
+    }
+
+    public static func == (lhs: ToolCall, rhs: ToolCall) -> Bool {
         return lhs.id == rhs.id &&
             lhs.type == rhs.type &&
             lhs.function == rhs.function
     }
 }
 
-struct Function: Codable, Sendable, Equatable {
-    let name: String
-    let arguments: String
+public struct Function: Codable, Sendable, Equatable {
+    public let name: String
+    public let arguments: String
 
-    static func == (lhs: Function, rhs: Function) -> Bool {
+    public init(name: String, arguments: String) {
+        self.name = name
+        self.arguments = arguments
+    }
+
+    public static func == (lhs: Function, rhs: Function) -> Bool {
         return lhs.name == rhs.name &&
             lhs.arguments == rhs.arguments
     }
 }
 
 // MARK: - Usage Details
-struct Usage: Codable {
-    let totalTokens: Int
-    let completionTokens: Int
-    let completionTokensDetails: TokenDetails
-    let promptTokensDetails: PromptTokenDetails
-    let promptTokens: Int
+public struct Usage: Codable, Sendable {
+    public let totalTokens: Int
+    public let completionTokens: Int
+    public let completionTokensDetails: TokenDetails
+    public let promptTokensDetails: PromptTokenDetails
+    public let promptTokens: Int
+
+    public init(totalTokens: Int, completionTokens: Int, completionTokensDetails: TokenDetails, promptTokensDetails: PromptTokenDetails, promptTokens: Int) {
+        self.totalTokens = totalTokens
+        self.completionTokens = completionTokens
+        self.completionTokensDetails = completionTokensDetails
+        self.promptTokensDetails = promptTokensDetails
+        self.promptTokens = promptTokens
+    }
 
     enum CodingKeys: String, CodingKey {
         case totalTokens = "total_tokens"
@@ -39,11 +59,18 @@ struct Usage: Codable {
     }
 }
 
-struct TokenDetails: Codable {
-    let rejectedPredictionTokens: Int
-    let audioTokens: Int
-    let acceptedPredictionTokens: Int
-    let reasoningTokens: Int
+public struct TokenDetails: Codable, Sendable {
+    public let rejectedPredictionTokens: Int
+    public let audioTokens: Int
+    public let acceptedPredictionTokens: Int
+    public let reasoningTokens: Int
+
+    public init(rejectedPredictionTokens: Int, audioTokens: Int, acceptedPredictionTokens: Int, reasoningTokens: Int) {
+        self.rejectedPredictionTokens = rejectedPredictionTokens
+        self.audioTokens = audioTokens
+        self.acceptedPredictionTokens = acceptedPredictionTokens
+        self.reasoningTokens = reasoningTokens
+    }
 
     enum CodingKeys: String, CodingKey {
         case rejectedPredictionTokens = "rejected_prediction_tokens"
@@ -53,9 +80,14 @@ struct TokenDetails: Codable {
     }
 }
 
-struct PromptTokenDetails: Codable {
-    let cachedTokens: Int
-    let audioTokens: Int
+public struct PromptTokenDetails: Codable, Sendable {
+    public let cachedTokens: Int
+    public let audioTokens: Int
+
+    public init(cachedTokens: Int, audioTokens: Int) {
+        self.cachedTokens = cachedTokens
+        self.audioTokens = audioTokens
+    }
 
     enum CodingKeys: String, CodingKey {
         case cachedTokens = "cached_tokens"
@@ -64,10 +96,16 @@ struct PromptTokenDetails: Codable {
 }
 
 // MARK: - Choice and Message
-struct Choice: Codable {
-    let finishReason: String
-    let message: AssistantMessage
-    let index: Int
+public struct Choice: Codable, Sendable {
+    public let finishReason: String
+    public let message: AssistantMessage
+    public let index: Int
+
+    public init(finishReason: String, message: AssistantMessage, index: Int) {
+        self.finishReason = finishReason
+        self.message = message
+        self.index = index
+    }
 
     enum CodingKeys: String, CodingKey {
         case finishReason = "finish_reason"
@@ -76,9 +114,14 @@ struct Choice: Codable {
     }
 }
 
-struct AssistantMessage: Codable {
-    let toolCalls: [ToolCall]
-    let role: String
+public struct AssistantMessage: Codable, Sendable {
+    public let toolCalls: [ToolCall]
+    public let role: String
+
+    public init(toolCalls: [ToolCall], role: String) {
+        self.toolCalls = toolCalls
+        self.role = role
+    }
 
     enum CodingKeys: String, CodingKey {
         case toolCalls = "tool_calls"
@@ -87,14 +130,24 @@ struct AssistantMessage: Codable {
 }
 
 // MARK: - ChatCompletion
-struct ChatCompletion: Codable {
-    let systemFingerprint: String
-    let usage: Usage
-    let choices: [Choice]
-    let id: String
-    let object: String
-    let model: String
-    let created: Int
+public struct ChatCompletion: Codable, Sendable {
+    public let systemFingerprint: String
+    public let usage: Usage
+    public let choices: [Choice]
+    public let id: String
+    public let object: String
+    public let model: String
+    public let created: Int
+
+    public init(systemFingerprint: String, usage: Usage, choices: [Choice], id: String, object: String, model: String, created: Int) {
+        self.systemFingerprint = systemFingerprint
+        self.usage = usage
+        self.choices = choices
+        self.id = id
+        self.object = object
+        self.model = model
+        self.created = created
+    }
 
     enum CodingKeys: String, CodingKey {
         case systemFingerprint = "system_fingerprint"
@@ -108,11 +161,18 @@ struct ChatCompletion: Codable {
 }
 
 // MARK: - Tool message
-struct ToolMessage: Codable {
-    let toolCallId: String
-    let content: String
-    let name: String
-    let role: String
+public struct ToolMessage: Codable, Sendable {
+    public let toolCallId: String
+    public let content: String
+    public let name: String
+    public let role: String
+
+    public init(toolCallId: String, content: String, name: String, role: String) {
+        self.toolCallId = toolCallId
+        self.content = content
+        self.name = name
+        self.role = role
+    }
 
     enum CodingKeys: String, CodingKey {
         case toolCallId = "tool_call_id"

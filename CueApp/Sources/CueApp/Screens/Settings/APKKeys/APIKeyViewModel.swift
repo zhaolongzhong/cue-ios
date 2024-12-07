@@ -2,12 +2,12 @@ import SwiftUI
 import Combine
 
 // MARK: - APIKeyType Enum
-enum APIKeyType: String, CaseIterable, Identifiable {
+public enum APIKeyType: String, CaseIterable, Identifiable {
     case openai = "OPENAI_API_KEY"
     case anthropic = "ANTHROPIC_API_KEY"
     case gemini = "GEMINI_API_KEY"
 
-    var id: String { self.rawValue }
+    public  var id: String { self.rawValue }
 
     var displayName: String {
         switch self {
@@ -27,7 +27,7 @@ enum APIKeyType: String, CaseIterable, Identifiable {
 }
 
 // MARK: - APIKeysViewModel
-class APIKeysViewModel: ObservableObject {
+public class APIKeysViewModel: ObservableObject {
     @Published private(set) var openAIKey: String = ""
     @Published private(set) var anthropicKey: String = ""
     @Published private(set) var geminiKey: String = ""
@@ -38,7 +38,7 @@ class APIKeysViewModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
-    init() {
+    public init() {
         loadAPIKeys()
         setupObservers()
     }
@@ -82,7 +82,7 @@ class APIKeysViewModel: ObservableObject {
         print("Saved key for \(keyType.displayName): \(value.isEmpty ? "empty" : "set")")
     }
 
-    func getAPIKey(for keyType: APIKeyType) -> String {
+    public func getAPIKey(for keyType: APIKeyType) -> String {
         switch keyType {
         case .openai: return openAIKey
         case .anthropic: return anthropicKey

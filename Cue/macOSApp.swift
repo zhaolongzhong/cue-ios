@@ -29,6 +29,16 @@ struct macOSApp: App {
         .windowStyle(.titleBar)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
+
+        WindowGroup(id: "openai-chat-window") {
+            let viewModel = APIKeysViewModel()
+            let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
+            OpenAIChatView(apiKey: apiKey)
+        }
+        .defaultSize(width: 500, height: 400)
+        .windowStyle(.titleBar)
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
     }
 }
 #endif

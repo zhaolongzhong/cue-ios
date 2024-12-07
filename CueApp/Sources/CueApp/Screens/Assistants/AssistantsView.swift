@@ -115,6 +115,8 @@ struct AssistantsView: View {
                 if appStateViewModel.state.isAuthenticated {
                     await viewModel.fetchAssistants(tag: "onAppear")
                 }
+
+//                try await OpenAIClient.example()
             }
         }
     }

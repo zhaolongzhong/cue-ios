@@ -11,6 +11,8 @@
 		3A2098D32CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D42CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */ = {isa = PBXBuildFile; productRef = 3A2098D62CB74D0800FEB48E /* CueApp */; };
+		3A368F732D0432B1000F8D8B /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A368F722D0432B1000F8D8B /* CueOpenAI */; };
+		3A59BFDF2D042C9600EF209A /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A59BFDE2D042C9600EF209A /* CueOpenAI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +37,7 @@
 		3A2098722CB7392A00FEB48E /* CueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A20987C2CB7392A00FEB48E /* CueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A2098D12CB74CC400FEB48E /* CueApp */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = CueApp; sourceTree = "<group>"; };
+		3A4B269A2D0435E800BEDB20 /* CueOpenAI */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = CueOpenAI; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -73,6 +76,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3A59BFDF2D042C9600EF209A /* CueOpenAI in Frameworks */,
+				3A368F732D0432B1000F8D8B /* CueOpenAI in Frameworks */,
 				3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -97,6 +102,7 @@
 		3A2098582CB7392900FEB48E = {
 			isa = PBXGroup;
 			children = (
+				3A4B269A2D0435E800BEDB20 /* CueOpenAI */,
 				3A2098D12CB74CC400FEB48E /* CueApp */,
 				3A2098632CB7392900FEB48E /* Cue */,
 				3A2098752CB7392A00FEB48E /* CueTests */,
@@ -136,6 +142,8 @@
 			name = Cue;
 			packageProductDependencies = (
 				3A2098D62CB74D0800FEB48E /* CueApp */,
+				3A59BFDE2D042C9600EF209A /* CueOpenAI */,
+				3A368F722D0432B1000F8D8B /* CueOpenAI */,
 			);
 			productName = Cue;
 			productReference = 3A2098612CB7392900FEB48E /* Cue.app */;
@@ -642,6 +650,14 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 3A2098D02CB74BD700FEB48E /* XCLocalSwiftPackageReference "CueApp" */;
 			productName = CueApp;
+		};
+		3A368F722D0432B1000F8D8B /* CueOpenAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CueOpenAI;
+		};
+		3A59BFDE2D042C9600EF209A /* CueOpenAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CueOpenAI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

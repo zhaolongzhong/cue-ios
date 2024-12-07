@@ -13,6 +13,7 @@ let package = Package(
             targets: ["CueApp"])
     ],
     dependencies: [
+        .package(path: "../CueOpenAI"),
         .package(url: "https://github.com/m1guelpf/swift-realtime-openai.git", branch: "main"),
         .package(url: "https://github.com/gonzalezreal/MarkdownUI.git", from: "2.4.1"),
         .package(url: "https://github.com/groue/GRDB.swift", from: "6.29.1")
@@ -21,6 +22,7 @@ let package = Package(
         .target(
             name: "CueApp",
             dependencies: [
+                .product(name: "CueOpenAI", package: "CueOpenAI"),
                 .product(name: "OpenAI", package: "swift-realtime-openai"),
                 .product(name: "MarkdownUI", package: "MarkdownUI"),
                 .product(name: "GRDB", package: "GRDB.swift")

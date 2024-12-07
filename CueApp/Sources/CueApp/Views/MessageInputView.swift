@@ -43,6 +43,7 @@ struct MessageInputView: View {
     let isEnabled: Bool
     let onSend: () -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @State private var eventMonitor: Any?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,7 +56,6 @@ struct MessageInputView: View {
                         .frame(minHeight: 50, maxHeight: 200)
                         .fixedSize(horizontal: false, vertical: true)
                         .scrollContentBackground(.hidden)
-
                     if inputMessage.isEmpty {
                         Text("Type a message...")
                             .padding(.horizontal, 4)
@@ -84,7 +84,34 @@ struct MessageInputView: View {
             }
             .padding(.vertical, 8)
         }
+        .onAppear {
+            setupKeyMonitor()
+        }
+        .onDisappear {
+            if let monitor = eventMonitor {
+                NSEvent.removeMonitor(monitor)
+                eventMonitor = nil
+            }
+        }
     }
+
+    private func setupKeyMonitor() {
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard isFocused else { return event }
+
+                if event.keyCode == 36 { // Return key
+                    print("Return pressed")
+                    if event.modifierFlags.contains(.shift) {
+                        // Allow new line with Shift+Return
+                        return event
+                    } else if isMessageValid {
+                        onSend()
+                        return nil // Consume the event
+                    }
+                }
+                return event
+            }
+        }
 
     private var isMessageValid: Bool {
         inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3

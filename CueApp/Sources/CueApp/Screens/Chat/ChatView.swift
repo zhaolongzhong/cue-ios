@@ -10,7 +10,8 @@ struct ChatView: View {
 
     init(assistant: AssistantStatus,
          chatViewModel: ChatViewModel,
-         assistantsViewModel: AssistantsViewModel, tag: String? = nil) {
+         assistantsViewModel: AssistantsViewModel,
+         tag: String? = nil) {
         self.assistantsViewModel = assistantsViewModel
         _viewModel = StateObject(wrappedValue: chatViewModel)
         AppLog.log.debug("ChatView init() call from: \(tag ?? "")")
@@ -24,6 +25,7 @@ struct ChatView: View {
                 .frame(height: 1)
                 .frame(maxWidth: .infinity)
             #endif
+
             MessagesListView(
                 messages: viewModel.messageModels,
                 shouldAutoScroll: shouldAutoScroll,
@@ -37,7 +39,7 @@ struct ChatView: View {
             .overlay(
                 LoadingOverlay(isVisible: viewModel.isLoading)
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .scrollDismissesKeyboard(.never)
 
             MessageInputView(
                 inputMessage: $viewModel.inputMessage,
@@ -45,9 +47,12 @@ struct ChatView: View {
                 isEnabled: viewModel.isInputEnabled,
                 onSend: {
                     viewModel.handleSendMessage()
-                    scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
+                    withAnimation {
+                        scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
+                    }
                 }
             )
+            .zIndex(1)
         }
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -91,6 +96,9 @@ struct ChatView: View {
             Task {
                 AppLog.log.debug("Chatview onAppear setupChat assistant.id:\(viewModel.assistant.id)")
                 await viewModel.setupChat()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isFocused = true
             }
         }
         .onDisappear {

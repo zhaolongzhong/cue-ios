@@ -4,6 +4,7 @@ struct Sidebar: View {
     @ObservedObject var assistantsViewModel: AssistantsViewModel
     @Binding var selectedAssistant: AssistantStatus?
     @State private var isShowingNewAssistantSheet = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack {
@@ -37,11 +38,11 @@ struct Sidebar: View {
                 }
             }
 
-            HStack {
-                UserAvatarMenu()
-                Spacer()
-            }
-            .padding(.all, 4)
+            Spacer()
+            SettingsMenu(
+                onOpenAIChat: handleOpenAIChat,
+                onOpenSettings: handleOpenSettings
+            )
         }
         .background(Color.clear)
         .navigationTitle("Cue")
@@ -64,5 +65,17 @@ struct Sidebar: View {
                 selectedAssistant = assistantsViewModel.sortedAssistants[0]
             }
         }
+    }
+
+    private func handleOpenAIChat() {
+        #if os(macOS)
+        openWindow(id: "openai-chat-window")
+        #endif
+    }
+
+    private func handleOpenSettings() {
+        #if os(macOS)
+        openWindow(id: "settings-window")
+        #endif
     }
 }
