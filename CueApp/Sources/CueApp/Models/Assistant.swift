@@ -1,18 +1,22 @@
 import Foundation
 
 struct AssistantMetadata: Codable {
-    let isPrimary: Bool
+    let isPrimary: Bool?
+    let model: String?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
+        case model = "model"
     }
 }
 
 struct AssistantMetadataUpdate: Codable, Sendable {
     let isPrimary: Bool?
+    let model: String?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
+        case model = "model"
     }
 }
 

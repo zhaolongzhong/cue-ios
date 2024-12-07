@@ -1,6 +1,6 @@
 import Foundation
 
-public struct AssistantStatus: Identifiable {
+public struct AssistantStatus: Identifiable, Sendable {
     public let id: String
     let name: String
     let assistant: Assistant

@@ -177,8 +177,9 @@ public class AssistantService: ObservableObject {
                     metadata: metadata
                 )
             )
-            _ = try await self.listAssistants()
-
+            if let index = self.assistants.firstIndex(where: { $0.id == assistant.id }) {
+                self.assistants[index] = assistant
+            }
             return assistant
         } catch NetworkError.httpError(let code, _) where code == 404 {
             throw AssistantError.notFound

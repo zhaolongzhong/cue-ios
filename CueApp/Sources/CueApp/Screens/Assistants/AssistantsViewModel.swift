@@ -173,14 +173,15 @@ public class AssistantsViewModel: ObservableObject {
         }
     }
 
-    func createAssistant(name: String) async {
+    func createAssistant(name: String) async -> AssistantStatus? {
         do {
-            _ = try await assistantService.createAssistant(name: name, isPrimary: false)
-            await fetchAssistants(tag: "createAssistant")
+            let assistant = try await assistantService.createAssistant(name: name, isPrimary: false)
+            return updateAssistantStatus(updatedAssistant: assistant)
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
+        return nil
     }
 
     func getAssistantStatus(id: String) -> AssistantStatus? {
@@ -190,12 +191,7 @@ public class AssistantsViewModel: ObservableObject {
     func updateAssistant(id: String, name: String) async -> AssistantStatus? {
         do {
             let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
-            await fetchAssistants(tag: "updateAssistant")
-
-            guard let assistant = updatedAssistant else {
-                return nil
-            }
-            return getAssistantStatus(id: assistant.id)
+            return updateAssistantStatus(updatedAssistant: updatedAssistant)
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
@@ -203,20 +199,48 @@ public class AssistantsViewModel: ObservableObject {
         return nil
     }
 
-    func setPrimaryAssistant(id: String) async -> AssistantStatus? {
+    func updateModel(id: String, model: String) async -> AssistantStatus? {
         do {
-            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: true))
-            await fetchAssistants(tag: "setPrimaryAssistant")
+            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: nil, model: model))
 
-            guard let assistant = updatedAssistant else {
-                return nil
-            }
-            return getAssistantStatus(id: assistant.id)
+            return updateAssistantStatus(updatedAssistant: updatedAssistant)
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
         return nil
+    }
+
+    func updateAssistantStatus(updatedAssistant: Assistant?) -> AssistantStatus? {
+        guard let assistant = updatedAssistant else {
+            return nil
+        }
+
+        let exist = assistantStatuses.filter { $0.id == updatedAssistant?.id }.first
+        let newStatus = AssistantStatus(
+            id: assistant.id,
+            name: assistant.name,
+            assistant: assistant,
+            clientStatus: exist?.clientStatus
+        )
+
+        if let index = assistantStatuses.firstIndex(where: { $0.id == assistant.id }) {
+            assistantStatuses[index] = newStatus
+        } else {
+            assistantStatuses.insert(newStatus, at: 0)
+        }
+
+        return newStatus
+    }
+
+    func setPrimaryAssistant(id: String) async {
+        do {
+            _ = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: true, model: nil))
+            _ = await fetchAssistants(tag: "setPrimaryAssistant")
+        } catch {
+            self.error = error
+            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+        }
     }
 
     private func updatePrimaryAssistant() {

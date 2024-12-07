@@ -128,14 +128,14 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
     }
 
     private func sendProtocolPing() {
-        AppLog.websocket.debug("Sending protocol-level ping at \(Date())")
+//        AppLog.websocket.debug("Sending protocol-level ping at \(Date())")
         webSocketTask?.sendPing { [weak self] error in
             Task { @MainActor in
                 if let error = error {
                     self?.handleError(.connectionFailed("Protocol ping failed: \(error.localizedDescription)"))
                     AppLog.websocket.error("Protocol-level ping failed: \(error.localizedDescription)")
                 } else {
-                    AppLog.websocket.debug("Protocol-level pong received at \(Date())")
+//                    AppLog.websocket.debug("Protocol-level pong received at \(Date())")
                     // Update lastPongReceived since pong was received
                     self?.lastPongReceived = Date()
                 }
