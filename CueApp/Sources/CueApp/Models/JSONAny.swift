@@ -101,7 +101,7 @@ struct JSONCodingKey: CodingKey {
     }
 }
 
-public enum JSONValue: Codable, Sendable {
+public enum JSONValue: Codable, Sendable, Hashable {
     case null
     case bool(Bool)
     case string(String)

@@ -4,13 +4,18 @@ import CueOpenAI
 public struct MainWindowView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var assistantsViewModel: AssistantsViewModel
-    @State private var selectedAssistant: AssistantStatus?
+    @StateObject private var assistantsViewModel: AssistantsViewModel
+    @State private var selectedAssistant: Assistant?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var lastStatusUpdate: Date = Date()
 
     #if os(macOS)
     @State private var windowDelegate: WindowDelegate?
     #endif
+
+    init(viewModelFactory: @escaping () -> AssistantsViewModel) {
+        self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
+    }
 
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -18,11 +23,12 @@ public struct MainWindowView: View {
                 assistantsViewModel: assistantsViewModel,
                 selectedAssistant: $selectedAssistant
             )
+            .id("sidebar-\(lastStatusUpdate.timeIntervalSince1970)")
         } detail: {
             NavigationStack {
                 DetailContent(
                     assistantsViewModel: assistantsViewModel,
-                    selectedAssistant: selectedAssistant ?? assistantsViewModel.sortedAssistants.first
+                    selectedAssistant: selectedAssistant ?? assistantsViewModel.assistants.first
                 )
             }
         }
@@ -31,14 +37,18 @@ public struct MainWindowView: View {
                 assistantsViewModel.webSocketManagerStore.initialize(for: userId)
             }
         }
-        .onChange(of: assistantsViewModel.assistantStatuses) { _, _ in
-            if selectedAssistant == nil && !assistantsViewModel.sortedAssistants.isEmpty {
-                selectedAssistant = assistantsViewModel.sortedAssistants.first
+        .onChange(of: assistantsViewModel.assistants) { _, newValue in
+            if selectedAssistant == nil && !newValue.isEmpty {
+                selectedAssistant = newValue.first
             }
         }
+        .onReceive(assistantsViewModel.$clientStatuses) { _ in
+            AppLog.log.debug("Client status updated, forcing view refresh")
+            lastStatusUpdate = Date()
+        }
         .onAppear {
-            if selectedAssistant == nil && !assistantsViewModel.sortedAssistants.isEmpty {
-                selectedAssistant = assistantsViewModel.sortedAssistants.first
+            if selectedAssistant == nil && !assistantsViewModel.assistants.isEmpty {
+                selectedAssistant = assistantsViewModel.assistants.first
             }
         }
         #if os(macOS)

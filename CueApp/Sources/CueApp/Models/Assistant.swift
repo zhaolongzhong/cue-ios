@@ -1,26 +1,65 @@
 import Foundation
 
-struct AssistantMetadata: Codable {
+struct AssistantMetadata: Codable, Equatable, Hashable {
     let isPrimary: Bool?
     let model: String?
+    let instruction: String?
+    let description: String?
+    let maxTurns: Int?
+    let context: JSONValue?
+    let tools: [String]?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
-        case model = "model"
+        case model
+        case instruction
+        case description
+        case maxTurns = "max_turns"
+        case context
+        case tools
     }
 }
 
 struct AssistantMetadataUpdate: Codable, Sendable {
     let isPrimary: Bool?
     let model: String?
+    let instruction: String?
+    let description: String?
+    let maxTurns: Int?
+    let context: JSONValue?
+    let tools: [String]?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
-        case model = "model"
+        case model
+        case instruction
+        case description
+        case maxTurns = "max_turns"
+        case context
+        case tools
+    }
+
+    // Initialize with all optional parameters
+    init(
+        isPrimary: Bool? = nil,
+        model: String? = nil,
+        instruction: String? = nil,
+        description: String? = nil,
+        maxTurns: Int? = nil,
+        context: JSONValue? = nil,
+        tools: [String]? = nil
+    ) {
+        self.isPrimary = isPrimary
+        self.model = model
+        self.instruction = instruction
+        self.description = description
+        self.maxTurns = maxTurns
+        self.context = context
+        self.tools = tools
     }
 }
 
-struct Assistant: Codable, Identifiable {
+struct Assistant: Codable, Equatable, Identifiable, Hashable {
     let id: String
     let name: String
     let createdAt: Date
@@ -59,6 +98,12 @@ struct Assistant: Codable, Identifiable {
         }
 
         metadata = try container.decodeIfPresent(AssistantMetadata.self, forKey: .metadata)
+    }
+}
+
+extension Assistant {
+    var isPrimary: Bool {
+        return metadata?.isPrimary == true
     }
 }
 

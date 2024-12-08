@@ -4,10 +4,10 @@ import Combine
 @MainActor
 class ChatViewModel: ObservableObject {
     @Published private(set) var messageModels: [MessageModel] = []
+    @Published private(set) var assistant: Assistant
     @Published private(set) var isLoading = false
     @Published var errorAlert: ErrorAlert?
     @Published var inputMessage: String = ""
-    @Published private(set) var assistant: AssistantStatus
     @Published var showAssistantDetails = false
 
     private let webSocketManagerStore: WebSocketManagerStore
@@ -16,7 +16,7 @@ class ChatViewModel: ObservableObject {
     private var primaryConversation: ConversationModel?
     private var cancellables = Set<AnyCancellable>()
 
-    init(assistant: AssistantStatus,
+    init(assistant: Assistant,
          webSocketManagerStore: WebSocketManagerStore) {
         self.assistantService = AssistantService()
         self.assistant = assistant
@@ -28,38 +28,6 @@ class ChatViewModel: ObservableObject {
             AppLog.websocket.error("Database initialization failed: \(error)")
             self.messageModelStore = try! MessageModelStore()
         }
-        setupClientStatusSubscriptions()
-    }
-
-    private func setupClientStatusSubscriptions() {
-        webSocketManagerStore.$manager
-            .compactMap { $0 }
-            .flatMap { manager -> AnyPublisher<[ClientStatus], Never> in
-                manager.$clientStatuses
-                    .receive(on: DispatchQueue.main)
-                    .eraseToAnyPublisher()
-            }
-            .sink { [weak self] clientStatuses in
-                guard let self = self else { return }
-                Task {
-                    AppLog.log.debug("clientStatuses updated, updateAssistantStatuses")
-                    let assistantStatus = self.assistant
-                    if let clientStatus = clientStatuses.filter({ status in
-                        status.assistantId == assistantStatus.assistant.id
-                    }).first {
-                        if assistantStatus.clientStatus != clientStatus {
-                            self.assistant = AssistantStatus(
-                                id: assistantStatus.assistant.id,
-                                name: assistantStatus.assistant.name,
-                                assistant: assistantStatus.assistant,
-                                clientStatus: clientStatus
-                            )
-                        }
-                    }
-                }
-
-            }
-            .store(in: &cancellables)
     }
 
     var isInputEnabled: Bool {
@@ -196,7 +164,9 @@ class ChatViewModel: ObservableObject {
             isFromUser: true
         )
 
-        guard let runnerId = assistant.clientStatus?.runnerId else {
+        let clientStatus = webSocketManagerStore.getClientStatus(for: assistant.id)
+
+        guard let runnerId = clientStatus?.runnerId else {
             AppLog.log.error("Client status is nil")
             return
         }
@@ -206,7 +176,7 @@ class ChatViewModel: ObservableObject {
         )
     }
 
-    func updateAssistant(_ newAssistant: AssistantStatus) {
+    func updateAssistant(_ newAssistant: Assistant) {
         assistant = newAssistant
     }
 

@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 enum AppDestination: Hashable {
-    case chat(AssistantStatus)
+    case chat(Assistant)
 }
 
 struct AssistantsView: View {
@@ -20,7 +20,7 @@ struct AssistantsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            List(viewModel.sortedAssistants) { assistant in
+            List(viewModel.assistants) { assistant in
                 NavigationLink(
                     value: AppDestination.chat(assistant)
                 ) {
@@ -30,7 +30,7 @@ struct AssistantsView: View {
                     )
                 }
                 .contextMenu {
-                    if assistant.assistant.metadata?.isPrimary != true {
+                    if assistant.isPrimary {
                         AssistantContextMenu(
                             assistant: assistant,
                             viewModel: viewModel
@@ -38,7 +38,7 @@ struct AssistantsView: View {
                     }
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if assistant.assistant.metadata?.isPrimary != true {
+                    if assistant.isPrimary {
                         Button(role: .destructive) {
                             viewModel.assistantToDelete = assistant
                         } label: {
@@ -72,10 +72,10 @@ struct AssistantsView: View {
             #endif
             .navigationDestination(for: AppDestination.self) { destination in
                 switch destination {
-                case .chat(let assistantStatus):
+                case .chat(let assistant):
                     ChatView(
-                        assistant: assistantStatus,
-                        chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistantStatus),
+                        assistant: assistant,
+                        chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
                         assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(),
                         tag: "assistants"
                     )
@@ -91,7 +91,6 @@ struct AssistantsView: View {
             onDelete: { assistant in
                 Task {
                     await viewModel.deleteAssistant(assistant)
-                    viewModel.assistantToDelete = nil
                 }
             }
         )
@@ -115,8 +114,6 @@ struct AssistantsView: View {
                 if appStateViewModel.state.isAuthenticated {
                     await viewModel.fetchAssistants(tag: "onAppear")
                 }
-
-//                try await OpenAIClient.example()
             }
         }
     }

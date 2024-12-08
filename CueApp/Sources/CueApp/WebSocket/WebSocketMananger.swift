@@ -321,13 +321,13 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
                         let runnerId = dict["runner_id"]?.asString
                         let assistantId = dict["assistant_id"]?.asString
                         let clientStatus = ClientStatus(clientId: clientEventPayload.clientId, assistantId: assistantId, runnerId: runnerId, isOnline: true)
+                        debugPrint("Client status:", clientStatus)
                         if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientEventPayload.clientId }) {
                             clientStatuses[existingIndex] = clientStatus
                         } else {
                             clientStatuses.append(clientStatus)
                         }
                         self.onClientStatusUpdated?(clientStatus)
-                        debugPrint("Client status:", clientStatus)
                     }
                 } else if eventMessage.type == EventMessageType.clientDisconnect {
                     if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientEventPayload.clientId }) {
@@ -337,11 +337,10 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
                         debugPrint("Client status:", clientStatus)
                     } else {
                         let clientStatus = ClientStatus(clientId: clientEventPayload.clientId, assistantId: nil, runnerId: nil, isOnline: false)
-                        clientStatuses.append(clientStatus)
                         debugPrint("Client status:", clientStatus)
+                        clientStatuses.append(clientStatus)
                     }
                 }
-                debugPrint("clientStatuses:", clientStatuses)
             }
         case .assistant, .user:
             if case .message(let messagePayload) = eventMessage.payload {

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct Sidebar: View {
     @ObservedObject var assistantsViewModel: AssistantsViewModel
-    @Binding var selectedAssistant: AssistantStatus?
+    @Binding var selectedAssistant: Assistant?
     @State private var isShowingNewAssistantSheet = false
     @Environment(\.openWindow) private var openWindow
 
@@ -10,7 +10,7 @@ struct Sidebar: View {
         VStack {
             List(selection: $selectedAssistant) {
                 Section("Assistants") {
-                    ForEach(assistantsViewModel.sortedAssistants) { assistant in
+                    ForEach(assistantsViewModel.assistants) { assistant in
                         AssistantRow(
                             assistant: assistant,
                             viewModel: assistantsViewModel
@@ -32,10 +32,8 @@ struct Sidebar: View {
             #endif
             .accentColor(AppTheme.Colors.lightGray.opacity(0.5))
             .listStyle(.sidebar)
-            .onChange(of: selectedAssistant) { _, newValue in
-                if newValue == nil && !assistantsViewModel.sortedAssistants.isEmpty {
-                    selectedAssistant = assistantsViewModel.sortedAssistants[0]
-                }
+            .onChange(of: selectedAssistant) { _, _ in
+                self.onSelectedAssistantUpdate()
             }
 
             Spacer()
@@ -61,9 +59,13 @@ struct Sidebar: View {
             Task {
                 await assistantsViewModel.fetchAssistants(tag: "onAppear")
             }
-            if selectedAssistant == nil && !assistantsViewModel.sortedAssistants.isEmpty {
-                selectedAssistant = assistantsViewModel.sortedAssistants[0]
-            }
+            self.onSelectedAssistantUpdate()
+        }
+    }
+
+    private func onSelectedAssistantUpdate() {
+        if selectedAssistant == nil && !assistantsViewModel.assistants.isEmpty {
+            selectedAssistant = assistantsViewModel.assistants[0]
         }
     }
 

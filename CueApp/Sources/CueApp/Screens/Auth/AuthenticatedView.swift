@@ -33,9 +33,8 @@ private struct AuthenticatedContent: View {
                 AppTabView()
                     .environmentObject(viewModel)
                 #else
-                MainWindowView()
+                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                     .environmentObject(viewModel)
-                    .environmentObject(dependencies.viewModelFactory.makeAssistantsViewModel())
                 #endif
             } else {
                 LoginView()

@@ -4,11 +4,11 @@ import Combine
 @MainActor
 public class AssistantsViewModel: ObservableObject {
     @Published private(set) var assistants: [Assistant] = []
-    @Published private(set) var assistantStatuses: [AssistantStatus] = []
+    @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var error: Error?
-    @Published var primaryAssistant: AssistantStatus?
-    @Published var assistantToDelete: AssistantStatus?
+    @Published var primaryAssistant: Assistant?
+    @Published var assistantToDelete: Assistant?
 
     private let assistantService: AssistantService
     let webSocketManagerStore: WebSocketManagerStore
@@ -23,20 +23,8 @@ public class AssistantsViewModel: ObservableObject {
 
     func cleanup() {
         AppLog.log.debug("AssistantsViewModel cleanup primaryAssistant to nil")
-        self.assistantStatuses.removeAll()
+        self.assistants.removeAll()
         self.primaryAssistant = nil
-    }
-
-    var sortedAssistants: [AssistantStatus] {
-        self.assistantStatuses.sorted { first, second in
-            if first.assistant.metadata?.isPrimary == true {
-                return true
-            }
-            if second.assistant.metadata?.isPrimary == true {
-                return false
-            }
-            return first.isOnline && !second.isOnline
-        }
     }
 
     private func setupClientStatusSubscriptions() {
@@ -51,10 +39,22 @@ public class AssistantsViewModel: ObservableObject {
             .sink { [weak self] clientStatuses in
                 guard let self = self else { return }
                 Task {
-                    AppLog.log.debug("clientStatuses updated, updateAssistantStatuses")
-                    await self.updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
-                }
+                    AppLog.log.debug("clientStatuses updated, updating view model")
+                    // Update the internal dictionary of statuses
+                    let statusDict = [String: ClientStatus](
+                        uniqueKeysWithValues: clientStatuses.compactMap { status in
+                            guard let assistantId = status.assistantId else {
+                                return nil
+                            }
+                            return (assistantId, status)
+                        }
+                    )
+                    self.clientStatuses = statusDict
+                    await self.findUnmatchedAssistants()
 
+                    // Force a view update by reassigning assistants
+                    self.assistants = self.assistants
+                }
             }
             .store(in: &cancellables)
 
@@ -65,6 +65,7 @@ public class AssistantsViewModel: ObservableObject {
                 Task {
                     if !assistants.isEmpty {
                         AppLog.log.debug("assistantService.$assistants changes, assistants size: \(assistants.count)")
+                        print("inx assistants: \(assistants)")
                         await self.updateAssistants(with: assistants)
                     }
                 }
@@ -73,55 +74,39 @@ public class AssistantsViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func findUnmatchedClientStatuses(assistants: [Assistant], clientStatuses: [ClientStatus]) -> [ClientStatus] {
-        // Filter client statuses where there is no matching assistant
-        let unmatchedStatuses = clientStatuses.filter { clientStatus in
-            !assistants.contains { assistant in
-                assistant.id == clientStatus.assistantId
-            }
-        }
-        return unmatchedStatuses
-    }
+    private func findUnmatchedAssistants() async {
+        // Find missing assistants
+        let existingAssistantIds = Set(self.assistants.map { $0.id })
+        let statusAssistantIds = Set(self.clientStatuses.keys)
+        let missingAssistantIds = statusAssistantIds.subtracting(existingAssistantIds)
 
-    private func updateAssistantStatuses(assistants: [Assistant], clientStatuses: [ClientStatus]) async {
-        AppLog.log.debug("updateAssistantStatuses")
-        let unmatchedStatuses = findUnmatchedClientStatuses(assistants: assistants, clientStatuses: clientStatuses)
-        if !unmatchedStatuses.isEmpty {
-            AppLog.log.debug("Found \(unmatchedStatuses.count) client statuses without matching assistants:")
-            for status in unmatchedStatuses {
-                guard let assistantId = status.assistantId else {
-                    AppLog.log.warning("Assistant id is nil for client: \(status.clientId)")
-                    continue
-                }
-                AppLog.log.debug("Client Status ID: \(status.id), Assistant ID: \(String(describing: assistantId))")
+        if !missingAssistantIds.isEmpty {
+            AppLog.log.debug("Found \(missingAssistantIds.count) missing assistants, fetching...")
+
+            // Fetch each missing assistant
+            for assistantId in missingAssistantIds {
                 do {
-                    let assistant = try await assistantService.getAssistant(id: status.assistantId ?? "")
-                    AppLog.log.debug("Retrieved assistant: \(assistant.id)")
-
+                    _ = try await assistantService.getAssistant(id: assistantId)
                 } catch {
                     AppLog.log.error("Error fetching assistant \(assistantId): \(error.localizedDescription)")
                 }
             }
         }
-        let updatedStatuses = assistantService.assistants.map { assistant in
-            let clientStatus = clientStatuses.first { $0.assistantId == assistant.id }
-            return AssistantStatus(
-                id: assistant.id,
-                name: assistant.name,
-                assistant: assistant,
-                clientStatus: clientStatus
-            )
-        }
-        let sortedStatuses = updatedStatuses.sorted { $0.isOnline && !$1.isOnline }
-        assistantStatuses = sortedStatuses
-        updatePrimaryAssistant()
     }
 
     private func updateAssistants(with assistants: [Assistant]) async {
         AppLog.log.debug("updateAssistants")
         self.assistants = assistants
-        let clientStatuses = webSocketManagerStore.manager?.clientStatuses ?? []
-        await updateAssistantStatuses(assistants: self.assistants, clientStatuses: clientStatuses)
+        updatePrimaryAssistant()
+    }
+
+    private func getAssistant(id: String) async {
+        do {
+            _ = try await assistantService.getAssistant(id: id)
+        } catch {
+            self.error = error
+            AppLog.log.error("Error fetching assistants: \(error.localizedDescription)")
+        }
     }
 
     func fetchAssistants(tag: String? = nil) async {
@@ -146,16 +131,16 @@ public class AssistantsViewModel: ObservableObject {
         }
     }
 
-    func getClientStatus(for assistant: AssistantStatus) -> ClientStatus? {
-        webSocketManagerStore.manager?.clientStatuses.first { $0.clientId == assistant.clientStatus?.clientId }
+    func getClientStatus(for assistant: Assistant) -> ClientStatus? {
+        return webSocketManagerStore.getClientStatus(for: assistant.id)
     }
 
     // MARK: - Assistant Management
 
-    func deleteAssistant(_ assistant: AssistantStatus) async {
+    func deleteAssistant(_ assistant: Assistant) async {
         do {
             try await assistantService.deleteAssistant(id: assistant.id)
-            await fetchAssistants(tag: "deleteAssistant")
+            self.assistants = self.assistants.filter {$0.id != assistant.id}
         } catch {
             self.error = error
             AppLog.log.error("Error deleting assistant: \(error.localizedDescription)")
@@ -171,12 +156,13 @@ public class AssistantsViewModel: ObservableObject {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
         }
+        self.assistantToDelete = nil
     }
 
-    func createAssistant(name: String) async -> AssistantStatus? {
+    func createAssistant(name: String) async -> Assistant? {
         do {
             let assistant = try await assistantService.createAssistant(name: name, isPrimary: false)
-            return updateAssistantStatus(updatedAssistant: assistant)
+            return assistant
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
@@ -184,14 +170,10 @@ public class AssistantsViewModel: ObservableObject {
         return nil
     }
 
-    func getAssistantStatus(id: String) -> AssistantStatus? {
-        return assistantStatuses.first { $0.id == id }
-    }
-
-    func updateAssistant(id: String, name: String) async -> AssistantStatus? {
+    func updateAssistantName(id: String, name: String) async -> Assistant? {
         do {
-            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
-            return updateAssistantStatus(updatedAssistant: updatedAssistant)
+            let assistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
+            return assistant
         } catch {
             self.error = error
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
@@ -199,38 +181,39 @@ public class AssistantsViewModel: ObservableObject {
         return nil
     }
 
-    func updateModel(id: String, model: String) async -> AssistantStatus? {
+    func updateMetadata(
+        id: String,
+        isPrimary: Bool? = nil,
+        model: String? = nil,
+        instruction: String? = nil,
+        description: String? = nil,
+        maxTurns: Int? = nil,
+        context: JSONValue? = nil,
+        tools: [String]? = nil
+    ) async -> Assistant? {
         do {
-            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: nil, model: model))
+            let metadata = AssistantMetadataUpdate(
+                isPrimary: isPrimary,
+                model: model,
+                instruction: instruction,
+                description: description,
+                maxTurns: maxTurns,
+                context: context,
+                tools: tools
+            )
 
-            return updateAssistantStatus(updatedAssistant: updatedAssistant)
+            let updatedAssistant = try await assistantService.updateAssistant(
+                id: id,
+                name: nil,
+                metadata: metadata
+            )
+
+            return updatedAssistant
         } catch {
             self.error = error
-            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+            AppLog.log.error("Error updating assistant metadata: \(error.localizedDescription)")
         }
         return nil
-    }
-
-    func updateAssistantStatus(updatedAssistant: Assistant?) -> AssistantStatus? {
-        guard let assistant = updatedAssistant else {
-            return nil
-        }
-
-        let exist = assistantStatuses.filter { $0.id == updatedAssistant?.id }.first
-        let newStatus = AssistantStatus(
-            id: assistant.id,
-            name: assistant.name,
-            assistant: assistant,
-            clientStatus: exist?.clientStatus
-        )
-
-        if let index = assistantStatuses.firstIndex(where: { $0.id == assistant.id }) {
-            assistantStatuses[index] = newStatus
-        } else {
-            assistantStatuses.insert(newStatus, at: 0)
-        }
-
-        return newStatus
     }
 
     func setPrimaryAssistant(id: String) async {
@@ -245,10 +228,10 @@ public class AssistantsViewModel: ObservableObject {
 
     private func updatePrimaryAssistant() {
         if let currentPrimaryId = primaryAssistant?.id,
-           let updatedPrimary = assistantStatuses.first(where: { $0.id == currentPrimaryId && $0.assistant.metadata?.isPrimary == true }) {
+           let updatedPrimary = self.assistants.first(where: { $0.id == currentPrimaryId && $0.metadata?.isPrimary == true }) {
             primaryAssistant = updatedPrimary
         } else {
-            primaryAssistant = assistantStatuses.first(where: { $0.assistant.metadata?.isPrimary == true })
+            primaryAssistant = self.assistants.first(where: { $0.metadata?.isPrimary == true })
         }
     }
 }

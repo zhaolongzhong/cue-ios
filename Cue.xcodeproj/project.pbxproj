@@ -107,6 +107,7 @@
 				3A2098632CB7392900FEB48E /* Cue */,
 				3A2098752CB7392A00FEB48E /* CueTests */,
 				3A20987F2CB7392A00FEB48E /* CueUITests */,
+				3A8CFFDA2D067D0200C44D4A /* Frameworks */,
 				3A2098622CB7392900FEB48E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -119,6 +120,13 @@
 				3A20987C2CB7392A00FEB48E /* CueUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		3A8CFFDA2D067D0200C44D4A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

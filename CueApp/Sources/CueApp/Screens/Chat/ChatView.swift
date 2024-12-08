@@ -8,7 +8,7 @@ struct ChatView: View {
     @FocusState private var isFocused: Bool
     @State private var scrollProxy: ScrollViewProxy?
 
-    init(assistant: AssistantStatus,
+    init(assistant: Assistant,
          chatViewModel: ChatViewModel,
          assistantsViewModel: AssistantsViewModel,
          tag: String? = nil) {
@@ -65,8 +65,8 @@ struct ChatView: View {
             #if os(iOS)
             ToolbarItem(placement: .automatic) {
                 NavigationLink(destination: AssistantDetailView(
-                    assistantsViewModel: self.assistantsViewModel,
                     assistant: viewModel.assistant,
+                    assistantsViewModel: self.assistantsViewModel,
                     onUpdate: handleAssistantUpdate)) {
                     Image(systemName: "ellipsis")
                 }
@@ -84,8 +84,8 @@ struct ChatView: View {
         #if !os(iOS)
         .sheet(isPresented: $viewModel.showAssistantDetails) {
             AssistantDetailView(
-                assistantsViewModel: self.assistantsViewModel,
                 assistant: viewModel.assistant,
+                assistantsViewModel: self.assistantsViewModel,
                 onUpdate: handleAssistantUpdate
             )
             .frame(minWidth: 400, minHeight: 300)
@@ -114,7 +114,7 @@ struct ChatView: View {
         }
     }
 
-    private func handleAssistantUpdate(updatedAssistant: AssistantStatus) {
+    private func handleAssistantUpdate(updatedAssistant: Assistant) {
         viewModel.updateAssistant(updatedAssistant)
     }
 }

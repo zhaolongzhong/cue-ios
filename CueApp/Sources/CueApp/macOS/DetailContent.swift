@@ -3,7 +3,7 @@ import SwiftUI
 struct DetailContent: View {
     @EnvironmentObject private var dependencies: AppDependencies
     let assistantsViewModel: AssistantsViewModel
-    let selectedAssistant: AssistantStatus?
+    let selectedAssistant: Assistant?
 
     var body: some View {
         ZStack {

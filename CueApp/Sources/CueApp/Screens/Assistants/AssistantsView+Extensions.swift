@@ -33,7 +33,7 @@ public struct NewAssistantSheet: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Create") {
                     Task {
-                        await viewModel.createAssistant(name: name)
+                        _ = await viewModel.createAssistant(name: name)
                         isPresented = false
                     }
                 }
@@ -44,7 +44,7 @@ public struct NewAssistantSheet: View {
 }
 
 public struct AssistantContextMenu: View {
-    let assistant: AssistantStatus
+    let assistant: Assistant
     @ObservedObject var viewModel: AssistantsViewModel
 
     public var body: some View {
@@ -70,8 +70,8 @@ public struct AssistantContextMenu: View {
 extension View {
     func deleteConfirmation(
         isPresented: Binding<Bool>,
-        assistant: AssistantStatus?,
-        onDelete: @escaping (AssistantStatus) -> Void
+        assistant: Assistant?,
+        onDelete: @escaping (Assistant) -> Void
     ) -> some View {
         confirmationDialog(
             "Delete Assistant",

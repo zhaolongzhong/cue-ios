@@ -2,48 +2,73 @@ import SwiftUI
 
 struct AssistantDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    let assistantsViewModel: AssistantsViewModel
-    @State var assistant: AssistantStatus
-    @State private var showingNameEdit = false
-    @State private var newName = ""
-    @State private var selectedModel = ""
-    @State private var showCopiedAlert = false
-    let onUpdate: (AssistantStatus) -> Void
+    @StateObject private var viewModel: AssistantDetailViewModel
 
-    let availableModels = [
-        "claude-3-5-sonnet-20241022",
-        "gpt-4o-mini",
-        "gpt-4o",
-        "o1-mini"
-    ]
+    init(
+        assistant: Assistant,
+        assistantsViewModel: AssistantsViewModel,
+        onUpdate: @escaping (Assistant) -> Void
+    ) {
+        _viewModel = StateObject(
+            wrappedValue: AssistantDetailViewModel(
+                assistant: assistant,
+                assistantsViewModel: assistantsViewModel,
+                onUpdate: onUpdate
+            )
+        )
+    }
 
     var body: some View {
         List {
             Section("Details") {
                 Button {
-                    newName = assistant.name
-                    showingNameEdit = true
+                    viewModel.prepareNameEdit()
                 } label: {
-                    LabeledContent("Name", value: assistant.name)
+                    LabeledContent("Name", value: viewModel.assistant.name)
                 }
 
-                AssistantIDView(id: assistant.id)
+                AssistantIDView(id: viewModel.assistant.id)
 
-                Picker("Model", selection: $selectedModel) {
-                    ForEach(availableModels, id: \.self) { model in
+                Picker("Model", selection: $viewModel.selectedModel) {
+                    ForEach(viewModel.availableModels, id: \.self) { model in
                         Text(model)
                             .tag(model)
                     }
                 }
-                .onChange(of: selectedModel) { _, newValue in
+                .onChange(of: viewModel.selectedModel) { _, newValue in
                     Task {
-                        guard let updatedAssistant = await assistantsViewModel.updateModel(id: assistant.id, model: newValue) else {
-                            AppLog.log.error("Error when updating assistant model.")
-                            return
-                        }
-                        self.assistant = updatedAssistant
-                        onUpdate(updatedAssistant)
+                        await viewModel.updateMetadata(model: newValue)
                     }
+                }
+
+                Button {
+                    viewModel.showingInstructionEdit = true
+                } label: {
+                    SettingsRow(
+                        systemName: "text.bubble",
+                        title: "Instruction",
+                        value: viewModel.instruction.isEmpty ? "Not set" : viewModel.instruction
+                    )
+                }
+
+                Button {
+                    viewModel.showingDescriptionEdit = true
+                } label: {
+                    SettingsRow(
+                        systemName: "doc.text",
+                        title: "Description",
+                        value: viewModel.description.isEmpty ? "Not set" : viewModel.description
+                    )
+                }
+
+                Button {
+                    viewModel.prepareMaxTurnsEdit()
+                } label: {
+                    SettingsRow(
+                        systemName: "number",
+                        title: "Max Turns",
+                        value: viewModel.maxTurns.isEmpty ? "Not set" : viewModel.maxTurns
+                    )
                 }
             }
         }
@@ -60,81 +85,44 @@ struct AssistantDetailView: View {
             }
         }
         #endif
-        .alert("Update Name", isPresented: $showingNameEdit) {
-            TextField("Name", text: $newName)
-            Button("Cancel", role: .cancel) { }
-            Button("Update") {
+        .inputAlert(
+            title: "Update Name",
+            message: "Enter a new name for this assistant",
+            text: $viewModel.newName,
+            isPresented: $viewModel.showingNameEdit,
+            onSave: { _ in
                 Task {
-                    guard let updatedAssistant = await assistantsViewModel.updateAssistant(id: assistant.id, name: newName) else {
-                        AppLog.log.error("Error when update assistant.")
-                        return
-                    }
-                    self.assistant = updatedAssistant
-                    onUpdate(updatedAssistant)
+                    await viewModel.updateName()
                 }
             }
-        } message: {
-            Text("Enter a new name for this assistant")
-        }
-        .onAppear {
-            selectedModel = assistant.assistant.metadata?.model ?? availableModels[0]
-        }
-    }
-}
-
-struct AssistantIDView: View {
-    let id: String
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var showCopiedAlert = false
-
-    private var shortId: String {
-        let lastSix = String(id.suffix(6))
-        return "asst_\(lastSix)"
-    }
-
-    var body: some View {
-        LabeledContent {
-            HStack(spacing: 8) {
-                Text(id)
-                    .textSelection(.enabled)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                ZStack(alignment: .trailing) {
-                    Button {
-                        #if os(iOS)
-                        UIPasteboard.general.string = id
-                        #else
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(id, forType: .string)
-                        #endif
-                        showCopiedAlert = true
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            showCopiedAlert = false
-                        }
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                    }
-                    .buttonStyle(.plain)
-
-                    if showCopiedAlert {
-                        Text("Copied!")
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(8)
-                            .offset(x: -4)  // Adjusted to keep alert inside bounds
-                            .transition(.opacity)
-                            .animation(.easeInOut, value: showCopiedAlert)
-                    }
-                }
+        )
+        .inputAlert(
+            title: "Set Max Turns",
+            message: "Enter the maximum number of conversation turns",
+            text: $viewModel.tempMaxTurns,
+            isPresented: $viewModel.showingMaxTurnsEdit,
+            placeholder: "Enter number",
+            isNumeric: true,
+            validator: viewModel.validateMaxTurns,
+            onSave: viewModel.handleMaxTurnsUpdate
+        )
+        .textFieldEditor(
+            title: "Edit Instruction",
+            text: $viewModel.instruction,
+            isPresented: $viewModel.showingInstructionEdit
+        ) { newValue in
+            Task {
+                await viewModel.updateMetadata(instruction: newValue)
             }
-        } label: {
-            Text("ID")
+        }
+        .textFieldEditor(
+            title: "Edit Description",
+            text: $viewModel.description,
+            isPresented: $viewModel.showingDescriptionEdit
+        ) { newValue in
+            Task {
+                await viewModel.updateMetadata(description: newValue)
+            }
         }
     }
 }

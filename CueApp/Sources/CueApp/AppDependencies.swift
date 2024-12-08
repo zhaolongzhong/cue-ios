@@ -58,7 +58,7 @@ public class ViewModelFactory {
         return self.assistantsViewModel!
     }
 
-    func makeChatViewViewModel(assistant: AssistantStatus) -> ChatViewModel {
+    func makeChatViewViewModel(assistant: Assistant) -> ChatViewModel {
         if let existing = chatViewModels[assistant.id] {
             return existing
         } else {

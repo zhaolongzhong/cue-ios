@@ -55,6 +55,13 @@ public class WebSocketManagerStore: ObservableObject {
         }
     }
 
+    func getClientStatus(for assistantId: String?) -> ClientStatus? {
+        guard let assistantId = assistantId else {
+            return nil
+        }
+        return self.manager?.clientStatuses.first { $0.assistantId == assistantId }
+    }
+
     func disconnect() {
         AppLog.log.debug("WebSocketManagerStore disconnect")
         cancellables.removeAll()

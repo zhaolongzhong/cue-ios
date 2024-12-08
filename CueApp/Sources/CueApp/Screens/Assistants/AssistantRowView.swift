@@ -1,14 +1,18 @@
 import SwiftUI
 
 struct AssistantRowView: View {
-    let assistant: AssistantStatus
+    let assistant: Assistant
     let status: ClientStatus?
     @Environment(\.colorScheme) var colorScheme
+
+    var isOnline: Bool {
+        return status?.isOnline == true
+    }
 
     var body: some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(assistant.isOnline ? Color.green : Color.gray.opacity(0.5))
+                .fill(self.isOnline ? Color.green : Color.gray.opacity(0.5))
                 .frame(width: 32, height: 32)
                 .overlay(
                     Text(assistant.name.prefix(2).uppercased())
@@ -28,13 +32,13 @@ struct AssistantRowView: View {
 
             Spacer()
 
-            if assistant.assistant.metadata?.isPrimary == true {
+            if assistant.metadata?.isPrimary == true {
                 Image(systemName: "star.fill")
                     .foregroundColor(.yellow)
                     .font(.system(size: 14))
             }
 
-            if assistant.isOnline {
+            if self.isOnline {
                 Circle()
                     .fill(Color.green)
                     .frame(width: 8, height: 8)
@@ -45,7 +49,7 @@ struct AssistantRowView: View {
 }
 
 public struct AssistantRow: View {
-    let assistant: AssistantStatus
+    let assistant: Assistant
     let viewModel: AssistantsViewModel
 
     public var body: some View {
@@ -55,7 +59,7 @@ public struct AssistantRow: View {
         )
         .tag(assistant.id)
         .contextMenu {
-            if assistant.assistant.metadata?.isPrimary != true {
+            if assistant.metadata?.isPrimary != true {
                 AssistantContextMenu(
                     assistant: assistant,
                     viewModel: viewModel
