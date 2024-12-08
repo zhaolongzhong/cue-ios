@@ -57,6 +57,9 @@ struct MessagesList: View {
                 }
                 .padding(.vertical, 8)
             }
+            .simultaneousGesture(DragGesture().onChanged { _ in
+                hideKeyboard()
+            })
             .onPreferenceChange(ViewVisibilityKey.self) { visibility in
                 if let lastVisibleIndex = visibility.last?.index {
                     showScrollButton = lastVisibleIndex < Double(messages.count - 3)
@@ -71,9 +74,7 @@ struct MessagesList: View {
                 previousMessageCount = messages.count
             }
             .onChange(of: messages) { _, newMessages in
-                // Only auto-scroll if new messages were added (not removed or replaced)
                 if shouldAutoScroll && newMessages.count > previousMessageCount {
-                    // Check if we're already near the bottom before auto-scrolling
                     if !showScrollButton {
                         scrollToLastMessage(proxy)
                     }
@@ -90,6 +91,15 @@ struct MessagesList: View {
             proxy.scrollTo(lastMessage.id, anchor: .bottom)
         }
         hasInitialized = true
+    }
+}
+
+extension View {
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                      to: nil,
+                                      from: nil,
+                                      for: nil)
     }
 }
 
