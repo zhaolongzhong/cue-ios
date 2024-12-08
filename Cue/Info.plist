@@ -4,8 +4,12 @@
 <dict>
 	<key>CFBundleIdentifier</key>
 	<string>${PRODUCT_BUNDLE_IDENTIFIER}</string>
-    <key>CFBundleDisplayName</key>
-    <string>${DISPLAY_NAME}</string>
+	<key>CFBundleDisplayName</key>
+	<string>${DISPLAY_NAME}</string>
+	<key>CFBundleShortVersionString</key>
+    <string>${MARKETING_VERSION}</string>
+	<key>BUILD_VERSION</key>
+	<string>${BUILD_VERSION}</string>
 	<key>BASE_URL</key>
 	<string>${BASE_URL}</string>
 	<key>NSAppTransportSecurity</key>

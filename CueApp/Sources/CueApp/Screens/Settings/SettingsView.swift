@@ -54,6 +54,33 @@ private struct LogoutSection: View {
     }
 }
 
+private struct VersionSection: View {
+    private var marketingVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+
+    private var buildVersion: String {
+        Bundle.main.infoDictionary?["BUILD_VERSION"] as? String ?? "1"
+    }
+
+    var body: some View {
+        Section {
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(marketingVersion)
+                    .foregroundColor(.secondary)
+            }
+            HStack {
+                Text("Build")
+                Spacer()
+                Text(buildVersion)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
 // MARK: - iOS Implementation
 #if os(iOS)
 struct SettingsView_iOS: View {
@@ -89,6 +116,8 @@ struct SettingsView_iOS: View {
                         dismiss()
                     }
                 }
+
+                VersionSection()
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -128,6 +157,8 @@ struct SettingsView_macOS: View {
                         dismiss()
                     }
                 }
+
+                VersionSection()
             }
             .listStyle(.inset)
             .background(Color.clear)
