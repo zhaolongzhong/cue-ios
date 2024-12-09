@@ -16,7 +16,6 @@ public struct OpenAIChatView: View {
             inputField
         }
         .onAppear {
-            isInputFocused = true
         }
         .onChange(of: viewModel.messages.count) { _, _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -39,6 +38,12 @@ public struct OpenAIChatView: View {
                 }
                 .padding()
             }
+            #if os(iOS)
+           .simultaneousGesture(DragGesture().onChanged { _ in
+               UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                            to: nil, from: nil, for: nil)
+           })
+           #endif
             .onChange(of: viewModel.messages.count) { _, _ in
                 withAnimation {
                     proxy.scrollTo(bottomID, anchor: .bottom)

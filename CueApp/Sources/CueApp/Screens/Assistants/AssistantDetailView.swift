@@ -46,8 +46,7 @@ struct AssistantDetailView: View {
                 } label: {
                     SettingsRow(
                         systemName: "text.bubble",
-                        title: "Instruction",
-                        value: viewModel.instruction.isEmpty ? "Not set" : viewModel.instruction
+                        title: "Instruction"
                     )
                 }
 
@@ -56,8 +55,7 @@ struct AssistantDetailView: View {
                 } label: {
                     SettingsRow(
                         systemName: "doc.text",
-                        title: "Description",
-                        value: viewModel.description.isEmpty ? "Not set" : viewModel.description
+                        title: "Description"
                     )
                 }
 

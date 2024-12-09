@@ -65,7 +65,6 @@ public class AssistantsViewModel: ObservableObject {
                 Task {
                     if !assistants.isEmpty {
                         AppLog.log.debug("assistantService.$assistants changes, assistants size: \(assistants.count)")
-                        print("inx assistants: \(assistants)")
                         await self.updateAssistants(with: assistants)
                     }
                 }

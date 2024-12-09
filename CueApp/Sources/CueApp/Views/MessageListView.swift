@@ -52,7 +52,9 @@ struct MessagesList: View {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                        MessageRow(message: message, index: index)
+                        MessageBubble(message: message)
+                            .id(message.id)
+                            .background(MessageVisibilityTracker(index: index))
                     }
                 }
                 .padding(.vertical, 8)
@@ -101,19 +103,43 @@ struct ScrollButton: View {
         if isVisible {
             Button(action: action) {
                 Circle()
-                    .fill(AppTheme.Colors.background)
-                    .frame(width: 32, height: 32)
+                    .fill(AppTheme.Colors.tertiaryBackground)
+                    .frame(width: buttonSize, height: buttonSize)
                     .overlay(
                         Image(systemName: "arrow.down")
-                            .font(.system(size: 12, weight: .regular))
+                            .font(.system(size: iconSize, weight: .regular))
                             .foregroundColor(AppTheme.Colors.primaryText)
                     )
                     .shadow(radius: 2)
             }
             .buttonStyle(.plain)
-            .padding()
+            .padding(buttonPadding)
             .transition(.opacity)
         }
+    }
+
+    private var buttonSize: CGFloat {
+        #if os(iOS)
+        44
+        #else
+        32
+        #endif
+    }
+
+    private var iconSize: CGFloat {
+        #if os(iOS)
+        16
+        #else
+        12
+        #endif
+    }
+
+    private var buttonPadding: CGFloat {
+        #if os(iOS)
+        16
+        #else
+        8
+        #endif
     }
 }
 
@@ -140,16 +166,5 @@ struct MessageVisibilityTracker: View {
                 value: [ViewVisibility(index: Double(index), rect: geo.frame(in: .global))]
             )
         }
-    }
-}
-
-struct MessageRow: View {
-    let message: MessageModel
-    let index: Int
-
-    var body: some View {
-        MessageBubble(message: message)
-            .id(message.id)
-            .background(MessageVisibilityTracker(index: index))
     }
 }

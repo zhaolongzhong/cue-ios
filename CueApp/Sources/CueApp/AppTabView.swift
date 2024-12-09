@@ -9,11 +9,22 @@ public struct AppTabView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @State private var selectedTab: TabSelection = .assistants
+    private let apiKeyModel: APIKeysViewModel
 
-    public init() { }
+    public init() {
+        apiKeyModel = APIKeysViewModel()
+    }
 
     public var body: some View {
         TabView(selection: $selectedTab) {
+            let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.openai)
+            if !apiKey.isEmpty {
+                OpenAIChatView(apiKey: apiKey)
+                    .tabItem {
+                        Label("Chat", systemImage: "wand.and.stars")
+                    }
+                    .tag(TabSelection.assistants)
+            }
             AssistantsView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                 .tabItem {
                     Label("Assistants", systemImage: "bubble.left.and.bubble.right")

@@ -97,9 +97,6 @@ struct ChatView: View {
                 AppLog.log.debug("Chatview onAppear setupChat assistant.id:\(viewModel.assistant.id)")
                 await viewModel.setupChat()
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isFocused = true
-            }
         }
         .onDisappear {
             viewModel.cleanup()

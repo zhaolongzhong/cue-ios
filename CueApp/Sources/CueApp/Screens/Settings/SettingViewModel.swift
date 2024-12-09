@@ -13,10 +13,13 @@ public class SettingsViewModel: ObservableObject {
 
     init(authService: AuthService) {
         self.authService = authService
-        self.currentUser = authService.currentUser
-        authService.$currentUser
+        self.authService.$currentUser
             .assign(to: \.currentUser, on: self)
             .store(in: &cancellables)
+
+        Task {
+            await authService.fetchUserProfile()
+        }
     }
 
     func logout() async {

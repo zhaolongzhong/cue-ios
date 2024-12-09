@@ -1,18 +1,18 @@
 import SwiftUI
 
-struct SettingsRow<LeadingContent: View>: View {
-    let icon: LeadingContent
+struct SettingsRow: View {
+    let icon: Image?
     let title: String
     let value: String?
     let showChevron: Bool
 
     init(
-        @ViewBuilder icon: () -> LeadingContent,
+        systemName: String? = nil,
         title: String,
         value: String? = nil,
         showChevron: Bool = true
     ) {
-        self.icon = icon()
+        self.icon = systemName.map { Image(systemName: $0) }
         self.title = title
         self.value = value
         self.showChevron = showChevron
@@ -20,9 +20,11 @@ struct SettingsRow<LeadingContent: View>: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            icon
-                .frame(width: 24, height: 24)
-                .foregroundColor(.accentColor)
+            if let icon = icon {
+                icon
+                    .frame(width: 24, height: 24)
+                    .foregroundColor(.primary)
+            }
 
             Text(title)
                 .foregroundColor(.primary)
@@ -40,22 +42,14 @@ struct SettingsRow<LeadingContent: View>: View {
                     .foregroundColor(.secondary)
             }
         }
+        #if os(iOS)
+        .padding(.horizontal, 0)
+        #else
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        #endif
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-    }
-}
-
-extension SettingsRow where LeadingContent == Image {
-    init(
-        systemName: String,
-        title: String,
-        value: String? = nil,
-        showChevron: Bool = true
-    ) {
-        self.init(
-            icon: { Image(systemName: systemName) },
-            title: title,
-            value: value,
-            showChevron: showChevron
-        )
+        .listRowInsets(EdgeInsets())
     }
 }
