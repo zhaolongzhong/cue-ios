@@ -8,6 +8,9 @@ public struct MainWindowView: View {
     @State private var selectedAssistant: Assistant?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var lastStatusUpdate: Date = Date()
+    #if os(macOS)
+    let mcpManager = MCPServerManager()
+    #endif
 
     #if os(macOS)
     @State private var windowDelegate: WindowDelegate?
@@ -34,7 +37,7 @@ public struct MainWindowView: View {
         }
         .onChange(of: appStateViewModel.state.currentUser) { _, newUser in
             if let userId = newUser?.id {
-                assistantsViewModel.webSocketManagerStore.initialize(for: userId)
+//                assistantsViewModel.webSocketManagerStore.initialize(for: userId)
             }
         }
         .onChange(of: assistantsViewModel.assistants) { _, newValue in
@@ -50,6 +53,19 @@ public struct MainWindowView: View {
             if selectedAssistant == nil && !assistantsViewModel.assistants.isEmpty {
                 selectedAssistant = assistantsViewModel.assistants.first
             }
+
+            #if os(macOS)
+            Task {
+                do {
+                    print("📱 Starting MCP servers...")
+                    try await mcpManager.startAll()
+
+                    await mcpManager.testServers()
+                } catch {
+                    print("❌ Failed to start MCP servers: \(error)")
+                }
+            }
+            #endif
         }
         #if os(macOS)
         .overlay(
@@ -69,52 +85,3 @@ public struct MainWindowView: View {
         #endif
     }
 }
-
-#if os(macOS)
-extension MainWindowView {
-    // MARK: - Window State Persistence
-
-    private func saveWindowState(for window: NSWindow) {
-
-        let frame = window.frame
-        UserDefaults.standard.set(frame.origin.x, forKey: "windowOriginX")
-        UserDefaults.standard.set(frame.origin.y, forKey: "windowOriginY")
-        UserDefaults.standard.set(frame.size.width, forKey: "windowWidth")
-        UserDefaults.standard.set(frame.size.height, forKey: "windowHeight")
-    }
-
-    private func loadWindowState(for window: NSWindow) {
-        let originX = UserDefaults.standard.double(forKey: "windowOriginX")
-        let originY = UserDefaults.standard.double(forKey: "windowOriginY")
-        let width = UserDefaults.standard.double(forKey: "windowWidth")
-        let height = UserDefaults.standard.double(forKey: "windowHeight")
-
-        if width > 0 && height > 0 && width > height {
-            let newFrame = NSRect(x: originX, y: originY, width: width, height: height)
-            window.setFrame(newFrame, display: true)
-        } else {
-            // Set default size if no saved state
-            window.setContentSize(NSSize(width: 800, height: 600))
-            window.center()
-        }
-    }
-
-    // MARK: - Window Delegate
-
-    private class WindowDelegate: NSObject, NSWindowDelegate {
-        var saveState: () -> Void
-
-        init(saveState: @escaping () -> Void) {
-            self.saveState = saveState
-        }
-
-        func windowDidMove(_ notification: Notification) {
-            saveState()
-        }
-
-        func windowDidResize(_ notification: Notification) {
-            saveState()
-        }
-    }
-}
-#endif
