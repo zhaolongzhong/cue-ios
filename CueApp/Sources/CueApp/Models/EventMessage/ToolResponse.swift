@@ -140,7 +140,7 @@ extension JSONValue {
                 isError: isError,
                 toolUseId: toolUseId,
                 type: type,
-                content: ResultContentBlock(content: content)
+                content: [ContentBlock(content: content)]
             )
         }
 

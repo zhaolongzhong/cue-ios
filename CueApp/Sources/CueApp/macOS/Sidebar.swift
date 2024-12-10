@@ -37,6 +37,7 @@ struct Sidebar: View {
             Spacer()
             SettingsMenu(
                 onOpenAIChat: handleOpenAIChat,
+                onAnthropicChat: handleAnthropicChat,
                 onOpenSettings: handleOpenSettings
             )
         }
@@ -70,6 +71,12 @@ struct Sidebar: View {
     private func handleOpenAIChat() {
         #if os(macOS)
         openWindow(id: "openai-chat-window")
+        #endif
+    }
+
+    private func handleAnthropicChat() {
+        #if os(macOS)
+        openWindow(id: "anthropic-chat-window")
         #endif
     }
 
