@@ -16,6 +16,9 @@ public struct OpenAIChatView: View {
             inputField
         }
         .onAppear {
+            Task {
+                await viewModel.startServer()
+            }
         }
         .onChange(of: viewModel.messages.count) { _, _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

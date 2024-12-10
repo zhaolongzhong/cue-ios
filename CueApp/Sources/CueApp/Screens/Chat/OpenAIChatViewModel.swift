@@ -15,6 +15,10 @@ class OpenAIChatViewModel: ObservableObject {
         self.toolManager = ToolManager()
     }
 
+    func startServer() async {
+        await self.toolManager.startMcpServer()
+    }
+
     func sendMessage() async {
         let userMessage = OpenAI.ChatMessage.userMessage(
             OpenAI.MessageParam(role: "user", content: newMessage)
@@ -23,7 +27,6 @@ class OpenAIChatViewModel: ObservableObject {
 
         isLoading = true
         newMessage = ""
-
         do {
             let tools = toolManager.getTools()
 
