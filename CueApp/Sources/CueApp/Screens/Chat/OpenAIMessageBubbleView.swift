@@ -1,7 +1,8 @@
 import SwiftUI
+import CueOpenAI
 
 struct OpenAIMessageBubble: View {
-    let message: ChatMessage
+    let message: OpenAI.ChatMessage
 
     var body: some View {
         HStack {

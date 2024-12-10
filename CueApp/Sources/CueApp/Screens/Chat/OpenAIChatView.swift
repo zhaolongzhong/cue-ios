@@ -28,7 +28,7 @@ public struct OpenAIChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(viewModel.messages) { message in
+                    ForEach(viewModel.messages, id: \.id) { message in
                         OpenAIMessageBubble(message: message)
                     }
                     // Invisible marker view at bottom

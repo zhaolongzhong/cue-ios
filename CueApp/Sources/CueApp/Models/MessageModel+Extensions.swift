@@ -1,4 +1,5 @@
 import Foundation
+import CueOpenAI
 
 extension MessageModel {
     init(

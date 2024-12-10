@@ -83,24 +83,12 @@ struct CacheControl: Codable {
 
 // MARK: - Common Models
 struct PromptCachingBetaUsage: Codable {
-    let totalTokens: Int?
-    let completionTokens: Int?
-    let completionTokensDetails: TokenDetails?
-    let promptTokensDetails: PromptTokenDetails?
-    let promptTokens: Int?
-
-    // Anthropic specific fields
     let cacheCreationInputTokens: Int?
     let cacheReadInputTokens: Int?
     let inputTokens: Int?
     let outputTokens: Int?
 
     enum CodingKeys: String, CodingKey {
-        case totalTokens = "total_tokens"
-        case completionTokens = "completion_tokens"
-        case completionTokensDetails = "completion_tokens_details"
-        case promptTokensDetails = "prompt_tokens_details"
-        case promptTokens = "prompt_tokens"
         case cacheCreationInputTokens = "cache_creation_input_tokens"
         case cacheReadInputTokens = "cache_read_input_tokens"
         case inputTokens = "input_tokens"
@@ -270,33 +258,10 @@ extension JSONValue {
 
     private func parseAnthropicUsage(from dict: [String: JSONValue]) -> PromptCachingBetaUsage? {
         return PromptCachingBetaUsage(
-            totalTokens: dict["total_tokens"]?.asInt,
-            completionTokens: dict["completion_tokens"]?.asInt,
-            completionTokensDetails: parseTokenDetails(from: dict["completion_tokens_details"]),
-            promptTokensDetails: parsePromptTokenDetails(from: dict["prompt_tokens_details"]),
-            promptTokens: dict["prompt_tokens"]?.asInt,
             cacheCreationInputTokens: dict["cache_creation_input_tokens"]?.asInt,
             cacheReadInputTokens: dict["cache_read_input_tokens"]?.asInt,
             inputTokens: dict["input_tokens"]?.asInt,
             outputTokens: dict["output_tokens"]?.asInt
-        )
-    }
-
-    private func parseTokenDetails(from value: JSONValue?) -> TokenDetails? {
-        guard case .dictionary(let dict)? = value else { return nil }
-        return TokenDetails(
-            rejectedPredictionTokens: dict["rejected_prediction_tokens"]?.asInt ?? 0,
-            audioTokens: dict["audio_tokens"]?.asInt ?? 0,
-            acceptedPredictionTokens: dict["accepted_prediction_tokens"]?.asInt ?? 0,
-            reasoningTokens: dict["reasoning_tokens"]?.asInt ?? 0
-        )
-    }
-
-    private func parsePromptTokenDetails(from value: JSONValue?) -> PromptTokenDetails? {
-        guard case .dictionary(let dict)? = value else { return nil }
-        return PromptTokenDetails(
-            cachedTokens: dict["cached_tokens"]?.asInt ?? 0,
-            audioTokens: dict["audio_tokens"]?.asInt ?? 0
         )
     }
 }

@@ -57,15 +57,19 @@ public struct CompletionsAPI {
     
     public func create(
         model: String,
-        messages: [OpenAI.MessageParam],
+        messages: [OpenAI.ChatMessage],
         maxTokens: Int = 1000,
-        temperature: Double = 1.0
-    ) async throws -> OpenAI.ChatCompletionResponse {
+        temperature: Double = 1.0,
+        tools: [Tool]? = nil,
+        toolChoice: String? = nil
+    ) async throws -> ChatCompletion {
         let request = OpenAI.ChatCompletionRequest(
             model: model,
             messages: messages,
             maxTokens: maxTokens,
-            temperature: temperature
+            temperature: temperature,
+            tools: tools,
+            toolChoice: toolChoice
         )
         
         return try await client.send(

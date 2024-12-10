@@ -1,12 +1,14 @@
+import CueOpenAI
+
 struct ToolMessages: Codable {
-    let messages: [ToolMessage]
+    let messages: [OpenAI.ToolMessage]
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        messages = try container.decode([ToolMessage].self)
+        messages = try container.decode([OpenAI.ToolMessage].self)
     }
 
-    init(messages: [ToolMessage]) {
+    init(messages: [OpenAI.ToolMessage]) {
         self.messages = messages
     }
 
@@ -19,7 +21,7 @@ struct ToolMessages: Codable {
     }
 }
 
-extension ToolMessage {
+extension OpenAI.ToolMessage {
     func getText() -> String {
         // Similar to ToolResultMessage, trim whitespace and newlines
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -158,20 +160,18 @@ extension JSONValue {
 
     // Helper function to parse ToolMessages
     private func parseToolMessages(from array: [JSONValue]) -> ToolMessages? {
-        let messages: [ToolMessage] = array.compactMap { messageValue in
+        let messages: [OpenAI.ToolMessage] = array.compactMap { messageValue in
             guard case .dictionary(let messageDict) = messageValue,
                   let toolCallId = messageDict["tool_call_id"]?.asString,
                   let content = messageDict["content"]?.asString,
-                  let name = messageDict["name"]?.asString,
                   let role = messageDict["role"]?.asString else {
                 return nil
             }
 
-            return ToolMessage(
-                toolCallId: toolCallId,
+            return OpenAI.ToolMessage(
+                role: role,
                 content: content,
-                name: name,
-                role: role
+                toolCallId: toolCallId
             )
         }
 

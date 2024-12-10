@@ -1,4 +1,5 @@
 import Foundation
+import CueOpenAI
 
 struct Author: Codable, Sendable {
     let role: String
