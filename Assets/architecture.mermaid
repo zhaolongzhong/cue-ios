@@ -1,0 +1,79 @@
+graph TB
+    subgraph "Remote Multi-agent System"
+        RemoteAgent[Agent Manager]
+        subgraph "Agents"
+            Agent1[Agent 1]
+            Agent2[Agent 2]
+            AgentN[Agent N]
+        end
+        RemoteTools[Normal Tools]
+        RemoteMCP[Model Context Protocol]
+        
+        RemoteAgent --> AgentN
+        RemoteAgent --> Agent2
+        RemoteAgent --> Agent1
+        Agent1 & Agent2 & AgentN --> RemoteTools
+        Agent1 & Agent2 & AgentN --> RemoteMCP
+    end
+
+    subgraph "Backend Services"
+        iOSAgentWebSocket[WebSocket Server]
+        AssistantServices[Assistant Service]
+        StorageServices[Storage Service]
+        ServerSideAgent[Agent Service]
+    end
+
+    subgraph "iOS/Mac App"
+    iOSOpenAIChat[OpenAI Chat]
+        iOSAssistantList[Assistant List]
+        iOSAssistantDetail[Assistant Detail]
+        iOSAnthropicChat[Anthropic Chat]
+        iOSChatViewScreen[ChatViewScreen]
+        iOSTools[Normal Tools]
+        iOSToolManager[Tool Manager]
+    end
+
+    subgraph "MacOS App"
+        MCP[Model Context Protocol]
+        MCPTools[MCP Server Tools]
+    end
+
+    subgraph "CueOpenAI Package"
+        RealTimeAPI[Realtime API]
+        AudioManager[Audio Manager]
+        WebRTCManager[Realtime WebRTC]
+        RealtimeWebSocket[Realtime WebSocket]
+    end
+
+    %% iOS Connections
+    iOSAssistantList --> iOSChatViewScreen
+    iOSAssistantList --> iOSAssistantDetail
+    iOSAnthropicChat --> iOSChatViewScreen
+    iOSOpenAIChat --> iOSChatViewScreen
+    iOSChatViewScreen --> iOSAgentWebSocket
+    iOSAgentWebSocket --> RemoteAgent
+    iOSChatViewScreen --> iOSToolManager
+    iOSToolManager --> iOSTools
+    iOSToolManager --> MCP
+    
+    %% macOS Connections
+    MCP --> MCPTools
+
+    %% Real-time Connections for both platforms
+    iOSOpenAIChat --> RealTimeAPI
+    RealTimeAPI --> WebRTCManager
+    RealTimeAPI --> AudioManager
+    RealTimeAPI --> RealtimeWebSocket
+
+    %% Styling
+    classDef ios fill:#e4f2ff,stroke:#333,stroke-width:2px;
+    classDef macos fill:#ffeedd,stroke:#333,stroke-width:2px;
+    classDef shared fill:#e8e8ff,stroke:#333,stroke-width:2px;
+    classDef remote fill:#ffecec,stroke:#333,stroke-width:2px;
+    classDef agent fill:#f0ffe0,stroke:#333,stroke-width:2px;
+    
+    class iOSAssistantList,iOSAssistantDetail,iOSAnthropicChat,iOSOpenAIChat,iOSChatViewScreen,iOSAgentWebSocket,iOSTools,iOSToolManager ios;
+    class macOSTools,macOSToolManager,MCP,MCPTools macos;
+    class RealTimeAPI,WebRTCManager,AudioManager,RealtimeWebSocket shared;
+    class RemoteAgent,RemoteTools,RemoteMCP remote;
+    class Agent1,Agent2,AgentN agent;
