@@ -1,0 +1,89 @@
+graph TB
+    subgraph "iOS App"
+        iOSAssistantList[Assistant List]
+        iOSAssistantDetail[Assistant Detail]
+        iOSAnthropicChat[Anthropic Chat]
+        iOSOpenAIChat[OpenAI Chat]
+        iOSChatView[Chat View]
+        iOSChatViewScreen[ChatViewScreen]
+        iOSAgentWebSocket[Agent WebSocket]
+        iOSTools[Normal Tools]
+        iOSToolManager[Tool Manager]
+    end
+
+    subgraph "macOS App"
+        macOSAssistantList[Assistant List]
+        macOSAssistantDetail[Assistant Detail]
+        macOSAnthropicChat[Anthropic Chat]
+        macOSOpenAIChat[OpenAI Chat]
+        macOSChatView[Chat View]
+        macOSChatViewScreen[ChatViewScreen]
+        macOSAgentWebSocket[Agent WebSocket]
+        macOSTools[Normal Tools]
+        macOSToolManager[Tool Manager]
+        MCP[Model Context Protocol]
+        MCPTools[MCP Tools]
+    end
+
+    subgraph "CueOpenAI Package"
+        RealTimeAPI[Real-time API]
+        WebRTCManager[WebRTC Manager]
+        AudioManager[Audio Manager]
+        RealtimeWebSocket[Realtime WebSocket]
+    end
+
+    subgraph "Remote Multi-agent System"
+        RemoteAgent[Agent Manager]
+        subgraph "Agents"
+            Agent1[Agent 1]
+            Agent2[Agent 2]
+            AgentN[Agent N]
+        end
+        RemoteTools[Normal Tools]
+        RemoteMCP[Model Context Protocol]
+        
+        RemoteAgent --> Agent1
+        RemoteAgent --> Agent2
+        RemoteAgent --> AgentN
+        Agent1 & Agent2 & AgentN --> RemoteTools
+        Agent1 & Agent2 & AgentN --> RemoteMCP
+    end
+
+    %% iOS Connections
+    iOSAssistantList --> iOSChatView
+    iOSAnthropicChat --> iOSChatViewScreen
+    iOSOpenAIChat --> iOSChatViewScreen
+    iOSChatView --> iOSAgentWebSocket
+    iOSAgentWebSocket --> RemoteAgent
+    iOSChatViewScreen --> iOSToolManager
+    iOSToolManager --> iOSTools
+    
+    %% macOS Connections
+    macOSAssistantList --> macOSChatView
+    macOSAnthropicChat --> macOSChatViewScreen
+    macOSOpenAIChat --> macOSChatViewScreen
+    macOSChatView --> macOSAgentWebSocket
+    macOSAgentWebSocket --> RemoteAgent
+    macOSChatViewScreen --> macOSToolManager
+    macOSToolManager --> macOSTools
+    macOSToolManager --> MCP
+    MCP --> MCPTools
+
+    %% Real-time Connections for both platforms
+    iOSOpenAIChat & macOSOpenAIChat --> RealTimeAPI
+    RealTimeAPI --> WebRTCManager
+    RealTimeAPI --> AudioManager
+    RealTimeAPI --> RealtimeWebSocket
+
+    %% Styling
+    classDef ios fill:#e4f2ff,stroke:#333,stroke-width:2px;
+    classDef macos fill:#ffeedd,stroke:#333,stroke-width:2px;
+    classDef shared fill:#e8e8ff,stroke:#333,stroke-width:2px;
+    classDef remote fill:#ffecec,stroke:#333,stroke-width:2px;
+    classDef agent fill:#f0ffe0,stroke:#333,stroke-width:2px;
+    
+    class iOSAssistantList,iOSAssistantDetail,iOSAnthropicChat,iOSOpenAIChat,iOSChatView,iOSChatViewScreen,iOSAgentWebSocket,iOSTools,iOSToolManager ios;
+    class macOSAssistantList,macOSAssistantDetail,macOSAnthropicChat,macOSOpenAIChat,macOSChatView,macOSChatViewScreen,macOSAgentWebSocket,macOSTools,macOSToolManager,MCP,MCPTools macos;
+    class RealTimeAPI,WebRTCManager,AudioManager,RealtimeWebSocket shared;
+    class RemoteAgent,RemoteTools,RemoteMCP remote;
+    class Agent1,Agent2,AgentN agent;
