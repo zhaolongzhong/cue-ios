@@ -1,11 +1,11 @@
-//#if os(iOS)
-//import SwiftUI
-//import OpenAI
-//import AVFoundation
-//import Combine
-//import os.log
+// #if os(iOS)
+// import SwiftUI
+// import OpenAI
+// import AVFoundation
+// import Combine
+// import os.log
 //
-//public struct CueAppView: View {
+// public struct CueAppView: View {
 //    public init() {}
 //    @EnvironmentObject private var authService: AuthService
 //    // @EnvironmentObject private var conversationManager: ConversationManager
@@ -112,9 +112,9 @@
 //            Label("Options", systemImage: "ellipsis.circle")
 //        }
 //    }
-//}
+// }
 //
-//extension CueAppView {
+// extension CueAppView {
 //    private func handleRecordingButton() {
 //        if isRecording {
 //            audioRecorder.stopRecording()
@@ -172,9 +172,9 @@
 //
 //        lastProcessedEntryId = entries.last?.id
 //    }
-//}
+// }
 //
-//extension CueAppView {
+// extension CueAppView {
 //    private func cleanup() {
 //        // Stop any ongoing recording
 //        if isRecording {
@@ -212,5 +212,5 @@
 //            }
 //        }
 //    }
-//}
-//#endif
+// }
+// #endif

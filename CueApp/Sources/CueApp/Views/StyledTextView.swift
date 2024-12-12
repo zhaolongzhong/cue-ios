@@ -23,7 +23,7 @@ struct StyledTextView: View {
             case .bold(let text):
                 return result + Text(text).bold()
             case .inlineCode(let code):
-                let highlightedCode = highlightedCode(colorScheme: colorScheme, language: "", code: code)
+                let highlightedCode = SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: "", code: code)
                 let attributedString = NSMutableAttributedString(attributedString: highlightedCode)
 
                 #if os(macOS)

@@ -1,7 +1,3 @@
-//
-//  ErrorAlert.swift
-//
-
 import Foundation
 
 struct ErrorAlert: Identifiable {

@@ -5,51 +5,60 @@ struct SettingsRow: View {
     let title: String
     let value: String?
     let showChevron: Bool
+    let trailing: AnyView?
 
     init(
         systemName: String? = nil,
         title: String,
         value: String? = nil,
-        showChevron: Bool = true
+        showChevron: Bool = false,
+        trailing: AnyView? = nil
     ) {
         self.icon = systemName.map { Image(systemName: $0) }
         self.title = title
         self.value = value
         self.showChevron = showChevron
+        self.trailing = trailing
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             if let icon = icon {
                 icon
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
+                    .frame(width: 16, height: 16)
             }
 
             Text(title)
+                #if os(iOS)
+                .font(.subheadline)
+                #else
+                .font(.body)
+                #endif
                 .foregroundColor(.primary)
 
             Spacer()
-
             if let value = value {
                 Text(value)
+                    .font(.body)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            if let trailingView = trailing {
+                trailingView
+            } else {
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
             }
 
-            if showChevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary)
-            }
         }
-        #if os(iOS)
-        .padding(.horizontal, 0)
-        #else
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        #endif
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .listRowInsets(EdgeInsets())
+        .padding(.vertical, 2)
     }
 }

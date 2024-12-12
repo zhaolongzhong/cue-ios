@@ -54,7 +54,7 @@ struct MessagesList: View {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                        MessageBubble(message: message)
+                        MessageBubble(role: message.author.role, content: message.getText())
                             .id(message.id)
                             .background(MessageVisibilityTracker(index: index))
                     }

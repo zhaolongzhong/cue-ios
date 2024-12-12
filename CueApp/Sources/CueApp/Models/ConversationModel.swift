@@ -1,5 +1,9 @@
 import Foundation
 
+struct ConversationCreate: Codable {
+    let title: String
+}
+
 struct ConversationMetadata: Codable {
     let isPrimary: Bool
 
@@ -50,8 +54,4 @@ struct ConversationModel: Codable, Identifiable {
         assistantId = try container.decode(String.self, forKey: .assistantId)
         metadata = try container.decodeIfPresent(ConversationMetadata.self, forKey: .metadata)
     }
-}
-
-struct ConversationCreate: Codable {
-    let title: String
 }

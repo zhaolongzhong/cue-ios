@@ -1,5 +1,9 @@
 import Foundation
 
+struct AssistantCreate: Codable {
+    let name: String
+}
+
 struct AssistantMetadata: Codable, Equatable, Hashable {
     let isPrimary: Bool?
     let model: String?
@@ -105,8 +109,4 @@ extension Assistant {
     var isPrimary: Bool {
         return metadata?.isPrimary == true
     }
-}
-
-struct AssistantCreate: Codable {
-    let name: String
 }

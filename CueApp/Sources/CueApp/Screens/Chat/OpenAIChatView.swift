@@ -36,7 +36,7 @@ public struct OpenAIChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(viewModel.messages, id: \.id) { message in
-                        OpenAIMessageBubble(message: message)
+                        MessageBubble(role: message.role, content: message.content)
                     }
                     // Invisible marker view at bottom
                     Color.clear
@@ -62,17 +62,13 @@ public struct OpenAIChatView: View {
     private var inputField: some View {
         HStack {
             #if os(macOS)
-            TextField("Type a message...", text: $viewModel.newMessage, axis: .vertical)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .disabled(viewModel.isLoading)
-                .focused($isInputFocused)
-                .onSubmit {
-                    if !viewModel.newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Task {
-                            await viewModel.sendMessage()
-                        }
-                    }
-                }
+            RoundedTextField(
+                placeholder: "Type a message...",
+                text: $viewModel.newMessage,
+                isDisabled: viewModel.isLoading
+            ) {
+                await viewModel.sendMessage()
+            }
             #else
             TextField("Type a message...", text: $viewModel.newMessage)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -102,6 +98,7 @@ public struct OpenAIChatView: View {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 24))
             }
+            .buttonStyle(.plain)
             .disabled(viewModel.newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
         }
         .padding()

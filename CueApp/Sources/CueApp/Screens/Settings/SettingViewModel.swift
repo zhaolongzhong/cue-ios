@@ -7,6 +7,13 @@ public class SettingsViewModel: ObservableObject {
     @Published var generatedToken: String?
     @Published var tokenError: String?
     @Published var isGeneratingToken = false
+    var marketingVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+
+    var buildVersion: String {
+        Bundle.main.infoDictionary?["BUILD_VERSION"] as? String ?? "1"
+    }
 
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()

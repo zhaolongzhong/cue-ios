@@ -3,6 +3,7 @@ import SwiftUI
 public struct SettingsView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
+    @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: SettingsViewModel
 
     public init(viewModelFactory: @escaping () -> SettingsViewModel) {
@@ -34,23 +35,34 @@ private struct SettingsContentView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
+            .sheet(isPresented: $isShowingAPIKeys) {
+                APIKeysManagementView()
+            }
         }
         #else
-        VStack(spacing: 0) {
-            SettingsList(
-                viewModel: viewModel,
-                isShowingAPIKeys: $isShowingAPIKeys,
-                dismiss: dismiss
-            )
-            .background(Color.clear)
-        }
+        SettingsList(
+            viewModel: viewModel,
+            isShowingAPIKeys: $isShowingAPIKeys,
+            dismiss: dismiss
+        )
+        .background(Color.clear)
         .frame(maxWidth: .infinity, alignment: .center)
+        .sheet(isPresented: $isShowingAPIKeys) {
+            APIKeysManagementView()
+        }
         #endif
     }
 }
 
+enum ColorSchemeOption: String, CaseIterable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+}
+
 private struct SettingsList: View {
     @ObservedObject var viewModel: SettingsViewModel
+    @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @Binding var isShowingAPIKeys: Bool
     let dismiss: DismissAction
 
@@ -59,159 +71,175 @@ private struct SettingsList: View {
         List {
             Section {
                 if let user = viewModel.currentUser {
-                    UserInfoView(email: user.email, name: user.name)
+                    UserInfoView(email: user.email)
                 }
             } header: {
-                Text("Account")
-                    .textCase(nil)
-                    .foregroundColor(.primary)
+                SettingsHeader(title: "Account")
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+            .padding(.trailing, 0)
             .listSectionSpacing(.compact)
 
             Section {
-                APIKeysButton()
+                APIKeysButton(isShowingAPIKeys: $isShowingAPIKeys)
+                    .padding(.horizontal, 0)
             } header: {
-                Text("Configuration")
-                    .textCase(nil)
-                    .foregroundColor(.primary)
+                SettingsHeader(title: "Configuration")
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+            .listSectionSpacing(.compact)
+
+            Section {
+                SettingsRow(
+                    systemName: "sun.max",
+                    title: "Color Scheme",
+                    value: "",
+                    showChevron: false,
+                    trailing: AnyView(
+                        Picker("", selection: $colorScheme) {
+                            ForEach(ColorSchemeOption.allCases, id: \.self) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .font(.system(size: 12))
+                        .padding(.vertical, 0)
+                        .frame(height: 30)
+                    )
+                )
+            } header: {
+                SettingsHeader(title: "Appearance")
+            }
             .listSectionSpacing(.compact)
 
             Section {
                 TokenGenerationView(viewModel: viewModel)
                     .listRowSeparator(.hidden)
             }  header: {
-                Text("Access Token")
-                    .textCase(nil)
-                    .foregroundColor(.primary)
+                SettingsHeader(title: "Access Token")
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
             .listSectionSpacing(.compact)
-            VersionSection()
-                .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
-                .listSectionSpacing(.compact)
+            Section {
+                Button(action: {}) {
+                    SettingsRow(
+                        systemName: "info.circle",
+                        title: "Version",
+                        value: "\(viewModel.marketingVersion) (\(viewModel.buildVersion))",
+                        showChevron: false
+                    )
+                }
+                .buttonStyle(.plain)
+            } header: {
+                SettingsHeader(title: "About")
+            }
+            .listSectionSpacing(.compact)
             LogoutSection {
                 Task {
                     await viewModel.logout()
                     dismiss()
                 }
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
         }
         .listStyle(.insetGrouped)
+        .background(Color.cyan)
+        .onChange(of: colorScheme) { _, newValue in
+            (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.overrideUserInterfaceStyle = {
+                switch newValue {
+                case .system: return .unspecified
+                case .light: return .light
+                case .dark: return .dark
+                }
+            }()
+        }
         #else
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 Section {
-                    SectionBackgroundView {
+                    GroupBox {
                         if let user = viewModel.currentUser {
-                            UserInfoView(email: user.email, name: user.name)
+                            UserInfoView(email: user.email)
+                                .padding(.horizontal, 6)
                         }
                     }
                 } header: {
-                    Text("Account")
-                        .textCase(nil)
-                        .foregroundColor(.primary)
-                        .padding(.leading, 8)
+                    SettingsHeader(title: "Account")
                 }
 
-                Section("Configuration") {
-                    SectionBackgroundView {
+                Section {
+                    GroupBox {
                         APIKeysButton(isShowingAPIKeys: $isShowingAPIKeys)
+                            .padding(.horizontal, 6)
                     }
+                } header: {
+                    SettingsHeader(title: "Configuration")
                 }
 
-                Section("Access Token") {
-                    SectionBackgroundView {
+                Section {
+                    GroupBox {
                         TokenGenerationView(viewModel: viewModel)
-                            .listRowSeparator(.hidden)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 6)
+                    }
+                } header: {
+                    SettingsHeader(title: "Access Token")
+                }
+
+                Section {
+                    GroupBox {
+                        SettingsRow(
+                            systemName: "info.circle",
+                            title: "Version",
+                            value: "\(viewModel.marketingVersion) (\(viewModel.buildVersion))",
+                            showChevron: false
+                        ).padding(.horizontal, 6)
                     }
                 }
 
                 Section {
-                    SectionBackgroundView {
-                        VersionSection()
-                    }
-                }
-
-                Section {
-                    SectionBackgroundView {
+                    GroupBox {
                         LogoutSection {
                             Task {
                                 await viewModel.logout()
                                 dismiss()
                             }
-                        }
+                        }.padding(.horizontal, 6)
                     }
                 }
             }
-            .padding()
-        }
-        .sheet(isPresented: $isShowingAPIKeys) {
-            APIKeysManagementView()
+            .padding(.horizontal, 32)
+            .padding(.vertical, 32)
         }
         #endif
     }
 }
 
-private struct SectionBackgroundView<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
+private struct SettingsHeader: View {
+    let title: String
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(AppTheme.Colors.secondaryBackground.opacity(0.8))
-            )
+        Text(title)
+            #if os(macOS)
+            .font(.headline)
+            .padding(.leading, 8)
+            #else
+            .font(.footnote.bold())
+            .padding(.leading, -8)
+            #endif
     }
 }
 
 private struct UserInfoView: View {
     let email: String
-    let name: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
             SettingsRow(
-                systemName: "envelope.fill",
+                systemName: "envelope",
                 title: "Email",
                 value: email,
                 showChevron: false
             )
-            if let name = name {
-                SettingsRow(
-                    systemName: "person.fill",
-                    title: "Name",
-                    value: name,
-                    showChevron: false
-                )
-            }
-        }
     }
 }
 
 private struct APIKeysButton: View {
-    #if os(iOS)
-    var body: some View {
-        NavigationLink {
-            APIKeysManagementView()
-        } label: {
-            SettingsRow(
-                systemName: "key.fill",
-                title: "API Keys",
-                showChevron: false
-            )
-        }
-        .buttonStyle(.plain)
-    }
-    #else
+
     @Binding var isShowingAPIKeys: Bool
 
     init(isShowingAPIKeys: Binding<Bool>) {
@@ -223,15 +251,14 @@ private struct APIKeysButton: View {
             isShowingAPIKeys = true
         } label: {
             SettingsRow(
-                systemName: "key.fill",
+                systemName: "key",
                 title: "API Keys",
                 showChevron: true
             )
         }
+        .padding(.horizontal, 0)
         .buttonStyle(.plain)
-        .listRowBackground(Color.clear)
     }
-    #endif
 }
 
 private struct LogoutSection: View {
@@ -254,30 +281,6 @@ private struct LogoutSection: View {
                 isPresented: $showingLogoutConfirmation,
                 onConfirm: onLogout
             )
-        }
-    }
-}
-
-private struct VersionSection: View {
-    private var marketingVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    }
-
-    private var buildVersion: String {
-        Bundle.main.infoDictionary?["BUILD_VERSION"] as? String ?? "1"
-    }
-
-    var body: some View {
-        Section {
-            Button(action: {}) {
-                SettingsRow(
-                    systemName: "info.circle",
-                    title: "Version",
-                    value: "\(marketingVersion) (\(buildVersion))",
-                    showChevron: false
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 }

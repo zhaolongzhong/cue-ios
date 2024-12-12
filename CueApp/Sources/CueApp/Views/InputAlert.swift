@@ -37,6 +37,7 @@ struct InputAlert: View {
             message: message,
             content: {
                 TextField(placeholder, text: $text)
+                    .padding(.all, 8)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     #if os(iOS)
                     .keyboardType(isNumeric ? .numberPad : .default)

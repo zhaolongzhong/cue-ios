@@ -20,55 +20,71 @@ struct AssistantDetailView: View {
 
     var body: some View {
         List {
-            Section("Details") {
-                Button {
-                    viewModel.prepareNameEdit()
-                } label: {
-                    LabeledContent("Name", value: viewModel.assistant.name)
-                }
+            SettingsRow(
+                systemName: "person.circle",
+                title: "Name",
+                value: viewModel.assistant.name
+            )
 
-                AssistantIDView(id: viewModel.assistant.id)
+            AssistantIDView(id: viewModel.assistant.id)
 
-                Picker("Model", selection: $viewModel.selectedModel) {
-                    ForEach(viewModel.availableModels, id: \.self) { model in
-                        Text(model)
-                            .tag(model)
+            SettingsRow(
+                systemName: "gearshape",
+                title: "Model",
+                value: "",
+                trailing: AnyView(
+                    Picker("", selection: $viewModel.selectedModel) {
+                        ForEach(viewModel.availableModels, id: \.self) { model in
+                            Text(model)
+                                .tag(model)
+                        }
                     }
-                }
-                .onChange(of: viewModel.selectedModel) { _, newValue in
-                    Task {
-                        await viewModel.updateMetadata(model: newValue)
+                    .labelsHidden()
+                    .pickerStyle(MenuPickerStyle())
+                    .font(.system(size: 12))
+                    .padding(.vertical, 0)
+                    .frame(height: 30)
+                    .onChange(of: viewModel.selectedModel) { _, newValue in
+                        Task {
+                            await viewModel.updateMetadata(model: newValue)
+                        }
                     }
-                }
+                )
+            )
 
-                Button {
-                    viewModel.showingInstructionEdit = true
-                } label: {
-                    SettingsRow(
-                        systemName: "text.bubble",
-                        title: "Instruction"
-                    )
-                }
-
-                Button {
-                    viewModel.showingDescriptionEdit = true
-                } label: {
-                    SettingsRow(
-                        systemName: "doc.text",
-                        title: "Description"
-                    )
-                }
-
-                Button {
-                    viewModel.prepareMaxTurnsEdit()
-                } label: {
-                    SettingsRow(
-                        systemName: "number",
-                        title: "Max Turns",
-                        value: viewModel.maxTurns.isEmpty ? "Not set" : viewModel.maxTurns
-                    )
-                }
+            Button {
+                viewModel.showingInstructionEdit = true
+            } label: {
+                SettingsRow(
+                    systemName: "text.bubble",
+                    title: "Instruction",
+                    showChevron: true
+                )
             }
+            .buttonStyle(.plain)
+
+            Button {
+                viewModel.showingDescriptionEdit = true
+            } label: {
+                SettingsRow(
+                    systemName: "doc.text",
+                    title: "Description",
+                    showChevron: true
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                viewModel.prepareMaxTurnsEdit()
+            } label: {
+                SettingsRow(
+                    systemName: "number",
+                    title: "Max Turns",
+                    value: viewModel.maxTurns.isEmpty ? "Not set" : viewModel.maxTurns,
+                    showChevron: true
+                )
+            }
+            .buttonStyle(.plain)
         }
         .navigationTitle("Assistant Details")
         #if os(iOS)

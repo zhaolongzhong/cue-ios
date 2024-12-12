@@ -42,6 +42,7 @@ struct CenteredAlert<Content: View>: View {
 
                 content
                     .padding(.horizontal)
+                    .padding(.vertical)
 
                 HStack {
                     Button(action: {

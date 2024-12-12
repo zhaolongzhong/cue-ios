@@ -40,6 +40,10 @@ struct Sidebar: View {
                 onAnthropicChat: handleAnthropicChat,
                 onOpenSettings: handleOpenSettings
             )
+            .padding(.all, 4)
+            .overlay(RoundedRectangle(cornerRadius: 4)
+                .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5))
+            .padding(.all, 8)
         }
         .background(Color.clear)
         .navigationTitle("Cue")

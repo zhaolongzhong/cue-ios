@@ -6,11 +6,13 @@ import SwiftUI
 struct macOSApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) var appDelegate
     @StateObject private var dependencies = AppDependencies()
+    @StateObject private var appCoordinator = AppCoordinator()
 
     var body: some Scene {
         WindowGroup {
             AuthenticatedView()
                 .environmentObject(dependencies)
+                .environmentObject(appCoordinator)
                 // .environmentObject(dependencies.conversationManager)
         }
         .windowToolbarStyle(.unified)
@@ -24,6 +26,7 @@ struct macOSApp: App {
             SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
                 .environmentObject(dependencies)
                 .frame(minWidth: 500, minHeight: 300)
+                .navigationTitle("Settings")
         }
         .defaultSize(width: 500, height: 400)
         .windowStyle(.titleBar)
@@ -34,6 +37,7 @@ struct macOSApp: App {
             let viewModel = APIKeysViewModel()
             let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
             OpenAIChatView(apiKey: apiKey)
+                .navigationTitle("OpenAI")
         }
         .defaultSize(width: 500, height: 400)
         .windowStyle(.titleBar)
@@ -44,6 +48,7 @@ struct macOSApp: App {
             let viewModel = APIKeysViewModel()
             let apiKey = viewModel.getAPIKey(for: APIKeyType.anthropic)
             AnthropicChatView(apiKey: apiKey)
+                .navigationTitle("Anthropic")
         }
         .defaultSize(width: 500, height: 400)
         .windowStyle(.titleBar)

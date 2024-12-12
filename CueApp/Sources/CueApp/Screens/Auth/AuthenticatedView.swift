@@ -13,6 +13,7 @@ public struct AuthenticatedView: View {
 private struct AuthenticatedContent: View {
     @ObservedObject var viewModel: AppStateViewModel
     @EnvironmentObject private var dependencies: AppDependencies
+    @EnvironmentObject private var coordinator: AppCoordinator
 
     init(viewModel: AppStateViewModel) {
         self.viewModel = viewModel
@@ -38,6 +39,35 @@ private struct AuthenticatedContent: View {
                 #endif
             } else {
                 LoginView()
+            }
+        }
+        .sheet(isPresented: $coordinator.showSettings) {
+            SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
+        }
+        .alert(item: $coordinator.activeAlert) { alertType in
+            switch alertType {
+            case .error(let message):
+                return Alert(
+                    title: Text("Error"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"))
+                )
+
+            case .confirmation(let title, let message):
+                return Alert(
+                    title: Text(title),
+                    message: Text(message),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .cancel()
+                )
+
+            case .custom(let title, let message, let action):
+                return Alert(
+                    title: Text(title),
+                    message: Text(message),
+                    primaryButton: .default(Text("OK"), action: action),
+                    secondaryButton: .cancel()
+                )
             }
         }
         .onAppear {

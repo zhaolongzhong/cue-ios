@@ -8,6 +8,7 @@ import AVFoundation
 struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var dependencies = AppDependencies()
+    @StateObject private var appCoordinator = AppCoordinator()
 
     init() {
         setupAudioSession()
@@ -17,6 +18,7 @@ struct iOSApp: App {
         WindowGroup {
             AuthenticatedView()
                 .environmentObject(dependencies)
+                .environmentObject(appCoordinator)
                 // .environmentObject(dependencies.conversationManager)
         }
     }
