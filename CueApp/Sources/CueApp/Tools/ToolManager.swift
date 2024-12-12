@@ -3,15 +3,17 @@ import CueOpenAI
 
 @MainActor
 class ToolManager {
-    private let localTools: [LocalTool]
+    private var localTools: [LocalTool]
+    #if os(macOS)
     private let mcpManager: MCPServerManager?
+    #endif
 
     init() {
         self.localTools = [
-            WeatherTool(),
-            ScreenshotTool()
+            WeatherTool()
         ]
         #if os(macOS)
+        self.localTools.append(ScreenshotTool())
         self.mcpManager = MCPServerManager()
         #endif
     }
@@ -28,6 +30,36 @@ class ToolManager {
             AppLog.log.error("❌ Failed to start MCP servers: \(error)")
         }
         #endif
+    }
+
+    func getMCPTools() -> [MCPTool] {
+        var tools: [MCPTool] = localTools.map { tool in
+            let properties = tool.parameterDefinition.schema.mapValues { property in
+                return PropertyDetails(
+                    type: property.type,
+                    title: property.description,
+                    items: property.type == "array" ? Items(type: property.items?.type ?? "string") : nil,
+                    anyOf: nil,
+                    defaultValue: nil
+                )
+            }
+            let inputSchema = InputSchema(
+                type: "object", // Default type for parameter schemas
+                properties: properties,
+                required: tool.parameterDefinition.required
+            )
+            return MCPTool(
+                name: tool.name,
+                description: tool.description,
+                inputSchema: inputSchema
+            )
+        }
+        #if os(macOS)
+        if let mcpTools = mcpManager?.getTools() {
+            tools.append(contentsOf: mcpTools)
+        }
+        #endif
+        return tools
     }
 
     func getTools() -> [Tool] {
@@ -69,6 +101,7 @@ class ToolManager {
     }
 }
 
+#if os(macOS)
 extension MCPServerManager {
     func getToolsJSON() -> [Tool] {
         return serverTools.flatMap { (_, tools) in
@@ -78,3 +111,4 @@ extension MCPServerManager {
         }
     }
 }
+#endif

@@ -21,6 +21,7 @@ struct MessagesListView: View {
                 hasInitialized: $hasInitialized,
                 previousMessageCount: $previousMessageCount
             )
+            .focusable(false)
 
             if showScrollButton {
                 ScrollButton(isVisible: showScrollButton) {
@@ -28,6 +29,7 @@ struct MessagesListView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(0)
+                .focusable(false)
             }
         }
     }
@@ -61,7 +63,9 @@ struct MessagesList: View {
             }
             .onPreferenceChange(ViewVisibilityKey.self) { visibility in
                 if let lastVisibleIndex = visibility.last?.index {
-                    showScrollButton = lastVisibleIndex < Double(messages.count - 3)
+                    Task { @MainActor in
+                        showScrollButton = lastVisibleIndex < Double(messages.count - 3)
+                    }
                 }
             }
             .onAppear {
@@ -73,9 +77,7 @@ struct MessagesList: View {
                 previousMessageCount = messages.count
             }
             .onChange(of: messages) { _, newMessages in
-                // Only auto-scroll if new messages were added (not removed or replaced)
                 if shouldAutoScroll && newMessages.count > previousMessageCount {
-                    // Check if we're already near the bottom before auto-scrolling
                     if !showScrollButton {
                         scrollToLastMessage(proxy)
                     }

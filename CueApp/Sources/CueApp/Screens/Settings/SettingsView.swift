@@ -168,7 +168,7 @@ private struct SectionBackgroundView<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(AppTheme.Colors.lightGray.opacity(0.8))
+                    .fill(AppTheme.Colors.secondaryBackground.opacity(0.8))
             )
     }
 }

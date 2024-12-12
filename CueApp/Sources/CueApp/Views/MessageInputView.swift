@@ -37,6 +37,7 @@ struct MessageInputView: View {
 }
 #else
 import SwiftUI
+
 struct MessageInputView: View {
     @Binding var inputMessage: String
     @FocusState var isFocused: Bool
@@ -56,6 +57,11 @@ struct MessageInputView: View {
                         .frame(minHeight: 50, maxHeight: 200)
                         .fixedSize(horizontal: false, vertical: true)
                         .scrollContentBackground(.hidden)
+                        .focused($isFocused)
+                        .onTapGesture {
+                            isFocused = true
+                        }
+
                     if inputMessage.isEmpty {
                         Text("Type a message...")
                             .padding(.horizontal, 4)
@@ -76,7 +82,6 @@ struct MessageInputView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.leading)
-                .focused($isFocused)
 
                 SendButton(isEnabled: isMessageValid, action: onSend)
                     .padding(.trailing, 8)
@@ -84,8 +89,12 @@ struct MessageInputView: View {
             }
             .padding(.vertical, 8)
         }
+        .focusable(false)
         .onAppear {
             setupKeyMonitor()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isFocused = true
+            }
         }
         .onDisappear {
             if let monitor = eventMonitor {
@@ -96,22 +105,21 @@ struct MessageInputView: View {
     }
 
     private func setupKeyMonitor() {
-            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                guard isFocused else { return event }
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard isFocused else { return event }
 
-                if event.keyCode == 36 { // Return key
-                    print("Return pressed")
-                    if event.modifierFlags.contains(.shift) {
-                        // Allow new line with Shift+Return
-                        return event
-                    } else if isMessageValid {
-                        onSend()
-                        return nil // Consume the event
-                    }
+            if event.keyCode == 36 { // Return key
+                if event.modifierFlags.contains(.shift) {
+                    // Allow new line with Shift+Return
+                    return event
+                } else if isMessageValid {
+                    onSend()
+                    return nil
                 }
-                return event
             }
+            return event
         }
+    }
 
     private var isMessageValid: Bool {
         inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3

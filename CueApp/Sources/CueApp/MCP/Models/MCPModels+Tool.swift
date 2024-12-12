@@ -3,13 +3,13 @@ import CueOpenAI
 
 // MARK: - Tool Models
 
-struct MCPTool: Codable {
+public  struct MCPTool: Codable {
     let name: String
     let description: String
     let inputSchema: InputSchema
 }
 
-struct InputSchema: Codable {
+public struct InputSchema: Codable {
     let type: String
     let properties: [String: PropertyDetails]?
     let required: [String]?
@@ -24,7 +24,7 @@ struct InputSchema: Codable {
         case schema = "$schema"
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         type = try container.decode(String.self, forKey: .type)
@@ -44,14 +44,14 @@ struct InputSchema: Codable {
 }
 
 // Custom type to handle different default value types
-enum DefaultValue: Codable, Equatable {
+public enum DefaultValue: Codable, Equatable {
     case string(String)
     case integer(Int)
     case double(Double)
     case boolean(Bool)
     case null
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if container.decodeNil() {
@@ -69,7 +69,7 @@ enum DefaultValue: Codable, Equatable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case .string(let value):
@@ -86,7 +86,7 @@ enum DefaultValue: Codable, Equatable {
     }
 }
 
-struct PropertyDetails: Codable {
+public struct PropertyDetails: Codable {
     let type: String?  // Made optional because it might be missing when anyOf is present
     let title: String?
     let items: Items?
@@ -102,7 +102,7 @@ struct PropertyDetails: Codable {
     }
 }
 
-struct TypeDefinition: Codable {
+public struct TypeDefinition: Codable {
     let type: String
 }
 

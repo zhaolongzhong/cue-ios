@@ -29,7 +29,7 @@ private struct AvatarView: View {
 
     var body: some View {
         Circle()
-            .fill(AppTheme.Colors.lightGray)
+            .fill(AppTheme.Colors.secondaryBackground)
             .overlay(
                 Text(initials)
                     .font(.system(.subheadline, design: .rounded, weight: .medium))

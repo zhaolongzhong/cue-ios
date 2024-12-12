@@ -128,8 +128,6 @@ extension AppTheme {
             #endif
         }
 
-        public static let lightGray = Color("LightGray")
-
         // Message colors
         enum Message {
             static let userBubble = Color(.lightGray)

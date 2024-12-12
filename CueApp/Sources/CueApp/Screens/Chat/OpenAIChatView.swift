@@ -5,6 +5,7 @@ public struct OpenAIChatView: View {
     @StateObject private var viewModel: OpenAIChatViewModel
     @FocusState private var isInputFocused: Bool
     @Namespace private var bottomID
+    @State private var showingToolsList = false
 
     public init(apiKey: String) {
         _viewModel = StateObject(wrappedValue: OpenAIChatViewModel(apiKey: apiKey))
@@ -24,6 +25,9 @@ public struct OpenAIChatView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isInputFocused = true
             }
+        }
+        .sheet(isPresented: $showingToolsList) {
+            ToolsListView(tools: viewModel.availableTools)
         }
     }
 
@@ -75,6 +79,20 @@ public struct OpenAIChatView: View {
                 .disabled(viewModel.isLoading)
                 .focused($isInputFocused)
             #endif
+
+            if viewModel.availableTools.count > 0 {
+                Button {
+                    showingToolsList = true
+                } label: {
+                    HStack(spacing: 2) {
+                        Image(systemName: "hammer")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color.secondary)
+                            .background(Color.clear)
+                        Text("\(viewModel.availableTools.count)").foregroundColor(Color.secondary)
+                    }
+                }
+            }
 
             Button {
                 Task {

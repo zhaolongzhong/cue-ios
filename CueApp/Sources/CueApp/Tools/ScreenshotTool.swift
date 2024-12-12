@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 import AppKit
 import CoreGraphics
@@ -135,3 +136,4 @@ enum ScreenshotService {
         throw ToolError.invalidArguments("Failed to save screenshot")
     }
 }
+#endif

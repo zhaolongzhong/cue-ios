@@ -9,14 +9,17 @@ class OpenAIChatViewModel: ObservableObject {
     @Published var messages: [OpenAI.ChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
+    @Published var availableTools: [MCPTool] = []
 
     init(apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
+        self.availableTools = toolManager.getMCPTools()
     }
 
     func startServer() async {
         await self.toolManager.startMcpServer()
+        self.availableTools = toolManager.getMCPTools()
     }
 
     func sendMessage() async {

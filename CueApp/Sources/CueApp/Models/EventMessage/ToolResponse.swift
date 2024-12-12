@@ -43,12 +43,7 @@ struct ToolResultMessage: Codable {
         var text = ""
         for item in self.content {
             if item.type == "tool_result" {
-                switch item.content {
-                case .text(let content):
-                    text += "\(content.text.trimmingCharacters(in: .whitespacesAndNewlines))"
-                default:
-                    continue
-                }
+                text += String(describing: content)
 
             }
         }

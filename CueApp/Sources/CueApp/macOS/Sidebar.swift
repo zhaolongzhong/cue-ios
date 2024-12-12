@@ -9,18 +9,16 @@ struct Sidebar: View {
     var body: some View {
         VStack {
             List(selection: $selectedAssistant) {
-                Section("Assistants") {
-                    ForEach(assistantsViewModel.assistants) { assistant in
-                        AssistantRow(
-                            assistant: assistant,
-                            viewModel: assistantsViewModel
-                        )
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listItemTint(Color.clear)
-                        .tag(assistant)
-                    }
+                ForEach(assistantsViewModel.assistants) { assistant in
+                    AssistantRow(
+                        assistant: assistant,
+                        viewModel: assistantsViewModel
+                    )
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listItemTint(Color.clear)
+                    .tag(assistant)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -30,7 +28,7 @@ struct Sidebar: View {
                     .ignoresSafeArea()
             )
             #endif
-            .accentColor(AppTheme.Colors.lightGray.opacity(0.5))
+            .accentColor(AppTheme.Colors.secondaryBackground.opacity(0.5))
             .listStyle(.sidebar)
             .onChange(of: selectedAssistant) { _, _ in
                 self.onSelectedAssistantUpdate()
