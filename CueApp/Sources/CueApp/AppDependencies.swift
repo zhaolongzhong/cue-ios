@@ -4,7 +4,7 @@ import SwiftUI
 public class AppDependencies: ObservableObject, AppStateDelegate {
     @Published public var authService: AuthService
     @Published public var assistantService: AssistantService
-    @Published public var conversationManager: ConversationManager
+    // @Published public var conversationManager: ConversationManager
     @Published public var webSocketStore: WebSocketManagerStore
     @Published public var appStateViewModel: AppStateViewModel
 
@@ -18,7 +18,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
 
     public init() {
         self.webSocketStore = WebSocketManagerStore()
-        self.conversationManager = ConversationManager()
+        // self.conversationManager = ConversationManager()
         let authService = AuthService()
         self.authService = authService
         self.assistantService = AssistantService()
@@ -29,7 +29,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     public func handleLogout() async {
         AppLog.log.debug("AppDependencies handleLogout")
         webSocketStore.disconnect()
-        conversationManager.cleanup()
+        // conversationManager.cleanup()
         await assistantService.cleanup()
         self.viewModelFactory.cleanup()
     }

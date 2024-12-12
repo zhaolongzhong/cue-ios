@@ -1,5 +1,5 @@
-import SwiftUI
 import CueApp
+import SwiftUI
 
 #if os(macOS)
 @main
@@ -11,7 +11,7 @@ struct macOSApp: App {
         WindowGroup {
             AuthenticatedView()
                 .environmentObject(dependencies)
-                .environmentObject(dependencies.conversationManager)
+                // .environmentObject(dependencies.conversationManager)
         }
         .windowToolbarStyle(.unified)
         .windowStyle(HiddenTitleBarWindowStyle())

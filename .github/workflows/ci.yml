@@ -1,0 +1,35 @@
+name: "CI"
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["*"]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.1.0"
+
+      - name: Install dependencies
+        run: |
+          brew install swiftlint
+
+      - name: Run linting
+        run: |
+          swiftlint .
+
+      - name: Run tests
+        if: github.ref_name == 'main'
+        run: |
+          xcodebuild -version
+          ./scripts/test.sh

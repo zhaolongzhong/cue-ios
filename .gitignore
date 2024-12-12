@@ -4,6 +4,5 @@ xcuserdata/
 *.xcarchive
 xcuserdata/
 Package.resolved
-**/Debug.xcconfig
 **/Release.xcconfig
 **/mcp_config.json

@@ -1,0 +1,29 @@
+# swiftlint.yml
+disabled_rules:
+  - force_try
+  - todo
+  - trailing_closure
+  - line_length
+  - identifier_name
+  - large_tuple
+  - function_parameter_count
+  - nesting
+  - type_body_length
+  - type_name
+  - for_where
+  - function_body_length
+  - trailing_comma
+  - inclusive_language
+
+included:
+  - Cue
+  - CueApp/Sources
+
+excluded:
+  - .build
+  - ./**/.build
+  - ./CueApp/.build
+  - ./Pods
+  - ./vendor
+  - ./Carthage
+  - ./DerivedData

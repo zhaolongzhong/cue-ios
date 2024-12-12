@@ -1,5 +1,5 @@
-import SwiftUI
 import CueApp
+import SwiftUI
 
 #if os(iOS)
 import AVFoundation
@@ -17,7 +17,7 @@ struct iOSApp: App {
         WindowGroup {
             AuthenticatedView()
                 .environmentObject(dependencies)
-                .environmentObject(dependencies.conversationManager)
+                // .environmentObject(dependencies.conversationManager)
         }
     }
 
