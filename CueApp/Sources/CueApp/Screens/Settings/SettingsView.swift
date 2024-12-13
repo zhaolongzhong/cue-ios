@@ -63,6 +63,7 @@ enum ColorSchemeOption: String, CaseIterable {
 private struct SettingsList: View {
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
+    @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
     @Binding var isShowingAPIKeys: Bool
     let dismiss: DismissAction
 
@@ -103,6 +104,16 @@ private struct SettingsList: View {
                         .font(.system(size: 12))
                         .padding(.vertical, 0)
                         .frame(height: 30)
+                    )
+                )
+                SettingsRow(
+                    systemName: "iphone.radiowaves.left.and.right",
+                    title: "Haptic Feedback",
+                    value: "",
+                    showChevron: false,
+                    trailing: AnyView(
+                        Toggle("", isOn: $hapticFeedbackEnabled)
+                            .labelsHidden()
                     )
                 )
             } header: {
@@ -248,7 +259,12 @@ private struct APIKeysButton: View {
 
     var body: some View {
         Button {
-            isShowingAPIKeys = true
+            Task { @MainActor in
+                #if os(iOS)
+                HapticManager.shared.impact(style: .light)
+                #endif
+                isShowingAPIKeys = true
+            }
         } label: {
             SettingsRow(
                 systemName: "key",

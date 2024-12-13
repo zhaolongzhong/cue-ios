@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum TabSelection: String {
+    case chat = "Chat"
     case assistants = "Assistants"
     case settings = "Settings"
 }
@@ -23,7 +24,7 @@ public struct AppTabView: View {
                     .tabItem {
                         Label("Chat", systemImage: "wand.and.stars")
                     }
-                    .tag(TabSelection.assistants)
+                    .tag(TabSelection.chat)
             }
             AssistantsView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                 .tabItem {
@@ -42,6 +43,13 @@ public struct AppTabView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .accentColor(Color(.darkGray))
+        .onChange(of: selectedTab) { _, _ in
+            Task { @MainActor in
+                #if os(iOS)
+                HapticManager.shared.impact(style: .light)
+                #endif
+            }
+        }
         .onAppear {
             AppLog.log.debug("AppTabView onAppear isAuthenticated:\(appStateViewModel.state.isAuthenticated)")
             self.initialize(userId: appStateViewModel.state.currentUser?.id)
