@@ -7,3 +7,4 @@ xcuserdata/
 Package.resolved
 **/Release.xcconfig
 **/mcp_config.json
+TestResults.xcresult
