@@ -1,5 +1,6 @@
 import Foundation
 import CueOpenAI
+import Combine
 
 @MainActor
 class OpenAIChatViewModel: ObservableObject {

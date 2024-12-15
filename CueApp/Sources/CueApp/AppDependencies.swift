@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @MainActor
 public class AppDependencies: ObservableObject, AppStateDelegate {
