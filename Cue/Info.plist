@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>${DISPLAY_NAME}</string>
 	<key>CFBundleShortVersionString</key>
-    <string>${MARKETING_VERSION}</string>
+	<string>${MARKETING_VERSION}</string>
 	<key>BUILD_VERSION</key>
 	<string>${BUILD_VERSION}</string>
 	<key>BASE_URL</key>
@@ -21,5 +21,9 @@
 	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need access to your microphone for voice interaction</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Speech recognition is used for voice interactions</string>
 </dict>
 </plist>

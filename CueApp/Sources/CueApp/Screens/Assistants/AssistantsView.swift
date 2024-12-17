@@ -12,6 +12,7 @@ struct AssistantsView: View {
     @State private var isShowingNameDialog = false
     @State private var newAssistantName = ""
     @State private var navigationPath = NavigationPath()
+    let manager = LiveAPIWebSocketManager()
 
     init(viewModelFactory: @escaping () -> AssistantsViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModelFactory())
@@ -20,31 +21,67 @@ struct AssistantsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            List(viewModel.assistants) { assistant in
-                NavigationLink(
-                    value: AppDestination.chat(assistant)
-                ) {
-                    AssistantRowView(
-                        assistant: assistant,
-                        status: viewModel.getClientStatus(for: assistant)
-                    )
-                }
-                .contextMenu {
-                    if assistant.isPrimary {
-                        AssistantContextMenu(
-                            assistant: assistant,
-                            viewModel: viewModel
-                        )
+//            List(viewModel.assistants) { assistant in
+////                NavigationLink(
+////                    value: AppDestination.chat(assistant)
+////                ) {
+////                    AssistantRowView(
+////                        assistant: assistant,
+////                        status: viewModel.getClientStatus(for: assistant)
+////                    )
+////                }
+////                .contextMenu {
+////                    if assistant.isPrimary {
+////                        AssistantContextMenu(
+////                            assistant: assistant,
+////                            viewModel: viewModel
+////                        )
+////                    }
+////                }
+////                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+////                    if assistant.isPrimary {
+////                        Button(role: .destructive) {
+////                            viewModel.assistantToDelete = assistant
+////                        } label: {
+////                            Label("Delete", systemImage: "trash")
+////                        }
+////                    }
+////                }
+//                VStack {
+//                    Button("content") {
+//                        print("connect")
+//                        Task {
+//                            try await manager.connect()
+//                        }
+//                    }
+//                    Button("send message") {
+//                        print("send message")
+//                        Task {
+//                            try await manager.sendText("Hello, how are you?")
+//                        }
+//                    }
+//                    Button("disconnect") {
+//                        print("disconnect")
+//                        manager.disconnect()
+//                    }
+//                }
+//            }
+            VStack {
+                Button("connect") {
+                    print("connect")
+                    Task {
+                        try await manager.connect(apiKey: "AIzaSyCs7-MBW5FtgtUpGsfNINHHWSPOH55BP_k")
                     }
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if assistant.isPrimary {
-                        Button(role: .destructive) {
-                            viewModel.assistantToDelete = assistant
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
+                Button("send message") {
+                    print("send message")
+                    Task {
+                        try await manager.sendText("Hello, how are you?")
                     }
+                }
+                Button("disconnect") {
+                    print("disconnect")
+                    manager.disconnect()
                 }
             }
             .refreshable {
