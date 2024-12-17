@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsMenu: View {
     let onOpenAIChat: () -> Void
     let onAnthropicChat: () -> Void
+    let onGeminiChat: () -> Void
     let onOpenSettings: () -> Void
 
     var body: some View {
@@ -16,6 +17,13 @@ struct SettingsMenu: View {
 
             Button(action: onAnthropicChat) {
                 Text("Anthropic Chat")
+                    .frame(minWidth: 200, alignment: .leading)
+            }
+
+            Divider()
+            
+            Button(action: onGeminiChat) {
+                Text("Gemini Chat")
                     .frame(minWidth: 200, alignment: .leading)
             }
 

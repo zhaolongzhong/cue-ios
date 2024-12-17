@@ -82,11 +82,11 @@ public class APIKeysViewModel: ObservableObject {
         print("Saved key for \(keyType.displayName): \(value.isEmpty ? "empty" : "set")")
     }
 
-    public func getAPIKey(for keyType: APIKeyType) -> String {
+    public func getAPIKey(for keyType: APIKeyType) -> String? {
         switch keyType {
-        case .openai: return openAIKey
-        case .anthropic: return anthropicKey
-        case .gemini: return geminiKey
+        case .openai: return openAIKey.isEmpty ? nil : openAIKey
+        case .anthropic: return anthropicKey.isEmpty ? nil : anthropicKey
+        case .gemini: return geminiKey.isEmpty ? nil : geminiKey
         }
     }
 
@@ -104,7 +104,7 @@ public class APIKeysViewModel: ObservableObject {
 
     func startEditing(_ keyType: APIKeyType) {
         editingKeyType = keyType
-        tempAPIKey = getAPIKey(for: keyType)
+        tempAPIKey = getAPIKey(for: keyType) ?? ""
         isAlertPresented = true
     }
 

@@ -2,16 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
-	<string>${PRODUCT_BUNDLE_IDENTIFIER}</string>
-	<key>CFBundleDisplayName</key>
-	<string>${DISPLAY_NAME}</string>
-	<key>CFBundleShortVersionString</key>
-    <string>${MARKETING_VERSION}</string>
-	<key>BUILD_VERSION</key>
-	<string>${BUILD_VERSION}</string>
 	<key>BASE_URL</key>
 	<string>${BASE_URL}</string>
+	<key>BUILD_VERSION</key>
+	<string>${BUILD_VERSION}</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -19,7 +15,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>Request screen capture access to share your screen</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+        <string>processing</string>
+	</array>
 </dict>
 </plist>
