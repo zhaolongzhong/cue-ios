@@ -1,7 +1,8 @@
-// LiveAPIWebSocketManager+Types.swift.swift
+// LiveAPIWebSocketManager+Types.swift
 import Foundation
 
 // MARK: - Request Types
+
 struct LiveAPISetup: Codable {
     let setup: SetupConfig
     
@@ -47,6 +48,7 @@ struct LiveAPIRealtimeInput: Codable {
 }
 
 // MARK: - Response Types
+
 struct LiveAPIResponse: Codable {
     let serverContent: ServerContent?
     
@@ -74,4 +76,28 @@ enum LiveAPIError: Error {
     case decodingError
     case audioError(message: String)
     case permissionDenied
+}
+
+actor AsyncQueue<T> {
+    private var items: [T] = []
+    private let maxSize: Int
+    
+    init(maxSize: Int) {
+        self.maxSize = maxSize
+    }
+    
+    func put(_ item: T) async throws {
+        while items.count >= maxSize {
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
+        items.append(item)
+    }
+    
+    func get() async throws -> T {
+        while items.isEmpty {
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
+        let item = items.removeFirst()
+        return item
+    }
 }

@@ -1,11 +1,10 @@
+// LiveAPIWebSocketManager.swift
 import Foundation
 import AVFoundation
 import os.log
+import Combine
 
-// MARK: - LiveAPIWebSocketManager
-
-@MainActor
-class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
+final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable {
     private var webSocketTask: URLSessionWebSocketTask?
     private var session: URLSession?
     
@@ -14,7 +13,7 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
     private let host = "generativelanguage.googleapis.com"
     
     // Audio configuration
-    private let TARGET_SAMPLE_RATE: Double = 24000
+    private let TARGET_SAMPLE_RATE: Double = 48000 // Standard sample rate
     private let CHANNELS: UInt32 = 1
     private var audioFormat: AVAudioFormat?
     
@@ -22,23 +21,29 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
                               category: "LiveAPIWebSocketManager")
     
     // Audio engine components
-    private var audioEngine: AVAudioEngine?
-    private var inputNode: AVAudioInputNode?
-    private var converterNode: AVAudioMixerNode?
-    private var playerNode: AVAudioPlayerNode?
+    private var audioEngine = AVAudioEngine()
+    private var playerNode = AVAudioPlayerNode()
     
     // Queues for audio/video processing
-    private let audioQueue = DispatchQueue(label: "com.cue.audioProcessing", qos: .userInteractive)
     private var audioInQueue: AsyncQueue<Data>?
     private var outQueue: AsyncQueue<Data>?
     
     @Published private(set) var isPlaying: Bool = false
     private var isAudioSetup = false
     
+    // Dedicated background queues for thread safety
+    private let webSocketQueue = DispatchQueue(label: "com.yourapp.webSocketQueue")
+    private let audioProcessingQueue = DispatchQueue(label: "com.yourapp.audioProcessingQueue")
+    
     override init() {
         super.init()
         setupSession()
+        setupAudioSessionNotifications()
         logger.debug("Initializing LiveAPIWebSocketManager")
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     private func setupSession() {
@@ -50,10 +55,34 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
         logger.debug("Session setup completed")
     }
     
+    private func setupAudioSessionNotifications() {
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleAudioSessionInterruption),
+                                               name: AVAudioSession.interruptionNotification,
+                                               object: nil)
+        
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleAudioRouteChange),
+                                               name: AVAudioSession.routeChangeNotification,
+                                               object: nil)
+    }
+    
+    @objc private func handleAudioSessionInterruption(notification: Notification) {
+        // Handle audio session interruptions
+        logger.debug("Audio session interrupted")
+        // Implement necessary actions, e.g., pause audio engine
+    }
+    
+    @objc private func handleAudioRouteChange(notification: Notification) {
+        // Handle audio route changes
+        logger.debug("Audio route changed")
+        // Implement necessary actions, e.g., reconfigure audio engine
+    }
+    
     func connect(apiKey: String) async throws {
         self.apiKey = apiKey
         
-        // Initialize websocket first
+        // Initialize WebSocket
         let wsURL = "wss://\(host)/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=\(apiKey)"
         guard let url = URL(string: wsURL) else {
             throw LiveAPIError.invalidURL
@@ -62,21 +91,35 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
         var request = URLRequest(url: url)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        webSocketTask = session?.webSocketTask(with: request)
-        webSocketTask?.resume()
+        webSocketQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.webSocketTask = self.session?.webSocketTask(with: request)
+            self.webSocketTask?.resume()
+            self.logger.debug("WebSocket task resumed")
+            
+            // Send initial setup message
+            let setup = LiveAPISetup(setup: .init(model: "models/\(self.model)"))
+            Task { [weak self] in
+                guard let self = self else { return }
+                do {
+                    try await self.send(setup)
+                    self.logger.debug("Sent initial setup message")
+                } catch {
+                    self.logger.error("Failed to send setup message: \(error.localizedDescription)")
+                }
+            }
+        }
         
         // Setup queues
         audioInQueue = AsyncQueue<Data>(maxSize: 5)
         outQueue = AsyncQueue<Data>(maxSize: 5)
-        
-        // Send initial setup message
-        let setup = LiveAPISetup(setup: .init(model: "models/\(model)"))
-        try await send(setup)
+        logger.debug("Audio and output queues initialized")
         
         // Setup audio components if not already set up
         if !isAudioSetup {
             try await setupAudioEngine()
             isAudioSetup = true
+            logger.debug("Audio engine setup completed and marked as setup")
         }
         
         // Start receiving messages
@@ -84,86 +127,53 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
     
     private func setupAudioEngine() async throws {
-        return try await withCheckedThrowingContinuation { continuation in
-            audioQueue.async { [weak self] in
-                guard let self = self else {
-                    continuation.resume(throwing: LiveAPIError.audioError(message: "Self is nil"))
-                    return
-                }
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try await MainActor.run {
+                try session.setCategory(.playAndRecord,
+                                        mode: .default,
+                                        options: [.defaultToSpeaker, .allowBluetooth])
+                try session.setPreferredSampleRate(TARGET_SAMPLE_RATE)
+                try session.setActive(true)
+                self.logger.debug("Audio session category set and activated.")
+                self.logger.debug("Actual sample rate: \(session.sampleRate)")
+            }
+
+            // Initialize format to match the main mixer node
+            audioFormat = AVAudioFormat(standardFormatWithSampleRate: session.sampleRate,
+                                        channels: CHANNELS)
+
+            guard let audioFormat = audioFormat else {
+                throw LiveAPIError.audioError(message: "Failed to create audio format")
+            }
+
+            logger.debug("AudioFormat created with sampleRate: \(audioFormat.sampleRate), channels: \(audioFormat.channelCount)")
+
+            // Attach and connect player node directly to main mixer
+            audioEngine.attach(playerNode)
+            audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
+            logger.debug("Connected playerNode to mainMixerNode")
+            
+            // Install tap on input node if needed
+            audioEngine.inputNode.installTap(onBus: 0,
+                                             bufferSize: 1024,
+                                             format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, time in
+                guard let self = self else { return }
+                let audioData = self.processAudioBuffer(buffer)
                 
-                do {
-                    // Create audio components first
-                    self.audioEngine = AVAudioEngine()
-                    self.playerNode = AVAudioPlayerNode()
-                    self.converterNode = AVAudioMixerNode()
-                    
-                    guard let audioEngine = self.audioEngine,
-                          let playerNode = self.playerNode,
-                          let converterNode = self.converterNode else {
-                        throw LiveAPIError.audioError(message: "Failed to create audio components")
-                    }
-                    
-                    // Configure audio session first
-                    let session = AVAudioSession.sharedInstance()
-                    try session.setCategory(.playAndRecord,
-                                         mode: .default,
-                                         options: [.defaultToSpeaker, .allowBluetooth])
-                    try session.setPreferredSampleRate(self.TARGET_SAMPLE_RATE)
-                    try session.setActive(true)
-                    
-                    // Get hardware format after session configuration
-                    let hwFormat = audioEngine.inputNode.inputFormat(forBus: 0)
-                    
-                    // Create audio format matching hardware
-                    self.audioFormat = AVAudioFormat(standardFormatWithSampleRate: self.TARGET_SAMPLE_RATE,
-                                                   channels: self.CHANNELS)
-                    
-                    guard let audioFormat = self.audioFormat else {
-                        throw LiveAPIError.audioError(message: "Failed to create audio format")
-                    }
-                    
-                    // Attach nodes
-                    audioEngine.attach(converterNode)
-                    audioEngine.attach(playerNode)
-                    
-                    // Get input node after session is configured
-                    self.inputNode = audioEngine.inputNode
-                    
-                    // Connect nodes
-                    audioEngine.connect(audioEngine.inputNode, to: converterNode, format: hwFormat)
-                    audioEngine.connect(converterNode, to: audioEngine.mainMixerNode, format: audioFormat)
-                    audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
-                    
-                    // Configure mixer node
-                    converterNode.volume = 0.0 // Mute input monitoring
-                    playerNode.volume = 1.0
-                    
-                    // Install tap on converter
-                    converterNode.installTap(onBus: 0,
-                                          bufferSize: 1024,
-                                          format: audioFormat) { [weak self] buffer, time in
-                        guard let self = self else { return }
-                        let audioData = self.processAudioBuffer(buffer)
-                        
-                        Task { @MainActor in
-                            await self.handleProcessedAudioData(audioData)
-                        }
-                    }
-                    
-                    // Prepare engine
-                    audioEngine.prepare()
-                    
-                    // Start engine
-                    try audioEngine.start()
-                    
-                    self.logger.debug("Audio engine setup completed successfully")
-                    continuation.resume()
-                    
-                } catch {
-                    self.logger.error("Failed to setup audio engine: \(error.localizedDescription)")
-                    continuation.resume(throwing: error)
+                Task { @MainActor in
+                    await self.handleProcessedAudioData(audioData)
                 }
             }
+            logger.debug("Installed tap on inputNode")
+            
+            // Prepare and start the engine
+            audioEngine.prepare()
+            try audioEngine.start()
+            logger.debug("Audio engine started successfully")
+        } catch {
+            logger.error("Error setting up audio engine: \(error.localizedDescription)")
+            throw error
         }
     }
     
@@ -193,6 +203,7 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
         
         do {
             try await send(input)
+            logger.debug("Sent processed audio data")
         } catch {
             logger.error("Failed to send audio data: \(error.localizedDescription)")
         }
@@ -205,11 +216,12 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
         }
         
         try await webSocketTask?.send(.string(messageString))
+        logger.debug("Sent message: \(messageString)")
     }
     
     private func receiveMessage() {
         webSocketTask?.receive { [weak self] result in
-            Task { @MainActor [weak self] in
+            Task { [weak self] in
                 guard let self = self else { return }
                 
                 switch result {
@@ -220,7 +232,7 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
                     case .data(let data):
                         await self.handleBinaryMessage(data)
                     @unknown default:
-                        break
+                        self.logger.error("Unknown message type received")
                     }
                     // Continue receiving
                     self.receiveMessage()
@@ -249,45 +261,38 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
     
     private func playAudioData(_ data: Data) async {
-        await withCheckedContinuation { continuation in
-            audioQueue.async { [weak self] in
-                guard let self = self,
-                      let audioFormat = self.audioFormat else {
-                    continuation.resume()
-                    return
-                }
-                
-                let frameCount = data.count / 2 // 16-bit audio = 2 bytes per frame
-                guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
-                                                  frameCapacity: UInt32(frameCount)) else {
-                    continuation.resume()
-                    return
-                }
-                
-                data.withUnsafeBytes { ptr in
-                    guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else { return }
-                    let channelData = buffer.floatChannelData?[0]
-                    for i in 0..<frameCount {
-                        channelData?[i] = Float(samples[i]) / Float(Int16.max)
-                    }
-                    buffer.frameLength = UInt32(frameCount)
-                }
-                
-                self.playerNode?.scheduleBuffer(buffer) { [weak self] in
-                    guard let self = self else { return }
-                    Task { @MainActor in
-                        self.logger.debug("Completed playing buffer")
-                    }
-                }
-                
-                if !(self.playerNode?.isPlaying ?? false) {
-                    self.playerNode?.play()
-                    Task { @MainActor in
-                        self.isPlaying = true
-                    }
-                }
-                
-                continuation.resume()
+        guard let audioFormat = audioFormat else {
+            logger.error("Audio format not initialized")
+            return
+        }
+        
+        let frameCount = data.count / 2 // 16-bit audio = 2 bytes per frame
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
+                                          frameCapacity: UInt32(frameCount)) else {
+            logger.error("Failed to create PCM buffer")
+            return
+        }
+        
+        buffer.frameLength = UInt32(frameCount)
+        let channelData = buffer.floatChannelData?[0]
+        
+        data.withUnsafeBytes { ptr in
+            guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else { return }
+            for i in 0..<frameCount {
+                channelData?[i] = Float(samples[i]) / Float(Int16.max)
+            }
+        }
+        
+        playerNode.scheduleBuffer(buffer) { [weak self] in
+            print("Completed playing buffer")
+        }
+        
+        if !playerNode.isPlaying {
+            playerNode.play()
+            logger.debug("playerNode started playing")
+            await MainActor.run { [weak self] in
+                self?.isPlaying = true
+                self?.logger.debug("isPlaying set to true")
             }
         }
     }
@@ -295,58 +300,62 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
     private func handleBinaryMessage(_ data: Data) async {
         logger.debug("Received binary message of size: \(data.count)")
         
-        await withCheckedContinuation { continuation in
-            audioQueue.async { [weak self] in
-                guard let self = self,
-                      let audioFormat = self.audioFormat else {
-                    self?.logger.error("Audio format not initialized")
-                    continuation.resume()
+        guard let audioFormat = audioFormat else {
+            logger.error("Audio format not initialized")
+            return
+        }
+        
+        // Check if this is audio data
+        if data.count > 100 {
+            logger.debug("Processing binary audio data on audioProcessingQueue")
+            audioProcessingQueue.async { [weak self] in
+                guard let self = self else { return }
+                
+                let frameCount = data.count / 2
+                self.logger.debug("Frame count: \(frameCount)")
+                
+                guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
+                                                  frameCapacity: UInt32(frameCount)) else {
+                    self.logger.error("Failed to create PCM buffer")
                     return
                 }
                 
-                // Check if this is audio data
-                if data.count > 100 {
-                    let frameCount = data.count / 2
-                    
-                    guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
-                                                      frameCapacity: UInt32(frameCount)) else {
-                        self.logger.error("Failed to create PCM buffer")
-                        continuation.resume()
-                        return
-                    }
-                    
+                buffer.frameLength = UInt32(frameCount)
+                self.logger.debug("Created AVAudioPCMBuffer with frameLength: \(buffer.frameLength)")
+                
+                if let channelData = buffer.floatChannelData {
                     data.withUnsafeBytes { ptr in
                         if let int16Ptr = ptr.bindMemory(to: Int16.self).baseAddress {
-                            let channelData = buffer.floatChannelData?[0]
                             for i in 0..<frameCount {
-                                channelData?[i] = Float(int16Ptr[i]) / Float(Int16.max)
+                                channelData[0][i] = Float(int16Ptr[i]) / Float(Int16.max)
                             }
-                            buffer.frameLength = UInt32(frameCount)
                         }
                     }
-                    
-                    self.playerNode?.scheduleBuffer(buffer) { [weak self] in
-                        guard let self = self else { return }
-                        Task { @MainActor in
-                            self.logger.debug("Completed playing buffer of \(frameCount) frames")
-                        }
-                    }
-                    
-                    if !(self.playerNode?.isPlaying ?? false) {
-                        self.playerNode?.play()
-                        Task { @MainActor in
-                            self.isPlaying = true
-                        }
-                    }
+                    self.logger.debug("Converted Int16 data to Float32 and populated buffer")
+                } else {
+                    self.logger.error("channelData is nil")
                 }
                 
-                continuation.resume()
+                self.playerNode.scheduleBuffer(buffer) { [weak self] in
+                    self?.logger.debug("Completed playing buffer of \(frameCount) frames")
+                }
+                
+                if !self.playerNode.isPlaying {
+                    self.playerNode.play()
+                    self.logger.debug("playerNode started playing")
+                    Task { @MainActor in
+                        self.isPlaying = true
+                        self.logger.debug("isPlaying set to true")
+                    }
+                }
             }
+        } else {
+            logger.debug("Received binary data too small to process as audio")
         }
     }
     
     func sendText(_ text: String) async throws {
-        logger.debug("send message")
+        logger.debug("Sending text message")
         let content = LiveAPIClientContent(clientContent: .init(
             turnComplete: true,
             turns: [.init(
@@ -358,27 +367,31 @@ class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
     
     func disconnect() {
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        
-        audioQueue.async { [weak self] in
+        webSocketQueue.async { [weak self] in
             guard let self = self else { return }
-            
-            // Cleanup audio
-            self.converterNode?.removeTap(onBus: 0)
-            self.playerNode?.stop()
-            self.audioEngine?.stop()
-            
-            // Reset audio session
-            do {
-                try AVAudioSession.sharedInstance().setActive(false)
-            } catch {
-                self.logger.error("Failed to deactivate audio session: \(error.localizedDescription)")
-            }
-            
-            Task { @MainActor in
-                self.isPlaying = false
-                self.isAudioSetup = false
-            }
+            self.webSocketTask?.cancel(with: .goingAway, reason: nil)
+            self.logger.debug("WebSocket task canceled with goingAway")
         }
+        
+        audioProcessingQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.playerNode.stop()
+            self.logger.debug("playerNode stopped")
+            
+            self.audioEngine.stop()
+            self.logger.debug("audioEngine stopped")
+        }
+        
+        // Reset audio session
+        do {
+            try AVAudioSession.sharedInstance().setActive(false)
+            logger.debug("Audio session deactivated")
+        } catch {
+            logger.error("Failed to deactivate audio session: \(error.localizedDescription)")
+        }
+        
+        isPlaying = false
+        isAudioSetup = false
+        logger.debug("isPlaying set to false and isAudioSetup set to false")
     }
 }
