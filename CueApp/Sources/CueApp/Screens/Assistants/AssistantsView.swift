@@ -12,7 +12,7 @@ struct AssistantsView: View {
     @State private var isShowingNameDialog = false
     @State private var newAssistantName = ""
     @State private var navigationPath = NavigationPath()
-    let manager = LiveAPIWebSocketManager()
+    @State private var manager: LiveAPIWebSocketManager? = nil
 
     init(viewModelFactory: @escaping () -> AssistantsViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModelFactory())
@@ -69,19 +69,21 @@ struct AssistantsView: View {
             VStack {
                 Button("connect") {
                     print("connect")
+                    self.manager = LiveAPIWebSocketManager()
                     Task {
-                        try await manager.connect(apiKey: "AIzaSyCs7-MBW5FtgtUpGsfNINHHWSPOH55BP_k")
+                        
+                        try await self.manager?.connect(apiKey: "AIzaSyCs7-MBW5FtgtUpGsfNINHHWSPOH55BP_k")
                     }
                 }
                 Button("send message") {
                     print("send message")
                     Task {
-                        try await manager.sendText("Hello, how are you?")
+                        try await manager?.sendText("Hello, how are you?")
                     }
                 }
                 Button("disconnect") {
                     print("disconnect")
-                    manager.disconnect()
+                    manager?.disconnect()
                 }
             }
             .refreshable {
