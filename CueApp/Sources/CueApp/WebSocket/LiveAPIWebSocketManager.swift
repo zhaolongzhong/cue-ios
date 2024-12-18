@@ -5,7 +5,7 @@ import Combine
 
 // MARK: - LiveAPIWebSocketManager Class
 
-final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, AudioManagerDelegate, @unchecked Sendable {
+final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate, AudioManagerDelegate, @unchecked Sendable {
     // MARK: - Properties
     
     private var webSocketTask: URLSessionWebSocketTask?
@@ -34,12 +34,20 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
     private var isListening: Bool = false
     private var isServerTurn: Bool = false
     
+    @MainActor private var screenManager: ScreenManager!
+    var isScreenCapturing = false
+    
     // MARK: - Initialization
     
     override init() {
         super.init()
         setupSession()
         audioManager.delegate = self
+        // Initialize ScreenManager on main thread
+        Task { @MainActor in
+            self.screenManager = ScreenManager()
+            self.screenManager.delegate = self
+        }
         logger.debug("Initializing LiveAPIWebSocketManager")
     }
     
@@ -72,6 +80,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
         
         var request = URLRequest(url: url)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        let generationConfig = GenerationConfig(responseModalities: ["AUDIO"])
         
         webSocketQueue.async { [weak self] in
             guard let self = self else { return }
@@ -80,9 +89,23 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
             self.logger.debug("WebSocket task resumed")
             
             // Send initial setup message with only the model inside "setup"
+            
+            // Create the tools
+            let turnOnTheLightsSchema = FunctionSchema(name: "turn_on_the_lights")
+            let turnOffTheLightsSchema = FunctionSchema(name: "turn_off_the_lights")
+
+            let tools = [
+                LiveAPITool(googleSearch: [:], codeExecution: nil, functionDeclarations: nil),
+                LiveAPITool(googleSearch: nil, codeExecution: [:], functionDeclarations: nil),
+                LiveAPITool(googleSearch: nil, codeExecution: nil, functionDeclarations: [turnOnTheLightsSchema, turnOffTheLightsSchema])
+            ]
+            
             let setup = LiveAPISetup(
                 setup: SetupDetails(
-                    model: "models/\(self.model)"
+                    model: "models/\(self.model)",
+                    generationConfig: generationConfig,
+                    systemInstruction: nil,
+                    tools: tools
                 )
             )
             
@@ -161,7 +184,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
     // MARK: - Handle Text Messages
     
     private func handleTextMessage(_ text: String) async {
-        logger.debug("Received text message: \(text)")
+        logger.debug("inx Received text message: \(text)")
         guard let data = text.data(using: .utf8),
               let response = try? JSONDecoder().decode(LiveAPIResponse.self, from: data) else {
             logger.error("Failed to decode LiveAPIResponse from text message")
@@ -199,7 +222,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
             return
         }
         
-        logger.debug("Binary message as string: \(String(messageString))")
+        logger.debug("inx Binary message as string: \(String(messageString))")
         
         // Attempt to decode the string as LiveAPIResponse
         guard let jsonData = messageString.data(using: .utf8) else {
@@ -312,5 +335,71 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
     
     func checkIsServerTurn() -> Bool {
         return self.isServerTurn
+    }
+}
+
+
+
+// Add ScreenManagerDelegate conformance
+extension LiveAPIWebSocketManager: ScreenManagerDelegate {
+    
+//    // Add new method for starting screen capture
+//    func startScreenCapture() async throws {
+//        guard !isScreenCapturing else { return }
+//        
+//        #if os(macOS)
+//        try await screenManager.startCapturingMacScreen()
+//        #elseif os(iOS)
+//        try await screenManager.startCapturingIOSScreen()
+//        #endif
+//        
+//        isScreenCapturing = true
+//    }
+//
+//    // Add new method for stopping screen capture
+//    func stopScreenCapture() async {
+//        guard isScreenCapturing else { return }
+//        await screenManager.stopCapturing()
+//        isScreenCapturing = false
+//    }
+        
+    func screenManager(_ manager: ScreenManager, didReceiveFrame data: Data) {
+        Task {
+            let base64Data = data.base64EncodedString()
+            
+            let chunk = LiveAPIRealtimeInput.RealtimeInput.MediaChunk(
+                mimeType: "image/jpeg",
+                data: base64Data
+            )
+            let input = LiveAPIRealtimeInput(realtimeInput: .init(mediaChunks: [chunk]))
+            
+            do {
+                try await self.send(input)
+                self.logger.debug("Sent screen frame data")
+            } catch {
+                self.logger.error("Failed to send screen frame: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+
+extension LiveAPIWebSocketManager {
+    func startScreenCapture() async throws {
+        guard !isScreenCapturing else { return }
+        
+        let isAvailable = await screenManager.requestScreenCapturePermission()
+        guard isAvailable else {
+            throw ScreenCaptureError.permissionDenied
+        }
+        
+        try await screenManager.startCapturingIOSScreen()
+        isScreenCapturing = true
+    }
+    
+    func stopScreenCapture() async {
+        guard isScreenCapturing else { return }
+        await screenManager.stopCapturing()
+        isScreenCapturing = false
     }
 }

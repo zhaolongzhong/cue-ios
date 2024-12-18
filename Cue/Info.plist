@@ -25,5 +25,9 @@
 	<string>We need access to your microphone for voice interaction</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Speech recognition is used for voice interactions</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Request camera access for screen capture</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Request screen capture access to share your screen</string>
 </dict>
 </plist>

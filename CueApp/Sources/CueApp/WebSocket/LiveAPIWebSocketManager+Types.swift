@@ -1,7 +1,7 @@
 // LiveAPIWebSocketManager+Types.swift
 import Foundation
 
-/// MARK: - Encodable Structs for Setup Message
+// MARK: - Encodable Structs for Setup Message
 
 struct LiveAPISetup: Encodable {
     let setup: SetupDetails
@@ -9,13 +9,82 @@ struct LiveAPISetup: Encodable {
 
 struct SetupDetails: Encodable {
     let model: String
+    let generationConfig: GenerationConfig?
+    let systemInstruction: String?
+    let tools: [LiveAPITool]?
+    
+    enum CodingKeys: String, CodingKey {
+        case model = "model"
+        case generationConfig = "generation_config"
+        case systemInstruction = "system_instruction"
+        case tools = "tools"
+    }
 }
 
-struct LiveAPITool: Encodable {
-    // Define tool properties as per API requirements
-    // Example:
-    // let name: String
-    // let description: String
+struct GenerationConfig: Encodable {
+    let candidateCount: Int?
+    let maxOutputTokens: Int?
+    let temperature: Double?
+    let topP: Double?
+    let topK: Int?
+    let presencePenalty: Double?
+    let frequencyPenalty: Double?
+    let responseModalities: [String]?
+    let speechConfig: SpeechConfig?
+    
+    init(
+        candidateCount: Int? = nil,
+        maxOutputTokens: Int? = nil,
+        temperature: Double? = nil,
+        topP: Double? = nil,
+        topK: Int? = nil,
+        presencePenalty: Double? = nil,
+        frequencyPenalty: Double? = nil,
+        responseModalities: [String]? = nil,
+        speechConfig: SpeechConfig? = nil
+    ) {
+        self.candidateCount = candidateCount
+        self.maxOutputTokens = maxOutputTokens
+        self.temperature = temperature
+        self.topP = topP
+        self.topK = topK
+        self.presencePenalty = presencePenalty
+        self.frequencyPenalty = frequencyPenalty
+        self.responseModalities = responseModalities
+        self.speechConfig = speechConfig
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case candidateCount = "candidate_count"
+        case maxOutputTokens = "max_output_tokens"
+        case temperature = "temperature"
+        case topP = "top_p"
+        case topK = "top_k"
+        case presencePenalty = "presence_penalty"
+        case frequencyPenalty = "frequency_penalty"
+        case responseModalities = "response_modalities"
+        case speechConfig = "speech_config"
+    }
+}
+
+struct SpeechConfig: Encodable {
+    // Add specific speech configuration properties as needed
+    // This can be expanded based on the actual requirements
+}
+struct FunctionSchema: Codable {
+    let name: String
+}
+
+struct LiveAPITool: Codable {
+    let googleSearch: [String: String]?
+        let codeExecution: [String: String]?
+        let functionDeclarations: [FunctionSchema]?
+        
+        enum CodingKeys: String, CodingKey {
+            case googleSearch = "google_search"
+            case codeExecution = "code_execution"
+            case functionDeclarations = "function_declarations"
+        }
 }
 
 // MARK: - Decodable Structs for Responses
