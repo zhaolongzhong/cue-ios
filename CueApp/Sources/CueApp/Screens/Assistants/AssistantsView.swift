@@ -81,6 +81,12 @@ struct AssistantsView: View {
                         try await manager?.sendText("Hello, how are you?")
                     }
                 }
+                Button("send message about model") {
+                    print("send message")
+                    Task {
+                        try await manager?.sendText("What are your model card info? Who are you?")
+                    }
+                }
                 Button("disconnect") {
                     print("disconnect")
                     manager?.disconnect()

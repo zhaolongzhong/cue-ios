@@ -165,8 +165,8 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     private func setupAudioEngine() async throws {
         do {
             // Official Guide: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#audio-formats
-            // Input audio format: Raw 16 bit PCM audio at 16kHz little-endian
-            // Output audio format: Raw 16 bit PCM audio at 24kHz little-endian
+            // Server accepts input audio format: Raw 16 bit PCM audio at 24kHz little-endian
+            // Server respond audio format: Float32 at 48kHz little-endian (based on AVAudioSession's actual sample rate)
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
@@ -175,25 +175,24 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
                 try session.setPreferredSampleRate(TARGET_SAMPLE_RATE)
                 try session.setActive(true)
                 self.logger.debug("Audio session category set and activated.")
-                self.logger.debug("Actual sample rate: \(session.sampleRate)")
+                self.logger.debug("Preferred sample rate: \(self.TARGET_SAMPLE_RATE) Hz")
+                self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
             
             let actualSampleRate = session.sampleRate
+            // Define destination format as Float32
             audioFormat = AVAudioFormat(standardFormatWithSampleRate: actualSampleRate, channels: CHANNELS)
             
             guard let audioFormat = audioFormat else {
                 throw LiveAPIError.audioError(message: "Failed to create audio format")
             }
             
-            logger.debug("AudioFormat created with sampleRate: \(audioFormat.sampleRate), channels: \(audioFormat.channelCount)")
+            logger.debug("AudioFormat created with sampleRate: \(audioFormat.sampleRate) Hz, channels: \(audioFormat.channelCount)")
             
             // Attach and connect player node directly to main mixer
             audioEngine.attach(playerNode)
             audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
             logger.debug("Connected playerNode to mainMixerNode")
-            
-            // Install tap on input node if needed (optional for playback)
-            // You might not need this unless you're processing input audio
             
             // Prepare and start the engine
             audioEngine.prepare()
@@ -205,7 +204,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
     }
 
-    // MARK: - Play Audio Data
+    // MARK: - Play Audio Data with Correct Format Handling
 
     private func playAudioData(_ data: Data) async {
         // Log the first few bytes for debugging
@@ -228,55 +227,80 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             return
         }
         
-        let frameCount: Int
-        let isFloat32: Bool
+        // Assume all data is 16-bit PCM
+        let frameCount = data.count / 2 // 2 bytes per Int16 sample
         
-        if data.count % 4 == 0 { // 32-bit float
-            frameCount = data.count / 4
-            isFloat32 = true
-        } else if data.count % 2 == 0 { // 16-bit Int
-            frameCount = data.count / 2
-            isFloat32 = false
-        } else {
-            logger.error("Unsupported audio data size: \(data.count) bytes")
+        // Define source format as 16-bit PCM at 24kHz
+        let sourceSampleRate = 24000.0 // Based on mimeType: rate=24000
+        let sourceFormatSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: sourceSampleRate,
+            AVNumberOfChannelsKey: CHANNELS,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false,
+        ]
+        
+        guard let sourceAudioFormat = AVAudioFormat(settings: sourceFormatSettings) else {
+            logger.error("Failed to create source AVAudioFormat")
             return
         }
         
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
-                                          frameCapacity: UInt32(frameCount)) else {
-            logger.error("Failed to create PCM buffer")
+        // Create source buffer
+        guard let sourceBuffer = AVAudioPCMBuffer(pcmFormat: sourceAudioFormat, frameCapacity: AVAudioFrameCount(frameCount)) else {
+            logger.error("Failed to create source PCM buffer")
             return
         }
         
-        buffer.frameLength = UInt32(frameCount)
-        guard let channelData = buffer.floatChannelData else {
-            logger.error("Failed to get float channel data")
-            return
-        }
+        sourceBuffer.frameLength = AVAudioFrameCount(frameCount)
         
-        if isFloat32 {
-            let floatData = data.withUnsafeBytes { ptr in
-                Array(ptr.bindMemory(to: Float.self))
+        // Fill source buffer with Int16 data
+        data.withUnsafeBytes { ptr in
+            guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else {
+                logger.error("Failed to bind memory to Int16")
+                return
             }
             for i in 0..<frameCount {
-                channelData[0][i] = floatData[i]
+                sourceBuffer.int16ChannelData?[0][i] = samples[i]
             }
-            logger.debug("Filled buffer with 32-bit float data")
-        } else {
-            data.withUnsafeBytes { ptr in
-                guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else {
-                    logger.error("Failed to bind memory to Int16")
-                    return
-                }
-                for i in 0..<frameCount {
-                    channelData[0][i] = Float(samples[i]) / Float(Int16.max)
-                }
-            }
-            logger.debug("Filled buffer with 16-bit Int data")
+        }
+        logger.debug("Filled source buffer with 16-bit Int data")
+        
+        // Perform Resampling and conversion to Float32
+        let destinationFormat = audioFormat // Float32 at actualSampleRate (likely 48kHz)
+        guard let converter = AVAudioConverter(from: sourceAudioFormat, to: destinationFormat) else {
+            logger.error("Failed to create AVAudioConverter")
+            return
         }
         
-        playerNode.scheduleBuffer(buffer) { [weak self] in
-            self?.logger.debug("Completed playing buffer of \(frameCount) frames")
+        // Calculate the required frame capacity for the destination buffer
+        let ratio = destinationFormat.sampleRate / sourceSampleRate
+        let destinationFrameCapacity = AVAudioFrameCount(Double(sourceBuffer.frameLength) * ratio)
+        
+        guard let destinationBuffer = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: destinationFrameCapacity) else {
+            logger.error("Failed to create destination PCM buffer")
+            return
+        }
+        
+        // Initialize the destination buffer
+        destinationBuffer.frameLength = destinationFrameCapacity
+        
+        var error: NSError?
+        let status = converter.convert(to: destinationBuffer, error: &error) { inNumPackets, outStatus in
+            outStatus.pointee = AVAudioConverterInputStatus.haveData
+            return sourceBuffer
+        }
+        
+        if status == .error {
+            logger.error("Error during conversion: \(error?.localizedDescription ?? "Unknown error")")
+            return
+        }
+        
+        logger.debug("Resampled buffer from \(sourceSampleRate) Hz to \(destinationFormat.sampleRate) Hz")
+        
+        // Schedule the converted buffer for playback
+        playerNode.scheduleBuffer(destinationBuffer) { [weak self] in
+            self?.logger.debug("Completed playing converted buffer of \(destinationBuffer.frameLength) frames")
         }
         
         if !playerNode.isPlaying {
@@ -289,7 +313,6 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
     }
 
-    
     // MARK: - Audio Buffer Processing
     
     private nonisolated func processAudioBuffer(_ buffer: AVAudioPCMBuffer) -> Data {
@@ -531,4 +554,40 @@ final class AsyncQueue<Element: Sendable> {
 enum QueueError: Error {
     case queueFull
     case queueEmpty
+}
+
+// MARK: - Helper Function for Resampling (Optional)
+
+extension LiveAPIWebSocketManager {
+    // Helper function to convert AVAudioPCMBuffer from source to destination format
+    private func convertBuffer(_ buffer: AVAudioPCMBuffer, from sourceFormat: AVAudioFormat, to destinationFormat: AVAudioFormat) throws -> AVAudioPCMBuffer {
+        guard let converter = AVAudioConverter(from: sourceFormat, to: destinationFormat) else {
+            throw LiveAPIError.audioError(message: "Failed to create AVAudioConverter")
+        }
+        
+        let ratio = destinationFormat.sampleRate / sourceFormat.sampleRate
+        let outputFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
+        
+        guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: outputFrameCapacity) else {
+            throw LiveAPIError.audioError(message: "Failed to create converted PCM buffer")
+        }
+        
+        convertedBuffer.frameLength = 0 // Initialize buffer
+        
+        var error: NSError?
+        let status = converter.convert(to: convertedBuffer, error: &error) { inNumPackets, outStatus in
+            outStatus.pointee = AVAudioConverterInputStatus.haveData
+            return buffer
+        }
+        
+        if status == .error {
+            throw error ?? LiveAPIError.audioError(message: "Unknown conversion error")
+        }
+        
+        // Calculate the number of frames after conversion
+        let convertedFrames = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
+        convertedBuffer.frameLength = convertedFrames
+        
+        return convertedBuffer
+    }
 }
