@@ -11,6 +11,8 @@
 		3A2098D32CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D42CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */ = {isa = PBXBuildFile; productRef = 3A2098D62CB74D0800FEB48E /* CueApp */; };
+		3A7499E72D0FD199008E51DC /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A59BFDE2D042C9600EF209A /* CueOpenAI */; };
+		3A7499E82D0FD199008E51DC /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A368F722D0432B1000F8D8B /* CueOpenAI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +76,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3A7499E82D0FD199008E51DC /* CueOpenAI in Frameworks */,
+				3A7499E72D0FD199008E51DC /* CueOpenAI in Frameworks */,
 				3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -447,7 +451,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires microphone access to record voice notes.";
+				INFOPLIST_KEY_CFBundleDisplayName = "${DISPLAY_NAME}";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Request camera access for screen capture";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for voice interaction";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition is used for voice interactions";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -492,7 +499,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires microphone access to record voice notes.";
+				INFOPLIST_KEY_CFBundleDisplayName = "${DISPLAY_NAME}";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Request camera access for screen capture";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for voice interaction";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition is used for voice interactions";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

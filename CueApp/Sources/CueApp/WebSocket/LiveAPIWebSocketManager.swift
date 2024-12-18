@@ -222,7 +222,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
             return
         }
         
-        logger.debug("inx Binary message as string: \(String(messageString))")
+        logger.debug("inx Binary message as string: \(String(messageString.prefix(200)))")
         
         // Attempt to decode the string as LiveAPIResponse
         guard let jsonData = messageString.data(using: .utf8) else {
