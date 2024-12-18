@@ -146,51 +146,49 @@ enum LiveAPIError: Error {
 }
 
 
-//
-//// MARK: - AsyncQueue Class (Assumed Definition)
-//@preconcurrency import Foundation
-//
-//// Make Element conform to Sendable to ensure thread safety
-//final class AsyncQueue<Element: Sendable> {
-//    private let maxSize: Int
-//    private var elements: [Element] = []
-//    private let lock = NSLock()
-//    
-//    init(maxSize: Int) {
-//        self.maxSize = maxSize
-//    }
-//    
-//    func put(_ element: Element) async throws {
-//        return try await withCheckedThrowingContinuation { continuation in
-//            lock.lock()
-//            defer { lock.unlock() }
-//            
-//            if elements.count < maxSize {
-//                elements.append(element)
-//                continuation.resume()
-//            } else {
-//                continuation.resume(throwing: QueueError.queueFull)
-//            }
-//        }
-//    }
-//    
-//    func get() async throws -> Element {
-//        return try await withCheckedThrowingContinuation { continuation in
-//            lock.lock()
-//            defer { lock.unlock() }
-//            
-//            if !elements.isEmpty {
-//                let element = elements.removeFirst()
-//                continuation.resume(returning: element)
-//            } else {
-//                continuation.resume(throwing: QueueError.queueEmpty)
-//            }
-//        }
-//    }
-//}
-//
-//// Custom errors for queue operations
-//enum QueueError: Error {
-//    case queueFull
-//    case queueEmpty
-//}
+// MARK: - AsyncQueue Class
+
+// Make Element conform to Sendable to ensure thread safety
+final class AsyncQueue<Element: Sendable> {
+    private let maxSize: Int
+    private var elements: [Element] = []
+    private let lock = NSLock()
+    
+    init(maxSize: Int) {
+        self.maxSize = maxSize
+    }
+    
+    func put(_ element: Element) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            defer { lock.unlock() }
+            
+            if elements.count < maxSize {
+                elements.append(element)
+                continuation.resume()
+            } else {
+                continuation.resume(throwing: QueueError.queueFull)
+            }
+        }
+    }
+    
+    func get() async throws -> Element {
+        return try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            defer { lock.unlock() }
+            
+            if !elements.isEmpty {
+                let element = elements.removeFirst()
+                continuation.resume(returning: element)
+            } else {
+                continuation.resume(throwing: QueueError.queueEmpty)
+            }
+        }
+    }
+}
+
+// Custom errors for queue operations
+enum QueueError: Error {
+    case queueFull
+    case queueEmpty
+}

@@ -1,8 +1,5 @@
 //
 //  LiveAPIWebSocketManager+Extensions.swift
-//  CueApp
-//
-//  Created by z on 12/17/24.
 //
 
 import Foundation

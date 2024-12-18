@@ -42,6 +42,7 @@ public class ViewModelFactory {
     private var assistantsViewModel: AssistantsViewModel?
     private var chatViewModels: [String: ChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
+    private var apiKeysViewModel: APIKeysViewModel?
 
     public init(dependencies: AppDependencies) {
         self.dependencies = dependencies
@@ -76,6 +77,16 @@ public class ViewModelFactory {
             let settingsViewModel = SettingsViewModel(authService: dependencies.authService)
             self.settingsViewModel = settingsViewModel
             return settingsViewModel
+        }
+    }
+    
+    public func makeAPIKeysViewModel() -> APIKeysViewModel {
+        if let apiKeysViewModel = self.apiKeysViewModel {
+            return apiKeysViewModel
+        } else {
+            let apiKeysViewModel = APIKeysViewModel()
+            self.apiKeysViewModel = apiKeysViewModel
+            return apiKeysViewModel
         }
     }
 

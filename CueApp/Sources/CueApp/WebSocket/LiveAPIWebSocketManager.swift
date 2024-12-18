@@ -1,5 +1,5 @@
 import Foundation
-import AVFoundation
+@preconcurrency import AVFoundation
 import os.log
 import Combine
 
@@ -40,7 +40,6 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     // Dedicated background queues for thread safety
     private let webSocketQueue = DispatchQueue(label: "com.yourapp.webSocketQueue")
     private let audioProcessingQueue = DispatchQueue(label: "com.yourapp.audioProcessingQueue")
-    private var audioPlayer = AudioStreamPlayer() // another audio player for testing purpose
     
     override init() {
         super.init()
@@ -78,6 +77,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
                                                object: nil)
     }
     
+    #if os(iOS)
     @objc private func handleAudioSessionInterruption(notification: Notification) {
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
@@ -101,6 +101,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             }
         }
     }
+    #endif
     
     @objc private func handleAudioRouteChange(notification: Notification) {
         logger.debug("Audio route changed")
@@ -170,6 +171,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     private func setupAudioEngine() async throws {
         do {
             // Configure AVAudioSession for 16kHz, 16-bit PCM with voice chat mode
+            #if os(iOS)
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
@@ -181,8 +183,11 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
                 self.logger.debug("Preferred sample rate: \(self.SEND_SAMPLE_RATE) Hz")
                 self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
+            //            let actualSampleRate = session.sampleRate
+            #endif
             
-            let actualSampleRate = session.sampleRate
+
+            let actualSampleRate = RECEIVE_SAMPLE_RATE
             // Define input format as 16kHz, 16-bit PCM little-endian
             let inputFormatSettings: [String: Any] = [
                 AVFormatIDKey: Int(kAudioFormatLinearPCM),
@@ -428,13 +433,6 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             }
         }
     }
-
-    // MARK: - Audio Buffer Processing
-    
-    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) -> Data {
-        // This method is no longer needed as conversion is handled in convertAndSend
-        return Data()
-    }
     
     // MARK: - Handle Processed Audio Data (Optional)
     
@@ -601,12 +599,14 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
         
         // Reset audio session
+        #if os(iOS)
         do {
             try AVAudioSession.sharedInstance().setActive(false)
             logger.debug("Audio session deactivated")
         } catch {
             logger.error("Failed to deactivate audio session: \(error.localizedDescription)")
         }
+        #endif
         
         isPlaying = false
         isAudioSetup = false
@@ -614,54 +614,6 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     }
 }
 
-
-// MARK: - AsyncQueue Class (Assumed Definition)
-@preconcurrency import Foundation
-
-// Make Element conform to Sendable to ensure thread safety
-final class AsyncQueue<Element: Sendable> {
-    private let maxSize: Int
-    private var elements: [Element] = []
-    private let lock = NSLock()
-    
-    init(maxSize: Int) {
-        self.maxSize = maxSize
-    }
-    
-    func put(_ element: Element) async throws {
-        return try await withCheckedThrowingContinuation { continuation in
-            lock.lock()
-            defer { lock.unlock() }
-            
-            if elements.count < maxSize {
-                elements.append(element)
-                continuation.resume()
-            } else {
-                continuation.resume(throwing: QueueError.queueFull)
-            }
-        }
-    }
-    
-    func get() async throws -> Element {
-        return try await withCheckedThrowingContinuation { continuation in
-            lock.lock()
-            defer { lock.unlock() }
-            
-            if !elements.isEmpty {
-                let element = elements.removeFirst()
-                continuation.resume(returning: element)
-            } else {
-                continuation.resume(throwing: QueueError.queueEmpty)
-            }
-        }
-    }
-}
-
-// Custom errors for queue operations
-enum QueueError: Error {
-    case queueFull
-    case queueEmpty
-}
 
 // MARK: - Helper Function for Resampling (Optional)
 

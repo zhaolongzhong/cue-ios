@@ -2,6 +2,7 @@ import SwiftUI
 
 enum TabSelection: String {
     case chat = "Chat"
+    case gemini = "Gemini"
     case assistants = "Assistants"
     case settings = "Settings"
 }
@@ -18,11 +19,18 @@ public struct AppTabView: View {
 
     public var body: some View {
         TabView(selection: $selectedTab) {
-            let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.openai)
-            if !apiKey.isEmpty {
+            if let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.openai) {
                 OpenAIChatView(apiKey: apiKey)
                     .tabItem {
                         Label("Chat", systemImage: "wand.and.stars")
+                    }
+                    .tag(TabSelection.chat)
+            }
+            
+            if let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.gemini) {
+                GeminiChatView(apiKey: apiKey)
+                    .tabItem {
+                        Label("Gemini", systemImage: "wand.and.stars")
                     }
                     .tag(TabSelection.chat)
             }

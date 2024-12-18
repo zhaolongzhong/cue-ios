@@ -21,75 +21,31 @@ struct AssistantsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-//            List(viewModel.assistants) { assistant in
-////                NavigationLink(
-////                    value: AppDestination.chat(assistant)
-////                ) {
-////                    AssistantRowView(
-////                        assistant: assistant,
-////                        status: viewModel.getClientStatus(for: assistant)
-////                    )
-////                }
-////                .contextMenu {
-////                    if assistant.isPrimary {
-////                        AssistantContextMenu(
-////                            assistant: assistant,
-////                            viewModel: viewModel
-////                        )
-////                    }
-////                }
-////                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-////                    if assistant.isPrimary {
-////                        Button(role: .destructive) {
-////                            viewModel.assistantToDelete = assistant
-////                        } label: {
-////                            Label("Delete", systemImage: "trash")
-////                        }
-////                    }
-////                }
-//                VStack {
-//                    Button("content") {
-//                        print("connect")
-//                        Task {
-//                            try await manager.connect()
-//                        }
-//                    }
-//                    Button("send message") {
-//                        print("send message")
-//                        Task {
-//                            try await manager.sendText("Hello, how are you?")
-//                        }
-//                    }
-//                    Button("disconnect") {
-//                        print("disconnect")
-//                        manager.disconnect()
-//                    }
-//                }
-//            }
-            List {
-                Button("connect") {
-                    print("connect")
-                    self.manager = LiveAPIWebSocketManager()
-                    Task {
-                        
-                        try await self.manager?.connect(apiKey: "AIzaSyCs7-MBW5FtgtUpGsfNINHHWSPOH55BP_k")
+            List(viewModel.assistants) { assistant in
+                NavigationLink(
+                    value: AppDestination.chat(assistant)
+                ) {
+                    AssistantRowView(
+                        assistant: assistant,
+                        status: viewModel.getClientStatus(for: assistant)
+                    )
+                }
+                .contextMenu {
+                    if assistant.isPrimary {
+                        AssistantContextMenu(
+                            assistant: assistant,
+                            viewModel: viewModel
+                        )
                     }
                 }
-                Button("send message") {
-                    print("send message")
-                    Task {
-                        try await manager?.sendText("Hello, how are you?")
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    if assistant.isPrimary {
+                        Button(role: .destructive) {
+                            viewModel.assistantToDelete = assistant
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
-                }
-                Button("send message about model") {
-                    print("send message")
-                    Task {
-                        try await manager?.sendText("What are your model card info? Who are you?")
-                    }
-                }
-                Button("disconnect") {
-                    print("disconnect")
-                    manager?.disconnect()
                 }
             }
             .refreshable {

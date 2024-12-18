@@ -38,6 +38,7 @@ struct Sidebar: View {
             SettingsMenu(
                 onOpenAIChat: handleOpenAIChat,
                 onAnthropicChat: handleAnthropicChat,
+                onGeminiChat: handleGeminiChat,
                 onOpenSettings: handleOpenSettings
             )
             .padding(.all, 4)
@@ -81,6 +82,12 @@ struct Sidebar: View {
     private func handleAnthropicChat() {
         #if os(macOS)
         openWindow(id: "anthropic-chat-window")
+        #endif
+    }
+    
+    private func handleGeminiChat() {
+        #if os(macOS)
+        openWindow(id: "gemini-chat-window")
         #endif
     }
 

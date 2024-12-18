@@ -10,25 +10,25 @@ struct APIKeyRowView: View {
                 Text(keyType.displayName)
                     .font(.headline)
                 Spacer()
-                if !viewModel.getAPIKey(for: keyType).isEmpty {
+                if viewModel.getAPIKey(for: keyType) != nil {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                 }
             }
 
             HStack(spacing: 16) {
-                if viewModel.getAPIKey(for: keyType).isEmpty {
+                if viewModel.getAPIKey(for: keyType) == nil {
                     Text("Not configured")
                         .foregroundColor(.secondary)
                 } else {
-                    Text("••••••••" + viewModel.getAPIKey(for: keyType).suffix(4))
+                    Text("••••••••" + viewModel.getAPIKey(for: keyType)!.suffix(4))
                         .font(.system(.body, design: .monospaced))
                 }
 
                 Spacer()
 
                 HStack(spacing: 4) {
-                    if !viewModel.getAPIKey(for: keyType).isEmpty {
+                    if viewModel.getAPIKey(for: keyType) != nil {
                         Button(role: .destructive) {
                             viewModel.deleteKey(keyType)
                         } label: {
@@ -41,7 +41,7 @@ struct APIKeyRowView: View {
                     Button {
                         viewModel.startEditing(keyType)
                     } label: {
-                        Text(viewModel.getAPIKey(for: keyType).isEmpty ? "Add" : "Edit")
+                        Text(viewModel.getAPIKey(for: keyType) == nil ? "Add" : "Edit")
                             .frame(minWidth: 44)
                     }
                 }

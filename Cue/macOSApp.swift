@@ -33,11 +33,13 @@ struct macOSApp: App {
         .defaultPosition(.center)
         .windowResizability(.contentSize)
 
+        let viewModel = APIKeysViewModel()
+        
         WindowGroup(id: "openai-chat-window") {
-            let viewModel = APIKeysViewModel()
-            let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
-            OpenAIChatView(apiKey: apiKey)
-                .navigationTitle("OpenAI")
+            if let apiKey = viewModel.getAPIKey(for: APIKeyType.openai) {
+                OpenAIChatView(apiKey: apiKey)
+                    .navigationTitle("OpenAI")
+            }
         }
         .defaultSize(width: 500, height: 400)
         .windowStyle(.titleBar)
@@ -46,9 +48,21 @@ struct macOSApp: App {
 
         WindowGroup(id: "anthropic-chat-window") {
             let viewModel = APIKeysViewModel()
-            let apiKey = viewModel.getAPIKey(for: APIKeyType.anthropic)
-            AnthropicChatView(apiKey: apiKey)
-                .navigationTitle("Anthropic")
+            if let apiKey = viewModel.getAPIKey(for: APIKeyType.anthropic) {
+                AnthropicChatView(apiKey: apiKey)
+                    .navigationTitle("Anthropic")
+            }
+        }
+        .defaultSize(width: 500, height: 400)
+        .windowStyle(.titleBar)
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
+        
+        WindowGroup(id: "gemini-chat-window") {
+            if let apiKey = viewModel.getAPIKey(for: APIKeyType.gemini) {
+                GeminiChatView(apiKey: apiKey)
+                    .navigationTitle("Gemini")
+            }
         }
         .defaultSize(width: 500, height: 400)
         .windowStyle(.titleBar)
