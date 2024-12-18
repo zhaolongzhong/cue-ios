@@ -4,102 +4,6 @@ import AVFoundation
 import os.log
 import Combine
 
-// MARK: - Encodable Structs for Setup Message
-
-struct LiveAPISetup: Encodable {
-    let setup: SetupDetails
-}
-
-struct SetupDetails: Encodable {
-    let model: String
-}
-
-struct LiveAPITool: Encodable {
-    // Define tool properties as per API requirements
-    // Example:
-    // let name: String
-    // let description: String
-}
-
-// MARK: - Decodable Structs for Responses
-
-struct LiveAPIResponse: Decodable {
-    let serverContent: ServerContent?
-    let setupComplete: SetupComplete?
-    
-    enum CodingKeys: String, CodingKey {
-        case serverContent = "serverContent"
-        case setupComplete = "setupComplete"
-    }
-}
-
-struct SetupComplete: Decodable {
-    // Add fields if there are any. Currently, it's an empty object.
-}
-
-struct ServerContent: Decodable {
-    let modelTurn: ModelTurn?
-    
-    enum CodingKeys: String, CodingKey {
-        case modelTurn = "modelTurn"
-    }
-}
-
-struct ModelTurn: Decodable {
-    let parts: [Part]?
-}
-
-struct Part: Decodable {
-    let text: String?
-    let inlineData: InlineData?
-    
-    enum CodingKeys: String, CodingKey {
-        case text
-        case inlineData = "inlineData"
-    }
-}
-
-struct InlineData: Decodable {
-    let mimeType: String
-    let data: String
-    
-    enum CodingKeys: String, CodingKey {
-        case mimeType = "mimeType"
-        case data
-    }
-}
-
-struct BinaryMessage: Decodable {
-    let setupComplete: SetupComplete?
-    let serverContent: ServerContent?
-    
-    enum CodingKeys: String, CodingKey {
-        case setupComplete = "setupComplete"
-        case serverContent = "serverContent"
-    }
-}
-
-struct LiveAPIContent: Decodable {
-    let audio: AudioData?
-    let text: String?
-    // Add other fields if present
-}
-
-struct AudioData: Decodable {
-    let mimeType: String
-    let data: String
-    
-    enum CodingKeys: String, CodingKey {
-        case mimeType = "mime_type"
-        case data
-    }
-}
-
-struct LiveAPIMetadata: Decodable {
-    let timestamp: String?
-    // Add other fields as necessary
-}
-
 // MARK: - LiveAPIWebSocketManager Class
 
 final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable {
@@ -115,8 +19,8 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     private let CHANNELS: UInt32 = 1
     private var audioFormat: AVAudioFormat?
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiveAPI",
-                                category: "LiveAPIWebSocketManager")
+    let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiveAPI",
+                                category: "LiveAPIWebSocketManager") // allow extension access
     
     // Audio engine components
     private var audioEngine = AVAudioEngine()
@@ -132,6 +36,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     // Dedicated background queues for thread safety
     private let webSocketQueue = DispatchQueue(label: "com.yourapp.webSocketQueue")
     private let audioProcessingQueue = DispatchQueue(label: "com.yourapp.audioProcessingQueue")
+    private var audioPlayer = AudioStreamPlayer() // another audio player for testing purpose
     
     override init() {
         super.init()
@@ -256,9 +161,12 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     }
     
     // MARK: - Audio Engine Setup
-    
+
     private func setupAudioEngine() async throws {
         do {
+            // Official Guide: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#audio-formats
+            // Input audio format: Raw 16 bit PCM audio at 16kHz little-endian
+            // Output audio format: Raw 16 bit PCM audio at 24kHz little-endian
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
@@ -270,9 +178,8 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
                 self.logger.debug("Actual sample rate: \(session.sampleRate)")
             }
             
-            // Initialize format to match the main mixer node
-            audioFormat = AVAudioFormat(standardFormatWithSampleRate: TARGET_SAMPLE_RATE,
-                                        channels: CHANNELS)
+            let actualSampleRate = session.sampleRate
+            audioFormat = AVAudioFormat(standardFormatWithSampleRate: actualSampleRate, channels: CHANNELS)
             
             guard let audioFormat = audioFormat else {
                 throw LiveAPIError.audioError(message: "Failed to create audio format")
@@ -285,19 +192,8 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
             logger.debug("Connected playerNode to mainMixerNode")
             
-            // Install tap on input node if needed
-            audioEngine.inputNode.installTap(onBus: 0,
-                                             bufferSize: 1024,
-                                             format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, time in
-                guard let self = self else { return }
-                let audioData = self.processAudioBuffer(buffer)
-                
-                Task { @MainActor in
-                    // Uncomment the line below if you need to send processed audio back
-                    // await self.handleProcessedAudioData(audioData)
-                }
-            }
-            logger.debug("Installed tap on inputNode")
+            // Install tap on input node if needed (optional for playback)
+            // You might not need this unless you're processing input audio
             
             // Prepare and start the engine
             audioEngine.prepare()
@@ -308,6 +204,91 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             throw error
         }
     }
+
+    // MARK: - Play Audio Data
+
+    private func playAudioData(_ data: Data) async {
+        // Log the first few bytes for debugging
+        if data.count >= 4 {
+            let firstFourBytes = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
+            logger.debug("First 4 bytes of audio data: \(firstFourBytes)")
+        }
+        
+        // Save audio data to a file for debugging
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("receivedAudio_\(Date().timeIntervalSince1970).pcm")
+        do {
+            try data.write(to: fileURL)
+            logger.debug("Saved received audio data to \(fileURL)")
+        } catch {
+            logger.error("Failed to save audio data: \(error.localizedDescription)")
+        }
+        
+        guard let audioFormat = audioFormat else {
+            logger.error("Audio format not initialized")
+            return
+        }
+        
+        let frameCount: Int
+        let isFloat32: Bool
+        
+        if data.count % 4 == 0 { // 32-bit float
+            frameCount = data.count / 4
+            isFloat32 = true
+        } else if data.count % 2 == 0 { // 16-bit Int
+            frameCount = data.count / 2
+            isFloat32 = false
+        } else {
+            logger.error("Unsupported audio data size: \(data.count) bytes")
+            return
+        }
+        
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
+                                          frameCapacity: UInt32(frameCount)) else {
+            logger.error("Failed to create PCM buffer")
+            return
+        }
+        
+        buffer.frameLength = UInt32(frameCount)
+        guard let channelData = buffer.floatChannelData else {
+            logger.error("Failed to get float channel data")
+            return
+        }
+        
+        if isFloat32 {
+            let floatData = data.withUnsafeBytes { ptr in
+                Array(ptr.bindMemory(to: Float.self))
+            }
+            for i in 0..<frameCount {
+                channelData[0][i] = floatData[i]
+            }
+            logger.debug("Filled buffer with 32-bit float data")
+        } else {
+            data.withUnsafeBytes { ptr in
+                guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else {
+                    logger.error("Failed to bind memory to Int16")
+                    return
+                }
+                for i in 0..<frameCount {
+                    channelData[0][i] = Float(samples[i]) / Float(Int16.max)
+                }
+            }
+            logger.debug("Filled buffer with 16-bit Int data")
+        }
+        
+        playerNode.scheduleBuffer(buffer) { [weak self] in
+            self?.logger.debug("Completed playing buffer of \(frameCount) frames")
+        }
+        
+        if !playerNode.isPlaying {
+            playerNode.play()
+            logger.debug("playerNode started playing")
+            await MainActor.run { [weak self] in
+                self?.isPlaying = true
+                self?.logger.debug("isPlaying set to true")
+            }
+        }
+    }
+
     
     // MARK: - Audio Buffer Processing
     
@@ -347,7 +328,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     
     // MARK: - Send Method
     
-    private func send<T: Encodable>(_ message: T) async throws {
+    func send<T: Encodable>(_ message: T) async throws { // allow extensions access
         guard let messageData = try? JSONEncoder().encode(message),
               let messageString = String(data: messageData, encoding: .utf8) else {
             throw LiveAPIError.encodingError
@@ -471,100 +452,6 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
     }
 
-    
-    // MARK: - Play Audio Data
-    
-    private func playAudioData(_ data: Data) async {
-        // Inspect the first few bytes for debugging
-        if data.count >= 4 {
-            let firstFourBytes = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
-            logger.debug("First 4 bytes of audio data: \(firstFourBytes)")
-        }
-        
-        // Save audio data to a file for debugging
-        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("receivedAudio_\(Date().timeIntervalSince1970).pcm")
-        do {
-            try data.write(to: fileURL)
-            logger.debug("Saved received audio data to \(fileURL)")
-        } catch {
-            logger.error("Failed to save audio data: \(error.localizedDescription)")
-        }
-        
-        guard let audioFormat = audioFormat else {
-            logger.error("Audio format not initialized")
-            return
-        }
-        
-        let frameCount: Int
-        let isFloat32: Bool
-        
-        if data.count % 4 == 0 { // 32-bit float
-            frameCount = data.count / 4
-            isFloat32 = true
-        } else if data.count % 2 == 0 { // 16-bit Int
-            frameCount = data.count / 2
-            isFloat32 = false
-        } else {
-            logger.error("Unsupported audio data size: \(data.count) bytes")
-            return
-        }
-        
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat,
-                                          frameCapacity: UInt32(frameCount)) else {
-            logger.error("Failed to create PCM buffer")
-            return
-        }
-        
-        buffer.frameLength = UInt32(frameCount)
-        let channelData = buffer.floatChannelData?[0]
-        
-        if isFloat32 {
-            let floatData = data.withUnsafeBytes { ptr in
-                Array(ptr.bindMemory(to: Float.self))
-            }
-            for i in 0..<frameCount {
-                channelData?[i] = floatData[i]
-            }
-        } else {
-            data.withUnsafeBytes { ptr in
-                guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else {
-                    logger.error("Failed to bind memory to Int16")
-                    return
-                }
-                for i in 0..<frameCount {
-                    channelData?[i] = Float(samples[i]) / Float(Int16.max)
-                }
-            }
-        }
-        
-        playerNode.scheduleBuffer(buffer) { [weak self] in
-            self?.logger.debug("Completed playing buffer of \(frameCount) frames")
-        }
-        
-        if !playerNode.isPlaying {
-            playerNode.play()
-            logger.debug("playerNode started playing")
-            await MainActor.run { [weak self] in
-                self?.isPlaying = true
-                self?.logger.debug("isPlaying set to true")
-            }
-        }
-    }
-    
-    // MARK: - Send Text Message
-    
-    func sendText(_ text: String) async throws {
-        logger.debug("Sending text message: \(text)")
-        let content = LiveAPIClientContent(client_content: .init(
-            turnComplete: true,
-            turns: [.init(
-                role: "user",
-                parts: [.init(text: text)]
-            )]
-        ))
-        try await send(content)
-    }
-    
     // MARK: - Disconnect Method
     
     func disconnect() {
@@ -595,66 +482,6 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         isAudioSetup = false
         logger.debug("isPlaying set to false and isAudioSetup set to false")
     }
-}
-
-// MARK: - URLSessionWebSocketDelegate Implementation
-
-extension LiveAPIWebSocketManager {
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        logger.debug("WebSocket did open with protocol.")
-    }
-    
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        let reasonString = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "No reason provided"
-        logger.debug("WebSocket did close with code: \(closeCode.rawValue), reason: \(reasonString)")
-    }
-}
-
-// MARK: - LiveAPIClientContent Struct
-
-struct LiveAPIClientContent: Encodable {
-    let client_content: ClientContent
-    
-    enum CodingKeys: String, CodingKey {
-        case client_content = "clientContent"
-    }
-    
-    struct ClientContent: Encodable {
-        let turnComplete: Bool
-        let turns: [Turn]
-        
-        struct Turn: Encodable {
-            let role: String
-            let parts: [Part]
-            
-            struct Part: Encodable {
-                let text: String?
-            }
-        }
-    }
-}
-
-// MARK: - LiveAPIRealtimeInput Struct (Assumed Definition)
-
-struct LiveAPIRealtimeInput: Encodable {
-    let realtimeInput: RealtimeInput
-    
-    struct RealtimeInput: Encodable {
-        let mediaChunks: [MediaChunk]
-        
-        struct MediaChunk: Encodable {
-            let mimeType: String
-            let data: String
-        }
-    }
-}
-
-// MARK: - LiveAPIError Enum
-
-enum LiveAPIError: Error {
-    case invalidURL
-    case encodingError
-    case audioError(message: String)
 }
 
 

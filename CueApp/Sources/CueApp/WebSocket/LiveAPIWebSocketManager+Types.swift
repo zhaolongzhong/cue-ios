@@ -1,106 +1,150 @@
 // LiveAPIWebSocketManager+Types.swift
 import Foundation
 
-// MARK: - Request Types
+/// MARK: - Encodable Structs for Setup Message
 
-//struct LiveAPISetup: Codable {
-//    let setup: SetupConfig
-//    
-//    struct SetupConfig: Codable {
-//        let model: String
-//    }
-//}
+struct LiveAPISetup: Encodable {
+    let setup: SetupDetails
+}
 
-//struct LiveAPIClientContent: Codable {
-//    let clientContent: ClientContent
-//    
-//    struct ClientContent: Codable {
-//        let turnComplete: Bool
-//        let turns: [Turn]
-//        
-//        struct Turn: Codable {
-//            let role: String
-//            let parts: [Part]
-//            
-//            struct Part: Codable {
-//                let text: String?
-//            }
-//        }
-//    }
-//}
+struct SetupDetails: Encodable {
+    let model: String
+}
 
-//struct LiveAPIRealtimeInput: Codable {
-//    let realtimeInput: RealtimeInput
-//    
-//    struct RealtimeInput: Codable {
-//        let mediaChunks: [MediaChunk]
-//        
-//        struct MediaChunk: Codable {
-//            let mimeType: String
-//            let data: String // base64 encoded data
-//            
-//            enum CodingKeys: String, CodingKey {
-//                case mimeType = "mime_type"
-//                case data
-//            }
-//        }
-//    }
-//}
+struct LiveAPITool: Encodable {
+    // Define tool properties as per API requirements
+    // Example:
+    // let name: String
+    // let description: String
+}
 
-//// MARK: - Response Types
-//
-//struct LiveAPIResponse: Codable {
-//    let serverContent: ServerContent?
-//    
-//    struct ServerContent: Codable {
-//        let modelTurn: ModelTurn?
-//        let turnComplete: Bool?
-//        
-//        struct ModelTurn: Codable {
-//            let parts: [Part]?
-//            
-//            struct Part: Codable {
-//                let inlineData: InlineData?
-//                
-//                struct InlineData: Codable {
-//                    let data: String // base64 encoded data
-//                }
-//            }
-//        }
-//    }
-//}
+// MARK: - Decodable Structs for Responses
 
-//enum LiveAPIError: Error {
-//    case invalidURL
-//    case encodingError
-//    case decodingError
-//    case audioError(message: String)
-//    case permissionDenied
-//}
+struct LiveAPIResponse: Decodable {
+    let serverContent: ServerContent?
+    let setupComplete: SetupComplete?
+    
+    enum CodingKeys: String, CodingKey {
+        case serverContent = "serverContent"
+        case setupComplete = "setupComplete"
+    }
+}
 
-//actor AsyncQueue<T> {
-//    private var items: [T] = []
-//    private let maxSize: Int
-//    
-//    init(maxSize: Int) {
-//        self.maxSize = maxSize
-//    }
-//    
-//    func put(_ item: T) async throws {
-//        while items.count >= maxSize {
-//            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-//        }
-//        items.append(item)
-//    }
-//    
-//    func get() async throws -> T {
-//        while items.isEmpty {
-//            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-//        }
-//        let item = items.removeFirst()
-//        return item
-//    }
-//}
+struct SetupComplete: Decodable {
+    // Add fields if there are any. Currently, it's an empty object.
+}
+
+struct ServerContent: Decodable {
+    let modelTurn: ModelTurn?
+    
+    enum CodingKeys: String, CodingKey {
+        case modelTurn = "modelTurn"
+    }
+}
+
+struct ModelTurn: Decodable {
+    let parts: [Part]?
+}
+
+struct Part: Decodable {
+    let text: String?
+    let inlineData: InlineData?
+    
+    enum CodingKeys: String, CodingKey {
+        case text
+        case inlineData = "inlineData"
+    }
+}
+
+struct InlineData: Decodable {
+    let mimeType: String
+    let data: String
+    
+    enum CodingKeys: String, CodingKey {
+        case mimeType = "mimeType"
+        case data
+    }
+}
+
+struct BinaryMessage: Decodable {
+    let setupComplete: SetupComplete?
+    let serverContent: ServerContent?
+    
+    enum CodingKeys: String, CodingKey {
+        case setupComplete = "setupComplete"
+        case serverContent = "serverContent"
+    }
+}
+
+struct LiveAPIContent: Decodable {
+    let audio: AudioData?
+    let text: String?
+    // Add other fields if present
+}
+
+struct AudioData: Decodable {
+    let mimeType: String
+    let data: String
+    
+    enum CodingKeys: String, CodingKey {
+        case mimeType = "mime_type"
+        case data
+    }
+}
+
+struct LiveAPIMetadata: Decodable {
+    let timestamp: String?
+    // Add other fields as necessary
+}
+
+
+// MARK: - LiveAPIClientContent Struct
+
+struct LiveAPIClientContent: Encodable {
+    let client_content: ClientContent
+    
+    enum CodingKeys: String, CodingKey {
+        case client_content = "clientContent"
+    }
+    
+    struct ClientContent: Encodable {
+        let turnComplete: Bool
+        let turns: [Turn]
+        
+        struct Turn: Encodable {
+            let role: String
+            let parts: [Part]
+            
+            struct Part: Encodable {
+                let text: String?
+            }
+        }
+    }
+}
+
+// MARK: - LiveAPIRealtimeInput Struct (Assumed Definition)
+
+struct LiveAPIRealtimeInput: Encodable {
+    let realtimeInput: RealtimeInput
+    
+    struct RealtimeInput: Encodable {
+        let mediaChunks: [MediaChunk]
+        
+        struct MediaChunk: Encodable {
+            let mimeType: String
+            let data: String
+        }
+    }
+}
+
+// MARK: - LiveAPIError Enum
+
+enum LiveAPIError: Error {
+    case invalidURL
+    case encodingError
+    case audioError(message: String)
+}
+
 
 //
 //// MARK: - AsyncQueue Class (Assumed Definition)
