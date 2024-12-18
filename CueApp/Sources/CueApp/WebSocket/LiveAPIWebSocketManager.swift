@@ -31,6 +31,8 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
     
     // Audio Manager
     private let audioManager = AudioManager()
+    private var isListening: Bool = false
+    private var isServerTurn: Bool = false
     
     // MARK: - Initialization
     
@@ -197,7 +199,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
             return
         }
         
-        logger.debug("Binary message as string: \(String(messageString.prefix(200)))")
+        logger.debug("Binary message as string: \(String(messageString))")
         
         // Attempt to decode the string as LiveAPIResponse
         guard let jsonData = messageString.data(using: .utf8) else {
@@ -209,28 +211,46 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
             logger.debug("Attempting to decode LiveAPIResponse")
             let response = try JSONDecoder().decode(LiveAPIResponse.self, from: jsonData)
             
-            if let serverContent = response.serverContent,
-               let modelTurn = serverContent.modelTurn,
-               let part = modelTurn.parts?.first {
-                
-                if let inlineData = part.inlineData,
-                   inlineData.mimeType.starts(with: "audio/pcm") {
-                    if let decodedAudioData = Data(base64Encoded: inlineData.data) {
-                        logger.debug("Received PCM audio data from serverContent")
-                        await audioManager.playAudioData(decodedAudioData)
-                    } else {
-                        logger.error("Failed to decode base64 audio data from inlineData")
+            self.isListening = !(response.serverContent?.turnComplete == true)
+            if let turnComplete = response.serverContent?.turnComplete {
+                logger.debug("inx handleBinaryMessage turnComplete: \(turnComplete), set audioManager.turnComplete = true")
+                audioManager.turnComplete = true
+            } else {
+                logger.debug("inx handleBinaryMessage turnComplete: nil, set audioManager.turnComplete = false")
+                audioManager.turnComplete = false
+            }
+            
+            if let serverContent = response.serverContent {
+                if let modelTurn = serverContent.modelTurn {
+                    if let part = modelTurn.parts?.first {
+                        self.isServerTurn = true
+                        if let inlineData = part.inlineData,
+                           inlineData.mimeType.starts(with: "audio/pcm") {
+                            if let decodedAudioData = Data(base64Encoded: inlineData.data) {
+                                logger.debug("Received PCM audio data from serverContent")
+                                await audioManager.playAudioData(decodedAudioData)
+                            } else {
+                                logger.error("Failed to decode base64 audio data from inlineData")
+                            }
+                        }
+                        
+                        if let text = part.text {
+                            logger.debug("Received text from serverContent: \(text)")
+                            // Handle text responses as needed
+                        }
                     }
-                }
-                
-                if let text = part.text {
-                    logger.debug("Received text from serverContent: \(text)")
-                    // Handle text responses as needed
+                } else if let turnComplete = serverContent.turnComplete {
+                    self.isServerTurn = false
+                } else {
+                    self.isServerTurn = false
+                    logger.error("Unexpected state received from serverContent")
                 }
             } else if response.setupComplete != nil {
+                self.isServerTurn = false
                 logger.debug("Received setupComplete message")
                 // Handle setup completion if needed
             } else {
+                self.isServerTurn = false
                 logger.error("Received serverContent without modelTurn or setupComplete")
             }
         } catch {
@@ -288,5 +308,9 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, Audi
             self.isPlaying = isPlaying
             self.logger.debug("isPlaying updated to \(isPlaying)")
         }
+    }
+    
+    func checkIsServerTurn() -> Bool {
+        return self.isServerTurn
     }
 }

@@ -12,6 +12,7 @@ import Combine
 protocol AudioManagerDelegate: AnyObject {
     func audioManager(_ manager: AudioManager, didReceiveProcessedAudio data: Data)
     func audioManager(_ manager: AudioManager, didUpdatePlaybackState isPlaying: Bool)
+    func checkIsServerTurn() -> Bool
 }
 
 // MARK: - AudioManager Class
@@ -24,6 +25,8 @@ final class AudioManager: NSObject, @unchecked Sendable {
     
     private let audioEngine = AVAudioEngine()
     private let playerNode = AVAudioPlayerNode()
+    private var isPlaying: Bool = false
+    var turnComplete: Bool = true
     
     private let RECEIVE_SAMPLE_RATE: Double = 24000 // 24kHz
     private let SEND_SAMPLE_RATE: Double = 16000 // 16kHz
@@ -73,6 +76,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         if type == .began {
             logger.debug("Audio session interruption began")
             playerNode.pause()
+            isPlaying = false
             delegate?.audioManager(self, didUpdatePlaybackState: false)
         } else if type == .ended {
             logger.debug("Audio session interruption ended")
@@ -175,6 +179,17 @@ final class AudioManager: NSObject, @unchecked Sendable {
     // MARK: - Convert and Send Audio Buffer
     
     private func convertAndSend(buffer: AVAudioPCMBuffer) {
+        guard !isPlaying else {
+            logger.debug("Skipping audio capture while playing")
+            return
+        }
+        
+        if delegate?.checkIsServerTurn() == true {
+            logger.debug("Skipping audio capture because it's server turn")
+            return
+        }
+        
+        isPlaying = false
         // Define source and destination formats
         let sourceFormat = buffer.format // e.g., 48kHz, Float32
         
@@ -241,6 +256,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
     // MARK: - Play Audio Data
     
     func playAudioData(_ data: Data) async {
+        isPlaying = true
         // Log the first few bytes for debugging
         if data.count >= 4 {
             let firstFourBytes = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
@@ -352,7 +368,14 @@ final class AudioManager: NSObject, @unchecked Sendable {
         
         // Schedule the converted buffer for playback
         playerNode.scheduleBuffer(destinationBuffer) { [weak self] in
-            self?.logger.debug("Completed playing converted buffer of \(destinationBuffer.frameLength) frames")
+            guard let self = self else { return }
+            self.logger.debug("Completed playing converted buffer of \(destinationBuffer.frameLength) frames")
+            
+            // Add delay before resetting isPlaying
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self.isPlaying = false
+                self.logger.debug("Reset isPlaying state after buffer time")
+            }
         }
         
         if !playerNode.isPlaying {
@@ -368,6 +391,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
     // MARK: - Stop Audio Engine
     
     func stopAudioEngine() {
+        isPlaying = false
         playerNode.stop()
         logger.debug("playerNode stopped")
         

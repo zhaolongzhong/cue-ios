@@ -36,9 +36,11 @@ struct SetupComplete: Decodable {
 
 struct ServerContent: Decodable {
     let modelTurn: ModelTurn?
+    let turnComplete: Bool?
     
     enum CodingKeys: String, CodingKey {
         case modelTurn = "modelTurn"
+        case turnComplete = "turnComplete"
     }
 }
 
