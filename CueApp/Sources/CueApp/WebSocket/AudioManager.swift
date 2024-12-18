@@ -22,8 +22,8 @@ final class AudioManager: NSObject, @unchecked Sendable {
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "AudioManager",
                                 category: "AudioManager")
     
-    private var audioEngine = AVAudioEngine()
-    private var playerNode = AVAudioPlayerNode()
+    private let audioEngine = AVAudioEngine()
+    private let playerNode = AVAudioPlayerNode()
     
     private let RECEIVE_SAMPLE_RATE: Double = 24000 // 24kHz
     private let SEND_SAMPLE_RATE: Double = 16000 // 16kHz
@@ -106,11 +106,11 @@ final class AudioManager: NSObject, @unchecked Sendable {
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
-                                        mode: .voiceChat, // Changed to .voiceChat for echo cancellation
+                                        mode: .voiceChat, // Voice chat mode for echo cancellation
                                         options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
                 try session.setPreferredSampleRate(SEND_SAMPLE_RATE) // 16kHz
                 try session.setActive(true)
-                self.logger.debug("Audio session category set to .voiceChat and activated.")
+                self.logger.debug("Audio session category set to .playAndRecord and activated.")
                 self.logger.debug("Preferred sample rate: \(self.SEND_SAMPLE_RATE) Hz")
                 self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
@@ -133,7 +133,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
             
             logger.debug("Input AudioFormat created with sampleRate: \(inputAudioFormat.sampleRate) Hz, channels: \(inputAudioFormat.channelCount)")
             
-            // Initialize format for the main mixer node (Float32 at actualSampleRate)
+            // Initialize format for playback node (Float32 at actualSampleRate)
             audioFormat = AVAudioFormat(standardFormatWithSampleRate: actualSampleRate, channels: CHANNELS)
             
             guard let audioFormat = audioFormat else {
@@ -142,14 +142,14 @@ final class AudioManager: NSObject, @unchecked Sendable {
             
             logger.debug("AudioFormat created with sampleRate: \(audioFormat.sampleRate) Hz, channels: \(audioFormat.channelCount)")
             
-            // Attach and connect player node directly to main mixer
+            // Attach and connect player node directly to outputNode to prevent playback audio from being captured
             audioEngine.attach(playerNode)
-            audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
-            logger.debug("Connected playerNode to mainMixerNode")
+            audioEngine.connect(playerNode, to: audioEngine.outputNode, format: audioFormat)
+            logger.debug("Connected playerNode directly to outputNode")
             
             // Install tap on input node with the hardware's actual format
             audioEngine.inputNode.installTap(onBus: 0,
-                                             bufferSize: 1024,
+                                             bufferSize: 4096,
                                              format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, time in
                 guard let self = self else { return }
                 
@@ -311,7 +311,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         ]
         
         // Adjust destination sample rate to match audio session's actual sample rate
-        let destinationSampleRate = audioFormat.sampleRate // e.g., 48kHz
+        let destinationSampleRate = audioFormat.sampleRate // e.g., 48000 Hz
         var adjustedDestinationFormatSettings = destinationFormatSettings
         adjustedDestinationFormatSettings[AVSampleRateKey] = destinationSampleRate
         
