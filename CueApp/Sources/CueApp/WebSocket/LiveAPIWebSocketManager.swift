@@ -64,7 +64,7 @@ struct InlineData: Decodable {
     let data: String
     
     enum CodingKeys: String, CodingKey {
-        case mimeType = "mime_type"
+        case mimeType = "mimeType"
         case data
     }
 }
@@ -98,34 +98,6 @@ struct AudioData: Decodable {
 struct LiveAPIMetadata: Decodable {
     let timestamp: String?
     // Add other fields as necessary
-}
-
-// MARK: - LiveAPIIncomingMessage Enum
-
-enum LiveAPIIncomingMessage: Decodable {
-    case setupComplete(SetupComplete)
-    case serverContent(ServerContent)
-    case unknown
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        if container.contains(.setupComplete) {
-            let setupComplete = try SetupComplete(from: decoder)
-            self = .setupComplete(setupComplete)
-            return
-        }
-        if container.contains(.serverContent) {
-            let serverContent = try ServerContent(from: decoder)
-            self = .serverContent(serverContent)
-            return
-        }
-        self = .unknown
-    }
-    
-    enum CodingKeys: String, CodingKey {
-        case setupComplete
-        case serverContent
-    }
 }
 
 // MARK: - LiveAPIWebSocketManager Class
@@ -457,46 +429,48 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         
         logger.debug("Binary message as string: \(messageString)")
         
-        // Attempt to decode the string as LiveAPIIncomingMessage
+        // Attempt to decode the string as LiveAPIResponse
         guard let jsonData = messageString.data(using: .utf8) else {
             logger.error("Failed to convert message string back to data")
             return
         }
         
         do {
-            let incomingMessage = try JSONDecoder().decode(LiveAPIIncomingMessage.self, from: jsonData)
+            logger.debug("Attempting to decode LiveAPIResponse")
+            let response = try JSONDecoder().decode(LiveAPIResponse.self, from: jsonData)
             
-            switch incomingMessage {
-            case .setupComplete(_):
-                logger.debug("Received setupComplete message")
-                // Handle setup completion if needed
-            case .serverContent(let serverContent):
-                if let modelTurn = serverContent.modelTurn,
-                   let part = modelTurn.parts?.first {
-                    if let inlineData = part.inlineData,
-                       inlineData.mimeType.starts(with: "audio/pcm") {
-                        if let decodedAudioData = Data(base64Encoded: inlineData.data) {
-                            logger.debug("Received PCM audio data from serverContent")
-                            await playAudioData(decodedAudioData)
-                        } else {
-                            logger.error("Failed to decode base64 audio data from inlineData")
-                        }
-                    }
-                    if let text = part.text {
-                        logger.debug("Received text from serverContent: \(text)")
-                        // Handle text responses as needed
+            if let serverContent = response.serverContent,
+               let modelTurn = serverContent.modelTurn,
+               let part = modelTurn.parts?.first {
+                
+                if let inlineData = part.inlineData,
+                   inlineData.mimeType.starts(with: "audio/pcm") {
+                    if let decodedAudioData = Data(base64Encoded: inlineData.data) {
+                        logger.debug("Received PCM audio data from serverContent")
+                        await playAudioData(decodedAudioData)
+                    } else {
+                        logger.error("Failed to decode base64 audio data from inlineData")
                     }
                 }
-            case .unknown:
-                logger.error("Received unknown message type")
+                
+                if let text = part.text {
+                    logger.debug("Received text from serverContent: \(text)")
+                    // Handle text responses as needed
+                }
+            } else if response.setupComplete != nil {
+                logger.debug("Received setupComplete message")
+                // Handle setup completion if needed
+            } else {
+                logger.error("Received serverContent without modelTurn or setupComplete")
             }
         } catch {
-            logger.error("Failed to decode LiveAPIIncomingMessage: \(error.localizedDescription)")
+            logger.error("Failed to decode LiveAPIResponse: \(error.localizedDescription)")
             // Optionally, log raw data in hex for inspection
             let hexString = data.map { String(format: "%02X", $0) }.joined(separator: " ")
             logger.debug("Raw binary data: \(hexString)")
         }
     }
+
     
     // MARK: - Play Audio Data
     

@@ -66,7 +66,7 @@ struct AssistantsView: View {
 //                    }
 //                }
 //            }
-            VStack {
+            List {
                 Button("connect") {
                     print("connect")
                     self.manager = LiveAPIWebSocketManager()
