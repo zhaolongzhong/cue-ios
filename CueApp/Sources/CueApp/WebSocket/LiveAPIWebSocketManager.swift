@@ -1,4 +1,3 @@
-// LiveAPIWebSocketManager.swift
 import Foundation
 import AVFoundation
 import os.log
@@ -169,23 +168,37 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
 
     private func setupAudioEngine() async throws {
         do {
-            // Official Guide: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#audio-formats
-            // Server accepts input audio format: Raw 16 bit PCM audio at 24kHz little-endian
-            // Server respond audio format: Float32 at 48kHz little-endian (based on AVAudioSession's actual sample rate)
+            // Configure AVAudioSession for 16kHz, 16-bit PCM
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
                                         mode: .default,
                                         options: [.defaultToSpeaker, .allowBluetooth])
-                try session.setPreferredSampleRate(RECEIVE_SAMPLE_RATE)
+                try session.setPreferredSampleRate(SEND_SAMPLE_RATE) // 16kHz
                 try session.setActive(true)
                 self.logger.debug("Audio session category set and activated.")
-                self.logger.debug("Preferred sample rate: \(self.RECEIVE_SAMPLE_RATE) Hz")
+                self.logger.debug("Preferred sample rate: \(self.SEND_SAMPLE_RATE) Hz")
                 self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
             
             let actualSampleRate = session.sampleRate
-            // Define destination format as Float32
+            // Define input format as 16kHz, 16-bit PCM little-endian
+            let inputFormatSettings: [String: Any] = [
+                AVFormatIDKey: Int(kAudioFormatLinearPCM),
+                AVSampleRateKey: SEND_SAMPLE_RATE,
+                AVNumberOfChannelsKey: CHANNELS,
+                AVLinearPCMBitDepthKey: 16,
+                AVLinearPCMIsBigEndianKey: false,
+                AVLinearPCMIsFloatKey: false,
+            ]
+            
+            guard let inputAudioFormat = AVAudioFormat(settings: inputFormatSettings) else {
+                throw LiveAPIError.audioError(message: "Failed to create input audio format")
+            }
+            
+            logger.debug("Input AudioFormat created with sampleRate: \(inputAudioFormat.sampleRate) Hz, channels: \(inputAudioFormat.channelCount)")
+            
+            // Initialize format for the main mixer node (Float32 at actualSampleRate)
             audioFormat = AVAudioFormat(standardFormatWithSampleRate: actualSampleRate, channels: CHANNELS)
             
             guard let audioFormat = audioFormat else {
@@ -199,20 +212,18 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
             logger.debug("Connected playerNode to mainMixerNode")
             
-            // Install tap on input node if needed
+            // Install tap on input node with the hardware's actual format
             audioEngine.inputNode.installTap(onBus: 0,
                                              bufferSize: 1024,
                                              format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, time in
                 guard let self = self else { return }
-                let audioData = self.processAudioBuffer(buffer)
                 
-                Task { @MainActor in
-                    // Uncomment the line below if you need to send processed audio back to server
-                    // ensure the audioData is "Raw 16 bit PCM audio at 16kHz little-endian"
-                     await self.handleProcessedAudioData(audioData)
+                // Perform conversion and send audio data on a background thread
+                DispatchQueue.global(qos: .userInitiated).async {
+                    self.convertAndSend(buffer: buffer)
                 }
             }
-            logger.debug("Installed tap on inputNode")
+            logger.debug("Installed tap on inputNode with hardware's actual format")
             
             // Prepare and start the engine
             audioEngine.prepare()
@@ -224,8 +235,74 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
     }
 
-    // MARK: - Play Audio Data with Correct Format Handling
+    // MARK: - Convert and Send Audio Buffer
 
+    private func convertAndSend(buffer: AVAudioPCMBuffer) {
+        // Define source and destination formats
+        let sourceFormat = buffer.format // e.g., 48kHz, Float32
+        
+        // Define destination format: 16kHz, 16-bit PCM little-endian
+        let destinationFormatSettings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
+            AVSampleRateKey: SEND_SAMPLE_RATE, // 16kHz
+            AVNumberOfChannelsKey: CHANNELS,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false,
+        ]
+        
+        guard let destinationFormat = AVAudioFormat(settings: destinationFormatSettings) else {
+            logger.error("Failed to create destination AVAudioFormat")
+            return
+        }
+        
+        guard let converter = AVAudioConverter(from: sourceFormat, to: destinationFormat) else {
+            logger.error("Failed to create AVAudioConverter")
+            return
+        }
+        
+        // Estimate destination buffer frame capacity
+        let ratio = destinationFormat.sampleRate / sourceFormat.sampleRate
+        let destinationFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
+        
+        guard let destinationBuffer = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: destinationFrameCapacity) else {
+            logger.error("Failed to create destination PCM buffer")
+            return
+        }
+        
+        // Initialize the destination buffer
+        destinationBuffer.frameLength = destinationFrameCapacity
+        
+        var error: NSError?
+        let status = converter.convert(to: destinationBuffer, error: &error) { inNumPackets, outStatus in
+            outStatus.pointee = AVAudioConverterInputStatus.haveData
+            return buffer
+        }
+        
+        if status == .error {
+            logger.error("Error during conversion: \(error?.localizedDescription ?? "Unknown error")")
+            return
+        }
+        
+        // Extract Int16 data from the converted buffer
+        guard let int16ChannelData = destinationBuffer.int16ChannelData else {
+            logger.error("Failed to access int16ChannelData in destination buffer")
+            return
+        }
+        
+        let frameCount = Int(destinationBuffer.frameLength)
+        let int16Data = Data(bytes: int16ChannelData[0], count: frameCount * MemoryLayout<Int16>.size)
+        
+        logger.debug("Converted audio buffer to 16kHz, Int16: \(int16Data.count) bytes")
+        
+        // Send the processed audio data
+        Task { @MainActor in
+            await self.handleProcessedAudioData(int16Data)
+        }
+    }
+
+    // MARK: - Play Audio Data with Correct Format Handling
+    
     private func playAudioData(_ data: Data) async {
         // Log the first few bytes for debugging
         if data.count >= 4 {
@@ -247,13 +324,13 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             return
         }
         
-        // Assume all data is 16-bit PCM
+        // Assume all data is 16-bit PCM at 16kHz
         let frameCount = data.count / 2 // 2 bytes per Int16 sample
         
-        // Define source format as 16-bit PCM at 24kHz
-        let sourceSampleRate = 24000.0 // Based on mimeType: rate=24000
+        // Define source format as 16-bit PCM at 16kHz
+        let sourceSampleRate = SEND_SAMPLE_RATE // 16000 Hz
         let sourceFormatSettings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: sourceSampleRate,
             AVNumberOfChannelsKey: CHANNELS,
             AVLinearPCMBitDepthKey: 16,
@@ -286,8 +363,21 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
         logger.debug("Filled source buffer with 16-bit Int data")
         
-        // Perform Resampling and conversion to Float32
-        let destinationFormat = audioFormat // Float32 at actualSampleRate (likely 48kHz)
+        // Perform Resampling and conversion to Float32 at 24kHz
+        let destinationFormatSettings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
+            AVSampleRateKey: RECEIVE_SAMPLE_RATE, // 24kHz
+            AVNumberOfChannelsKey: CHANNELS,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: true,
+        ]
+        
+        guard let destinationFormat = AVAudioFormat(settings: destinationFormatSettings) else {
+            logger.error("Failed to create destination AVAudioFormat")
+            return
+        }
+        
         guard let converter = AVAudioConverter(from: sourceAudioFormat, to: destinationFormat) else {
             logger.error("Failed to create AVAudioConverter")
             return
@@ -335,19 +425,9 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
 
     // MARK: - Audio Buffer Processing
     
-    private nonisolated func processAudioBuffer(_ buffer: AVAudioPCMBuffer) -> Data {
-        guard let channelData = buffer.floatChannelData else { return Data() }
-        
-        let frameCount = Int(buffer.frameLength)
-        var int16Data = [Int16](repeating: 0, count: frameCount)
-        
-        for i in 0..<frameCount {
-            let floatSample = channelData[0][i]
-            let int16Sample = Int16(max(-32768, min(32767, floatSample * 32767.0)))
-            int16Data[i] = int16Sample
-        }
-        
-        return Data(bytes: int16Data, count: frameCount * MemoryLayout<Int16>.size)
+    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) -> Data {
+        // This method is no longer needed as conversion is handled in convertAndSend
+        return Data()
     }
     
     // MARK: - Handle Processed Audio Data (Optional)
