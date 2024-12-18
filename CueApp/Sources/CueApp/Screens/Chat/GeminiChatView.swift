@@ -122,3 +122,13 @@ public struct GeminiChatView: View {
         // However, since `BackgroundTaskManager` is handling it, ensure no conflicts
     }
 }
+
+
+// 4. Update GeminiChatView to use the enhanced background handling
+extension GeminiChatView {
+    var backgroundHandling: some View {
+        self.onChange(of: scenePhase) { _, newPhase in
+            manager.handleScenePhaseChange(newPhase)
+        }
+    }
+}

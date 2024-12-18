@@ -47,7 +47,7 @@ final class ScreenManager: NSObject,@unchecked Sendable {
         }
         
         // Start background task before capture
-        await BackgroundTaskManager.shared.startBackgroundTask { [weak self] in
+        await BackgroundTaskManager.shared.startBackgroundTask(identifier: "screenCapture") { [weak self] in
             guard let self = self else { return }
             // Ensure stopCapturing is called on captureQueue to serialize access
             self.captureQueue.async {
@@ -81,7 +81,7 @@ final class ScreenManager: NSObject,@unchecked Sendable {
             isSettingUpCapture = false
         }
         
-        await BackgroundTaskManager.shared.endBackgroundTask()
+        await BackgroundTaskManager.shared.endBackgroundTask(identifier: "screenCapture")
         logger.debug("Screen capture stopped")
     }
     
@@ -190,33 +190,64 @@ extension ScreenManager {
 
 @MainActor
 final class BackgroundTaskManager {
+    private var backgroundTasks: [String: UIBackgroundTaskIdentifier] = [:]
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     static let shared = BackgroundTaskManager()
     
     private init() {}
     
-    func startBackgroundTask(expirationHandler: @escaping @MainActor () -> Void) {
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
-        }
-        
-        backgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
-            Task { @MainActor [weak self] in
-                expirationHandler()
-                guard let self = self else { return }
-                if self.backgroundTask != .invalid {
-                    UIApplication.shared.endBackgroundTask(self.backgroundTask)
-                    self.backgroundTask = .invalid
+    @MainActor
+        func startBackgroundTask(identifier: String, expirationHandler: @escaping @MainActor () -> Void) {
+            // End existing task if any
+            if let existingTask = backgroundTasks[identifier] {
+                UIApplication.shared.endBackgroundTask(existingTask)
+                backgroundTasks.removeValue(forKey: identifier)
+            }
+            
+            let task = UIApplication.shared.beginBackgroundTask { [weak self] in
+                Task { @MainActor [weak self] in
+                    expirationHandler()
+                    self?.endBackgroundTask(identifier: identifier)
                 }
             }
+            backgroundTasks[identifier] = task
+        }
+        
+        @MainActor
+        func endBackgroundTask(identifier: String) {
+            if let task = backgroundTasks[identifier] {
+                UIApplication.shared.endBackgroundTask(task)
+                backgroundTasks.removeValue(forKey: identifier)
+            }
+        }
+}
+
+extension ScreenManager {
+    private func configureAudioSession() {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetooth])
+            try audioSession.setActive(true)
+        } catch {
+            logger.error("Failed to configure audio session: \(error.localizedDescription)")
         }
     }
     
-    func endBackgroundTask() {
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
+    func prepareForBackground() {
+        configureAudioSession()
+        
+        // Reduce frame rate in background
+        Task { @MainActor in
+            displayLink?.preferredFramesPerSecond = 15
+        }
+    }
+    
+    func prepareForForeground() {
+        configureAudioSession()
+        
+        // Restore normal frame rate
+        Task { @MainActor in
+            displayLink?.preferredFramesPerSecond = 30
         }
     }
 }

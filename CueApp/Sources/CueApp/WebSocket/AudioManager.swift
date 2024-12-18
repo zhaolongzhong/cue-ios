@@ -185,7 +185,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         }
         
         if delegate?.checkIsServerTurn() == true {
-            logger.debug("Skipping audio capture because it's server turn")
+//            logger.debug("Skipping audio capture because it's server turn")
             return
         }
         
@@ -245,7 +245,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         let frameCount = Int(destinationBuffer.frameLength)
         let int16Data = Data(bytes: int16ChannelData[0], count: frameCount * MemoryLayout<Int16>.size)
         
-        logger.debug("Converted audio buffer to 16kHz, Int16: \(int16Data.count) bytes")
+//        logger.debug("Converted audio buffer to 16kHz, Int16: \(int16Data.count) bytes")
         
         // Notify delegate with the processed audio data
         Task { @MainActor in
@@ -267,7 +267,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("receivedAudio_\(Date().timeIntervalSince1970).pcm")
         do {
             try data.write(to: fileURL)
-            logger.debug("Saved received audio data to \(fileURL)")
+//            logger.debug("Saved received audio data to \(fileURL)") // inx
         } catch {
             logger.error("Failed to save audio data: \(error.localizedDescription)")
         }
@@ -314,7 +314,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
                 sourceBuffer.int16ChannelData?[0][i] = samples[i]
             }
         }
-        logger.debug("Filled source buffer with 16-bit Int data")
+//        logger.debug("Filled source buffer with 16-bit Int data")
         
         // Perform Resampling and conversion to Float32 at RECEIVE_SAMPLE_RATE
         let destinationFormatSettings: [String: Any] = [
@@ -364,7 +364,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
             return
         }
         
-        logger.debug("Resampled buffer from \(sourceSampleRate) Hz to \(destinationFormat.sampleRate) Hz")
+//        logger.debug("Resampled buffer from \(sourceSampleRate) Hz to \(destinationFormat.sampleRate) Hz")
         
         // Schedule the converted buffer for playback
         playerNode.scheduleBuffer(destinationBuffer) { [weak self] in
@@ -374,7 +374,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
             // Add delay before resetting isPlaying
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 self.isPlaying = false
-                self.logger.debug("Reset isPlaying state after buffer time")
+//                self.logger.debug("Reset isPlaying state after buffer time")
             }
         }
         

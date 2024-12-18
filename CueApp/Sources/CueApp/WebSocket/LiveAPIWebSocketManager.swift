@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import os.log
 import Combine
+import SwiftUI
 
 // MARK: - LiveAPIWebSocketManager Class
 
@@ -149,7 +150,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
         }
         
         // Log the message being sent
-        logger.debug("Sending message: \(String(messageString.prefix(100)))")
+//        logger.debug("Sending message: \(String(messageString.prefix(100)))")
         
         try await webSocketTask?.send(.string(messageString))
     }
@@ -214,7 +215,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
     // MARK: - Handle Binary Messages
     
     private func handleBinaryMessage(_ data: Data) async {
-        logger.debug("Received binary message of size: \(data.count) bytes")
+//        logger.debug("Received binary message of size: \(data.count) bytes")
         
         // Attempt to convert binary data to string
         guard let messageString = String(data: data, encoding: .utf8) else {
@@ -222,7 +223,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
             return
         }
         
-        logger.debug("inx Binary message as string: \(String(messageString.prefix(200)))")
+//        logger.debug("inx Binary message as string: \(String(messageString.prefix(200)))")
         
         // Attempt to decode the string as LiveAPIResponse
         guard let jsonData = messageString.data(using: .utf8) else {
@@ -231,15 +232,14 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
         }
         
         do {
-            logger.debug("Attempting to decode LiveAPIResponse")
             let response = try JSONDecoder().decode(LiveAPIResponse.self, from: jsonData)
             
             self.isListening = !(response.serverContent?.turnComplete == true)
             if let turnComplete = response.serverContent?.turnComplete {
-                logger.debug("inx handleBinaryMessage turnComplete: \(turnComplete), set audioManager.turnComplete = true")
+//                logger.debug("inx handleBinaryMessage turnComplete: \(turnComplete), set audioManager.turnComplete = true")
                 audioManager.turnComplete = true
             } else {
-                logger.debug("inx handleBinaryMessage turnComplete: nil, set audioManager.turnComplete = false")
+//                logger.debug("inx handleBinaryMessage turnComplete: nil, set audioManager.turnComplete = false")
                 audioManager.turnComplete = false
             }
             
@@ -401,5 +401,38 @@ extension LiveAPIWebSocketManager {
         guard isScreenCapturing else { return }
         await screenManager.stopCapturing()
         isScreenCapturing = false
+    }
+}
+
+// 3. Update LiveAPIWebSocketManager with background handling
+extension LiveAPIWebSocketManager {
+    func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .background:
+            Task { @MainActor in
+                if isScreenCapturing {
+                    // Start a long-running background task
+                    await BackgroundTaskManager.shared.startBackgroundTask(identifier: "screenCapture") {
+                        Task {
+                            await self.stopScreenCapture()
+                        }
+                    }
+                    
+                    // Configure for background operation
+                    await screenManager.prepareForBackground()
+                }
+            }
+            
+        case .active:
+            Task { @MainActor in
+                if isScreenCapturing {
+                    // Restore normal operation
+                    await screenManager.prepareForForeground()
+                }
+            }
+            
+        default:
+            break
+        }
     }
 }
