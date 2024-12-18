@@ -15,7 +15,12 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     private let host = "generativelanguage.googleapis.com"
     
     // Audio configuration
-    private let TARGET_SAMPLE_RATE: Double = 24000 // 24kHz as per latest requirements
+    // https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#audio-formats
+    // Multimodal Live API supports the following audio formats:
+    // - Input audio format: Raw 16 bit PCM audio at 16kHz little-endian
+    // - Output audio format: Raw 16 bit PCM audio at 24kHz little-endian
+    private let RECEIVE_SAMPLE_RATE: Double = 24000 // 24kHz as per latest requirements
+    private let SEND_SAMPLE_RATE: Double = 16000 // 16kHz as per latest requirements
     private let CHANNELS: UInt32 = 1
     private var audioFormat: AVAudioFormat?
     
@@ -172,10 +177,10 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
                 try session.setCategory(.playAndRecord,
                                         mode: .default,
                                         options: [.defaultToSpeaker, .allowBluetooth])
-                try session.setPreferredSampleRate(TARGET_SAMPLE_RATE)
+                try session.setPreferredSampleRate(RECEIVE_SAMPLE_RATE)
                 try session.setActive(true)
                 self.logger.debug("Audio session category set and activated.")
-                self.logger.debug("Preferred sample rate: \(self.TARGET_SAMPLE_RATE) Hz")
+                self.logger.debug("Preferred sample rate: \(self.RECEIVE_SAMPLE_RATE) Hz")
                 self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
             
@@ -193,6 +198,21 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             audioEngine.attach(playerNode)
             audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
             logger.debug("Connected playerNode to mainMixerNode")
+            
+            // Install tap on input node if needed
+            audioEngine.inputNode.installTap(onBus: 0,
+                                             bufferSize: 1024,
+                                             format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, time in
+                guard let self = self else { return }
+                let audioData = self.processAudioBuffer(buffer)
+                
+                Task { @MainActor in
+                    // Uncomment the line below if you need to send processed audio back to server
+                    // ensure the audioData is "Raw 16 bit PCM audio at 16kHz little-endian"
+                     await self.handleProcessedAudioData(audioData)
+                }
+            }
+            logger.debug("Installed tap on inputNode")
             
             // Prepare and start the engine
             audioEngine.prepare()
