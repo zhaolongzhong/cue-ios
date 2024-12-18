@@ -1,4 +1,6 @@
 import SwiftUI
+import ReplayKit
+import BroadcastShared
 
 public struct GeminiChatView: View {
     @StateObject private var viewModel: GeminiChatViewModel
@@ -8,6 +10,7 @@ public struct GeminiChatView: View {
     @StateObject private var manager = LiveAPIWebSocketManager() // Initialize here
     @Environment(\.scenePhase) private var scenePhase
     private let apiKey: String
+    @StateObject private var broadcastVM = BroadcastViewModel()
 
     public init(apiKey: String) {
         self.apiKey = apiKey
@@ -59,76 +62,58 @@ public struct GeminiChatView: View {
                     print("Disconnect")
                     manager.disconnect()
                 }
-                
-                Button("Start Screen Capture") {
-                    print("Start Screen Capture")
-                    Task {
-                        do {
-                            try await manager.startScreenCapture()
-                        } catch ScreenCaptureError.permissionDenied {
-                            print("Screen capture permission denied")
-                        } catch {
-                            print("Screen capture error: \(error.localizedDescription)")
-                        }
+            }
+            
+            // Embed the BroadcastPickerView as a visible button
+            HStack {
+                Spacer()
+                BroadcastPickerView(preferredExtension: "ai.nextlabs.app.BroadcastExtension")
+                    .frame(width: 44, height: 44)
+                    .background(Color.red.opacity(0.2)) // More visible background
+                    .border(Color.blue, width: 1) // Add border to see frame
+                    .onTapGesture {
+                        print("🎥 View tapped!")
+                    }
+            }
+            .background(Color.gray.opacity(0.5))
+            .padding()
+            Spacer()
+            if let frameData = broadcastVM.frameData {
+                VStack(alignment: .leading) {
+                    Text("Frame Size: \(frameData["width"] as? Int ?? 0)x\(frameData["height"] as? Int ?? 0)")
+                    Text("Frame Count: \(frameData["frameCount"] as? Int ?? 0)")
+                    if let timestamp = frameData["timestamp"] as? TimeInterval {
+                        Text("Last Update: \(Date(timeIntervalSince1970: timestamp), style: .time)")
                     }
                 }
-                
-                Button("Stop Screen Capture") {
-                    print("Stop Screen Capture")
-                    Task {
-                        do {
-                            try await manager.stopScreenCapture()
-                        } catch {
-                            print("Failed to stop screen capture: \(error)")
-                        }
-                    }
-                }
+                .padding()
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .background:
-                print("App entering background")
-                // Keep screen recording active if it's running
-                if manager.isScreenCapturing {
-                    Task {
-                        try? await keepScreenCaptureAlive()
-                    }
-                }
+                print("GeminiChatView App entering background")
+                // Handle background state if needed
             case .active:
-                print("App becoming active")
-                // Resume normal operation
+                print("GeminiChatView App becoming active")
+                // Handle active state
             case .inactive:
-                print("App becoming inactive")
+                print("GeminiChatView App becoming inactive")
+                // Handle inactive state
             @unknown default:
                 break
             }
         }
+        // Add this somewhere in your view
         .onAppear {
-            // Initialize manager or perform additional setup if needed
-        }
-    }
-    
-    private func keepScreenCaptureAlive() async throws {
-        // Request additional background execution time
-        let taskID = UIApplication.shared.beginBackgroundTask {
-            // Cleanup when background task expires
-            Task {
-                await manager.stopScreenCapture()
+            print("📱 GeminiChatView: Testing SharedDataManager")
+            let testManager = SharedDataManager.shared
+            testManager.saveFrameData(width: 100, height: 100, frameCount: -1)
+            if let testData = testManager.getLastFrameData() {
+                print("✅ GeminiChatView: Test data retrieved: \(testData)")
+            } else {
+                print("❌ GeminiChatView: Failed to retrieve test data")
             }
-        }
-        
-        // Optionally, you can store taskID if you need to end it manually
-        // However, since `BackgroundTaskManager` is handling it, ensure no conflicts
-    }
-}
-
-
-// 4. Update GeminiChatView to use the enhanced background handling
-extension GeminiChatView {
-    var backgroundHandling: some View {
-        self.onChange(of: scenePhase) { _, newPhase in
-            manager.handleScenePhaseChange(newPhase)
         }
     }
 }

@@ -15,12 +15,20 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSScreenCaptureUsageDescription</key>
-	<string>Request screen capture access to share your screen</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>We need microphone access for broadcasting</string>
+    <key>NSCameraUsageDescription</key>
+    <string>We need camera access for broadcasting</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_broadcast._tcp</string>
+    </array>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Request screen capture access to share your screen We need access to stream your screen</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
-        <string>processing</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

@@ -11,8 +11,15 @@
 		3A2098D32CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D42CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */ = {isa = PBXBuildFile; productRef = 3A2098D62CB74D0800FEB48E /* CueApp */; };
-		3A7499E72D0FD199008E51DC /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A59BFDE2D042C9600EF209A /* CueOpenAI */; };
-		3A7499E82D0FD199008E51DC /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A368F722D0432B1000F8D8B /* CueOpenAI */; };
+		3AA2897B2D137D5A00B35547 /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A59BFDE2D042C9600EF209A /* CueOpenAI */; };
+		3AA289DC2D13846F00B35547 /* BroadcastShared in Frameworks */ = {isa = PBXBuildFile; productRef = 3AA289DB2D13846F00B35547 /* BroadcastShared */; };
+		3AA289EA2D13865F00B35547 /* BroadcastShared in Resources */ = {isa = PBXBuildFile; fileRef = 3AA289E92D13865F00B35547 /* BroadcastShared */; };
+		3AA289EB2D13865F00B35547 /* BroadcastShared in Resources */ = {isa = PBXBuildFile; fileRef = 3AA289E92D13865F00B35547 /* BroadcastShared */; };
+		3AA289EC2D13865F00B35547 /* BroadcastShared in Resources */ = {isa = PBXBuildFile; fileRef = 3AA289E92D13865F00B35547 /* BroadcastShared */; };
+		3ABBC88C2D13575B003E04A8 /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3ABBC88B2D13575B003E04A8 /* ReplayKit.framework */; };
+		3ABBC8A22D13575B003E04A8 /* BroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3ABBC88A2D13575B003E04A8 /* BroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3AD9DDB92D13872100770D82 /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A368F722D0432B1000F8D8B /* CueOpenAI */; };
+		3AD9DDEB2D1389F200770D82 /* BroadcastShared in Frameworks */ = {isa = PBXBuildFile; productRef = 3AD9DDEA2D1389F200770D82 /* BroadcastShared */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,7 +37,38 @@
 			remoteGlobalIDString = 3A2098602CB7392900FEB48E;
 			remoteInfo = Cue;
 		};
+		3ABBC8A02D13575B003E04A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3A2098592CB7392900FEB48E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3ABBC8892D13575B003E04A8;
+			remoteInfo = BroadcastExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		3AA289D02D1382F900B35547 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3ABBC8AB2D13575B003E04A8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3ABBC8A22D13575B003E04A8 /* BroadcastExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		3A2098612CB7392900FEB48E /* Cue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cue.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -38,6 +76,10 @@
 		3A20987C2CB7392A00FEB48E /* CueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A2098D12CB74CC400FEB48E /* CueApp */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = CueApp; sourceTree = "<group>"; };
 		3A4B269A2D0435E800BEDB20 /* CueOpenAI */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = CueOpenAI; sourceTree = "<group>"; };
+		3AA289E92D13865F00B35547 /* BroadcastShared */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BroadcastShared; sourceTree = "<group>"; };
+		3ABBC88A2D13575B003E04A8 /* BroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3ABBC88B2D13575B003E04A8 /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
+		3ABBC8972D13575B003E04A8 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -47,6 +89,13 @@
 				Info.plist,
 			);
 			target = 3A2098602CB7392900FEB48E /* Cue */;
+		};
+		3ABBC8AA2D13575B003E04A8 /* Exceptions for "BroadcastExtension" folder in "BroadcastExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 3ABBC8892D13575B003E04A8 /* BroadcastExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -69,6 +118,14 @@
 			path = CueUITests;
 			sourceTree = "<group>";
 		};
+		3ABBC88D2D13575B003E04A8 /* BroadcastExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				3ABBC8AA2D13575B003E04A8 /* Exceptions for "BroadcastExtension" folder in "BroadcastExtension" target */,
+			);
+			path = BroadcastExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,8 +133,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3A7499E82D0FD199008E51DC /* CueOpenAI in Frameworks */,
-				3A7499E72D0FD199008E51DC /* CueOpenAI in Frameworks */,
+				3AD9DDB92D13872100770D82 /* CueOpenAI in Frameworks */,
+				3AA289DC2D13846F00B35547 /* BroadcastShared in Frameworks */,
+				3AA2897B2D137D5A00B35547 /* CueOpenAI in Frameworks */,
 				3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -96,17 +154,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3ABBC8872D13575B003E04A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3ABBC88C2D13575B003E04A8 /* ReplayKit.framework in Frameworks */,
+				3AD9DDEB2D1389F200770D82 /* BroadcastShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		3A2098582CB7392900FEB48E = {
 			isa = PBXGroup;
 			children = (
+				3AA289E92D13865F00B35547 /* BroadcastShared */,
 				3A4B269A2D0435E800BEDB20 /* CueOpenAI */,
 				3A2098D12CB74CC400FEB48E /* CueApp */,
 				3A2098632CB7392900FEB48E /* Cue */,
 				3A2098752CB7392A00FEB48E /* CueTests */,
 				3A20987F2CB7392A00FEB48E /* CueUITests */,
+				3ABBC88D2D13575B003E04A8 /* BroadcastExtension */,
 				3A8CFFDA2D067D0200C44D4A /* Frameworks */,
 				3A2098622CB7392900FEB48E /* Products */,
 			);
@@ -118,6 +187,7 @@
 				3A2098612CB7392900FEB48E /* Cue.app */,
 				3A2098722CB7392A00FEB48E /* CueTests.xctest */,
 				3A20987C2CB7392A00FEB48E /* CueUITests.xctest */,
+				3ABBC88A2D13575B003E04A8 /* BroadcastExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,6 +195,8 @@
 		3A8CFFDA2D067D0200C44D4A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				3ABBC88B2D13575B003E04A8 /* ReplayKit.framework */,
+				3ABBC8972D13575B003E04A8 /* UIKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -139,10 +211,13 @@
 				3A20985D2CB7392900FEB48E /* Sources */,
 				3A20985E2CB7392900FEB48E /* Frameworks */,
 				3A20985F2CB7392900FEB48E /* Resources */,
+				3ABBC8AB2D13575B003E04A8 /* Embed Foundation Extensions */,
+				3AA289D02D1382F900B35547 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				3ABBC8A12D13575B003E04A8 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				3A2098632CB7392900FEB48E /* Cue */,
@@ -152,6 +227,7 @@
 				3A2098D62CB74D0800FEB48E /* CueApp */,
 				3A59BFDE2D042C9600EF209A /* CueOpenAI */,
 				3A368F722D0432B1000F8D8B /* CueOpenAI */,
+				3AA289DB2D13846F00B35547 /* BroadcastShared */,
 			);
 			productName = Cue;
 			productReference = 3A2098612CB7392900FEB48E /* Cue.app */;
@@ -203,6 +279,29 @@
 			productReference = 3A20987C2CB7392A00FEB48E /* CueUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		3ABBC8892D13575B003E04A8 /* BroadcastExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3ABBC8A72D13575B003E04A8 /* Build configuration list for PBXNativeTarget "BroadcastExtension" */;
+			buildPhases = (
+				3ABBC8862D13575B003E04A8 /* Sources */,
+				3ABBC8872D13575B003E04A8 /* Frameworks */,
+				3ABBC8882D13575B003E04A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				3ABBC88D2D13575B003E04A8 /* BroadcastExtension */,
+			);
+			name = BroadcastExtension;
+			packageProductDependencies = (
+				3AD9DDEA2D1389F200770D82 /* BroadcastShared */,
+			);
+			productName = BroadcastExtension;
+			productReference = 3ABBC88A2D13575B003E04A8 /* BroadcastExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -210,7 +309,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1600;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					3A2098602CB7392900FEB48E = {
@@ -223,6 +322,9 @@
 					3A20987B2CB7392A00FEB48E = {
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = 3A2098602CB7392900FEB48E;
+					};
+					3ABBC8892D13575B003E04A8 = {
+						CreatedOnToolsVersion = 16.2;
 					};
 				};
 			};
@@ -246,6 +348,7 @@
 				3A2098602CB7392900FEB48E /* Cue */,
 				3A2098712CB7392A00FEB48E /* CueTests */,
 				3A20987B2CB7392A00FEB48E /* CueUITests */,
+				3ABBC8892D13575B003E04A8 /* BroadcastExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -255,6 +358,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3AA289EC2D13865F00B35547 /* BroadcastShared in Resources */,
 				3A2098D32CB74CC400FEB48E /* CueApp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -264,6 +368,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3A2098D42CB74CC400FEB48E /* CueApp in Resources */,
+				3AA289EB2D13865F00B35547 /* BroadcastShared in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -272,6 +377,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				3A2098D22CB74CC400FEB48E /* CueApp in Resources */,
+				3AA289EA2D13865F00B35547 /* BroadcastShared in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3ABBC8882D13575B003E04A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +412,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3ABBC8862D13575B003E04A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -311,6 +431,11 @@
 			isa = PBXTargetDependency;
 			target = 3A2098602CB7392900FEB48E /* Cue */;
 			targetProxy = 3A20987D2CB7392A00FEB48E /* PBXContainerItemProxy */;
+		};
+		3ABBC8A12D13575B003E04A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3ABBC8892D13575B003E04A8 /* BroadcastExtension */;
+			targetProxy = 3ABBC8A02D13575B003E04A8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -451,9 +576,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "${DISPLAY_NAME}";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Request camera access for screen capture";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for voice interaction";
+				INFOPLIST_KEY_CFBundleDisplayName = Cue;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access for broadcasting";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need microphone access for broadcasting";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition is used for voice interactions";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -470,6 +595,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
 				MARKETING_VERSION = "$(MARKETING_VERSION)";
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nextlabs.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
@@ -499,9 +625,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "${DISPLAY_NAME}";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Request camera access for screen capture";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for voice interaction";
+				INFOPLIST_KEY_CFBundleDisplayName = Cue;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access for broadcasting";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need microphone access for broadcasting";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition is used for voice interactions";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -518,7 +644,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
 				MARKETING_VERSION = "$(MARKETING_VERSION)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.cue;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nextlabs.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
@@ -623,6 +749,66 @@
 			};
 			name = Release;
 		};
+		3ABBC8A82D13575B003E04A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BroadcastExtension/BroadcastExtensionDebug.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3DV2RUMV6J;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BroadcastExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BroadcastExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nextlabs.app.BroadcastExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3ABBC8A92D13575B003E04A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3DV2RUMV6J;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BroadcastExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BroadcastExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nextlabs.app.BroadcastExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -662,6 +848,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		3ABBC8A72D13575B003E04A8 /* Build configuration list for PBXNativeTarget "BroadcastExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3ABBC8A82D13575B003E04A8 /* Debug */,
+				3ABBC8A92D13575B003E04A8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -684,6 +879,14 @@
 		3A59BFDE2D042C9600EF209A /* CueOpenAI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CueOpenAI;
+		};
+		3AA289DB2D13846F00B35547 /* BroadcastShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BroadcastShared;
+		};
+		3AD9DDEA2D1389F200770D82 /* BroadcastShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BroadcastShared;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

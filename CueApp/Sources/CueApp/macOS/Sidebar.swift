@@ -84,7 +84,7 @@ struct Sidebar: View {
         openWindow(id: "anthropic-chat-window")
         #endif
     }
-    
+
     private func handleGeminiChat() {
         #if os(macOS)
         openWindow(id: "gemini-chat-window")

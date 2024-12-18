@@ -12,7 +12,7 @@ struct AssistantsView: View {
     @State private var isShowingNameDialog = false
     @State private var newAssistantName = ""
     @State private var navigationPath = NavigationPath()
-    @State private var manager: LiveAPIWebSocketManager? = nil
+    @State private var manager: LiveAPIWebSocketManager?
 
     init(viewModelFactory: @escaping () -> AssistantsViewModel) {
         self._viewModel = StateObject(wrappedValue: viewModelFactory())

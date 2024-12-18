@@ -21,7 +21,7 @@ struct SettingsMenu: View {
             }
 
             Divider()
-            
+
             Button(action: onGeminiChat) {
                 Text("Gemini Chat")
                     .frame(minWidth: 200, alignment: .leading)

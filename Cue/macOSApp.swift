@@ -34,7 +34,7 @@ struct macOSApp: App {
         .windowResizability(.contentSize)
 
         let viewModel = APIKeysViewModel()
-        
+
         WindowGroup(id: "openai-chat-window") {
             if let apiKey = viewModel.getAPIKey(for: APIKeyType.openai) {
                 OpenAIChatView(apiKey: apiKey)
@@ -57,7 +57,7 @@ struct macOSApp: App {
         .windowStyle(.titleBar)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
-        
+
         WindowGroup(id: "gemini-chat-window") {
             if let apiKey = viewModel.getAPIKey(for: APIKeyType.gemini) {
                 GeminiChatView(apiKey: apiKey)

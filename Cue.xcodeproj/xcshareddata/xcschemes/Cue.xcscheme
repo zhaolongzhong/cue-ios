@@ -52,6 +52,17 @@
                ReferencedContainer = "container:Cue.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3AA289BD2D1382F900B35547"
+               BuildableName = "BroadcastSharedTests.xctest"
+               BlueprintName = "BroadcastSharedTests"
+               ReferencedContainer = "container:Cue.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

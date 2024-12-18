@@ -26,7 +26,7 @@ public struct AppTabView: View {
                     }
                     .tag(TabSelection.chat)
             }
-            
+
             if let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.gemini) {
                 GeminiChatView(apiKey: apiKey)
                     .tabItem {
@@ -34,11 +34,11 @@ public struct AppTabView: View {
                     }
                     .tag(TabSelection.chat)
             }
-            AssistantsView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
-                .tabItem {
-                    Label("Assistants", systemImage: "bubble.left.and.bubble.right")
-                }
-                .tag(TabSelection.assistants)
+//            AssistantsView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
+//                .tabItem {
+//                    Label("Assistants", systemImage: "bubble.left.and.bubble.right")
+//                }
+//                .tag(TabSelection.assistants)
 
             SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
                 .tabItem {
@@ -60,11 +60,11 @@ public struct AppTabView: View {
         }
         .onAppear {
             AppLog.log.debug("AppTabView onAppear isAuthenticated:\(appStateViewModel.state.isAuthenticated)")
-            self.initialize(userId: appStateViewModel.state.currentUser?.id)
+//            self.initialize(userId: appStateViewModel.state.currentUser?.id)
         }
         .onChange(of: appStateViewModel.state.currentUser) { _, _ in
             AppLog.log.debug("AppTabView onChange")
-            self.initialize(userId: appStateViewModel.state.currentUser?.id)
+//            self.initialize(userId: appStateViewModel.state.currentUser?.id)
         }
     }
 

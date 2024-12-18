@@ -79,7 +79,7 @@ public class ViewModelFactory {
             return settingsViewModel
         }
     }
-    
+
     public func makeAPIKeysViewModel() -> APIKeysViewModel {
         if let apiKeysViewModel = self.apiKeysViewModel {
             return apiKeysViewModel

@@ -12,7 +12,7 @@ struct SetupDetails: Encodable {
     let generationConfig: GenerationConfig?
     let systemInstruction: String?
     let tools: [LiveAPITool]?
-    
+
     enum CodingKeys: String, CodingKey {
         case model = "model"
         case generationConfig = "generation_config"
@@ -31,7 +31,7 @@ struct GenerationConfig: Encodable {
     let frequencyPenalty: Double?
     let responseModalities: [String]?
     let speechConfig: SpeechConfig?
-    
+
     init(
         candidateCount: Int? = nil,
         maxOutputTokens: Int? = nil,
@@ -53,7 +53,7 @@ struct GenerationConfig: Encodable {
         self.responseModalities = responseModalities
         self.speechConfig = speechConfig
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case candidateCount = "candidate_count"
         case maxOutputTokens = "max_output_tokens"
@@ -79,7 +79,7 @@ struct LiveAPITool: Codable {
     let googleSearch: [String: String]?
         let codeExecution: [String: String]?
         let functionDeclarations: [FunctionSchema]?
-        
+
         enum CodingKeys: String, CodingKey {
             case googleSearch = "google_search"
             case codeExecution = "code_execution"
@@ -92,7 +92,7 @@ struct LiveAPITool: Codable {
 struct LiveAPIResponse: Decodable {
     let serverContent: ServerContent?
     let setupComplete: SetupComplete?
-    
+
     enum CodingKeys: String, CodingKey {
         case serverContent = "serverContent"
         case setupComplete = "setupComplete"
@@ -106,7 +106,7 @@ struct SetupComplete: Decodable {
 struct ServerContent: Decodable {
     let modelTurn: ModelTurn?
     let turnComplete: Bool?
-    
+
     enum CodingKeys: String, CodingKey {
         case modelTurn = "modelTurn"
         case turnComplete = "turnComplete"
@@ -120,7 +120,7 @@ struct ModelTurn: Decodable {
 struct Part: Decodable {
     let text: String?
     let inlineData: InlineData?
-    
+
     enum CodingKeys: String, CodingKey {
         case text
         case inlineData = "inlineData"
@@ -130,7 +130,7 @@ struct Part: Decodable {
 struct InlineData: Decodable {
     let mimeType: String
     let data: String
-    
+
     enum CodingKeys: String, CodingKey {
         case mimeType = "mimeType"
         case data
@@ -140,7 +140,7 @@ struct InlineData: Decodable {
 struct BinaryMessage: Decodable {
     let setupComplete: SetupComplete?
     let serverContent: ServerContent?
-    
+
     enum CodingKeys: String, CodingKey {
         case setupComplete = "setupComplete"
         case serverContent = "serverContent"
@@ -156,7 +156,7 @@ struct LiveAPIContent: Decodable {
 struct AudioData: Decodable {
     let mimeType: String
     let data: String
-    
+
     enum CodingKeys: String, CodingKey {
         case mimeType = "mime_type"
         case data
@@ -168,24 +168,23 @@ struct LiveAPIMetadata: Decodable {
     // Add other fields as necessary
 }
 
-
 // MARK: - LiveAPIClientContent Struct
 
 struct LiveAPIClientContent: Encodable {
     let client_content: ClientContent
-    
+
     enum CodingKeys: String, CodingKey {
         case client_content = "clientContent"
     }
-    
+
     struct ClientContent: Encodable {
         let turnComplete: Bool
         let turns: [Turn]
-        
+
         struct Turn: Encodable {
             let role: String
             let parts: [Part]
-            
+
             struct Part: Encodable {
                 let text: String?
             }
@@ -197,10 +196,10 @@ struct LiveAPIClientContent: Encodable {
 
 struct LiveAPIRealtimeInput: Encodable {
     let realtimeInput: RealtimeInput
-    
+
     struct RealtimeInput: Encodable {
         let mediaChunks: [MediaChunk]
-        
+
         struct MediaChunk: Encodable {
             let mimeType: String
             let data: String
@@ -216,7 +215,6 @@ enum LiveAPIError: Error {
     case audioError(message: String)
 }
 
-
 // MARK: - AsyncQueue Class
 
 // Make Element conform to Sendable to ensure thread safety
@@ -224,16 +222,16 @@ final class AsyncQueue<Element: Sendable> {
     private let maxSize: Int
     private var elements: [Element] = []
     private let lock = NSLock()
-    
+
     init(maxSize: Int) {
         self.maxSize = maxSize
     }
-    
+
     func put(_ element: Element) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             lock.lock()
             defer { lock.unlock() }
-            
+
             if elements.count < maxSize {
                 elements.append(element)
                 continuation.resume()
@@ -242,12 +240,12 @@ final class AsyncQueue<Element: Sendable> {
             }
         }
     }
-    
+
     func get() async throws -> Element {
         return try await withCheckedThrowingContinuation { continuation in
             lock.lock()
             defer { lock.unlock() }
-            
+
             if !elements.isEmpty {
                 let element = elements.removeFirst()
                 continuation.resume(returning: element)

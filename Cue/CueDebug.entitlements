@@ -8,5 +8,9 @@
     <true/>
     <key>com.apple.security.app-sandbox</key>
     <false/>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.ai.nextlabs.app.broadcast</string>
+    </array>
 </dict>
 </plist>

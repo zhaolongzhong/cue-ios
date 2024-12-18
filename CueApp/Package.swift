@@ -14,6 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../CueOpenAI"),
+        .package(path: "../BroadcastShared"),
         // .package(url: "https://github.com/m1guelpf/swift-realtime-openai.git", branch: "main"),
         .package(url: "https://github.com/groue/GRDB.swift", from: "6.29.1")
     ],
@@ -22,6 +23,7 @@ let package = Package(
             name: "CueApp",
             dependencies: [
                 .product(name: "CueOpenAI", package: "CueOpenAI"),
+                .product(name: "BroadcastShared", package: "BroadcastShared"),
                 // .product(name: "OpenAI", package: "swift-realtime-openai"),
                 .product(name: "GRDB", package: "GRDB.swift")
             ],
