@@ -1,3 +1,4 @@
+#if os(iOS)
 import Foundation
 import CoreGraphics
 import AVFoundation
@@ -5,24 +6,9 @@ import ReplayKit
 import os.log
 import UIKit
 
-enum ScreenCaptureError: Error {
-    case noDisplayFound
-    case noWindowFound
-    case configurationError
-    case captureError(String)
-    case permissionDenied
-    case setupInProgress
-}
-
-
-protocol ScreenManagerDelegate: AnyObject {
-    func screenManager(_ manager: ScreenManager, didReceiveFrame data: Data)
-}
-
-
-final class ScreenManager: NSObject,@unchecked Sendable {
+final class IOSScreenCaptureProvider: NSObject, ScreenCaptureProvider {
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiveAPI",
-                                category: "ScreenManager")
+                              category: "IOSScreenCaptureProvider")
     
     weak var delegate: ScreenManagerDelegate?
     private let recorder = RPScreenRecorder.shared()
@@ -36,10 +22,10 @@ final class ScreenManager: NSObject,@unchecked Sendable {
     
     override init() {
         super.init()
-        logger.debug("ScreenManager initialized")
+        logger.debug("IOSScreenCaptureProvider initialized")
     }
     
-    func startCapturingIOSScreen() async throws {
+    func startCapturing() async throws {
         logger.debug("Starting screen capture")
         guard recorder.isAvailable else {
             logger.error("Screen recording is not available")
@@ -83,6 +69,14 @@ final class ScreenManager: NSObject,@unchecked Sendable {
         
         await BackgroundTaskManager.shared.endBackgroundTask(identifier: "screenCapture")
         logger.debug("Screen capture stopped")
+    }
+    
+    func requestPermission() async -> Bool {
+        return await withCheckedContinuation { continuation in
+            recorder.isCameraEnabled = false
+            recorder.isMicrophoneEnabled = false
+            continuation.resume(returning: recorder.isAvailable)
+        }
     }
     
     private func setupCapture() async throws {
@@ -176,62 +170,6 @@ final class ScreenManager: NSObject,@unchecked Sendable {
         let uiImage = UIImage(ciImage: ciImage)
         return uiImage.jpegData(compressionQuality: 0.7)
     }
-}
-
-extension ScreenManager {
-    func requestScreenCapturePermission() async -> Bool {
-        return await withCheckedContinuation { continuation in
-            recorder.isCameraEnabled = false
-            recorder.isMicrophoneEnabled = false
-            continuation.resume(returning: recorder.isAvailable)
-        }
-    }
-}
-
-@MainActor
-final class BackgroundTaskManager {
-    private var backgroundTasks: [String: UIBackgroundTaskIdentifier] = [:]
-    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
-    static let shared = BackgroundTaskManager()
-    
-    private init() {}
-    
-    @MainActor
-        func startBackgroundTask(identifier: String, expirationHandler: @escaping @MainActor () -> Void) {
-            // End existing task if any
-            if let existingTask = backgroundTasks[identifier] {
-                UIApplication.shared.endBackgroundTask(existingTask)
-                backgroundTasks.removeValue(forKey: identifier)
-            }
-            
-            let task = UIApplication.shared.beginBackgroundTask { [weak self] in
-                Task { @MainActor [weak self] in
-                    expirationHandler()
-                    self?.endBackgroundTask(identifier: identifier)
-                }
-            }
-            backgroundTasks[identifier] = task
-        }
-        
-        @MainActor
-        func endBackgroundTask(identifier: String) {
-            if let task = backgroundTasks[identifier] {
-                UIApplication.shared.endBackgroundTask(task)
-                backgroundTasks.removeValue(forKey: identifier)
-            }
-        }
-}
-
-extension ScreenManager {
-    private func configureAudioSession() {
-        do {
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetooth])
-            try audioSession.setActive(true)
-        } catch {
-            logger.error("Failed to configure audio session: \(error.localizedDescription)")
-        }
-    }
     
     func prepareForBackground() {
         configureAudioSession()
@@ -250,4 +188,15 @@ extension ScreenManager {
             displayLink?.preferredFramesPerSecond = 30
         }
     }
+    
+    private func configureAudioSession() {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetooth])
+            try audioSession.setActive(true)
+        } catch {
+            logger.error("Failed to configure audio session: \(error.localizedDescription)")
+        }
+    }
 }
+#endif
