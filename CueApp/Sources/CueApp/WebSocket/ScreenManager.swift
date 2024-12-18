@@ -14,15 +14,13 @@ enum ScreenCaptureError: Error {
     case setupInProgress
 }
 
-
 protocol ScreenManagerDelegate: AnyObject {
     func screenManager(_ manager: ScreenManager, didReceiveFrame data: Data)
 }
 
-
-final class ScreenManager: NSObject,@unchecked Sendable {
+final class ScreenManager: NSObject, @unchecked Sendable {
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiveAPI",
-                                category: "ScreenManager")
+                              category: "ScreenManager")
     
     weak var delegate: ScreenManagerDelegate?
     private let recorder = RPScreenRecorder.shared()
@@ -30,6 +28,7 @@ final class ScreenManager: NSObject,@unchecked Sendable {
     private let captureQueue = DispatchQueue(label: "com.screenmanager.capture")
     private var isCaptureSetup = false
     private var isSettingUpCapture = false
+    private var isPaused = false
     
     // Property for Synchronization
     private var hasResumed = false
@@ -37,6 +36,80 @@ final class ScreenManager: NSObject,@unchecked Sendable {
     override init() {
         super.init()
         logger.debug("ScreenManager initialized")
+        setupNotifications()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func handleAppDidEnterBackground() {
+        Task {
+            await handleBackgroundTransition()
+        }
+    }
+    
+    @objc private func handleAppWillEnterForeground() {
+        Task {
+            await handleForegroundTransition()
+        }
+    }
+    
+    private func handleBackgroundTransition() async {
+        logger.debug("App entering background")
+        isPaused = true
+        
+        // Keep the capture session alive but pause frame delivery
+        displayLink?.isPaused = true
+        
+        // Configure audio session for background
+        configureAudioSession(forBackground: true)
+    }
+    
+    private func handleForegroundTransition() async {
+        logger.debug("App entering foreground")
+        isPaused = false
+        
+        // Resume frame delivery
+        displayLink?.isPaused = false
+        
+        // Configure audio session for foreground
+        configureAudioSession(forBackground: false)
+        
+        // If capture was setup before, ensure it's still running
+        if isCaptureSetup {
+            do {
+                try await refreshCaptureIfNeeded()
+            } catch {
+                logger.error("Failed to refresh capture: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func refreshCaptureIfNeeded() async throws {
+        if !recorder.isRecording && isCaptureSetup {
+            logger.debug("Refreshing screen capture")
+            // Stop existing capture
+            await stopCapturing()
+            // Start new capture
+            try await startCapturingIOSScreen()
+        }
     }
     
     func startCapturingIOSScreen() async throws {
@@ -121,10 +194,13 @@ final class ScreenManager: NSObject,@unchecked Sendable {
                         return
                     }
                     
+                    // Process frames in both foreground and background
                     if self.isCaptureSetup && error == nil && bufferType == .video {
+                        // In background mode (isPaused), we'll still process frames but at a lower quality
                         if let frameData = self.compressFrame(buffer) {
                             DispatchQueue.main.async { [weak self] in
-                                self?.delegate?.screenManager(self!, didReceiveFrame: frameData)
+                                guard let self = self else { return }
+                                self.delegate?.screenManager(self, didReceiveFrame: frameData)
                             }
                         }
                     }
@@ -151,7 +227,7 @@ final class ScreenManager: NSObject,@unchecked Sendable {
     private func startDisplayLink() {
         displayLink?.invalidate()
         displayLink = CADisplayLink(target: self, selector: #selector(self.displayLinkDidFire))
-        displayLink?.preferredFramesPerSecond = 30
+        displayLink?.preferredFramesPerSecond = isPaused ? 5 : 30  // Lower framerate in background
         displayLink?.add(to: .main, forMode: .common)
     }
     
@@ -174,7 +250,7 @@ final class ScreenManager: NSObject,@unchecked Sendable {
         let ciImage = CIImage(cvImageBuffer: imageBuffer)
         let context = CIContext()
         let uiImage = UIImage(ciImage: ciImage)
-        return uiImage.jpegData(compressionQuality: 0.7)
+        return uiImage.jpegData(compressionQuality: isPaused ? 0.5 : 0.7)  // Lower quality in background
     }
 }
 
@@ -223,10 +299,16 @@ final class BackgroundTaskManager {
 }
 
 extension ScreenManager {
-    private func configureAudioSession() {
+    private func configureAudioSession(forBackground: Bool) {
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetooth])
+            if forBackground {
+                // In background, use playback category to maintain background audio
+                try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            } else {
+                // In foreground, use playAndRecord for full functionality
+                try audioSession.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetooth])
+            }
             try audioSession.setActive(true)
         } catch {
             logger.error("Failed to configure audio session: \(error.localizedDescription)")
@@ -234,20 +316,36 @@ extension ScreenManager {
     }
     
     func prepareForBackground() {
-        configureAudioSession()
+        isPaused = true
+        configureAudioSession(forBackground: true)
         
-        // Reduce frame rate in background
+        // Start background task to keep screen capture alive
         Task { @MainActor in
-            displayLink?.preferredFramesPerSecond = 15
+            await BackgroundTaskManager.shared.startBackgroundTask(identifier: "backgroundCapture") { [weak self] in
+                // Handle background task expiration
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    logger.warning("Background task expiring, attempting to maintain minimal capture")
+                    self.isPaused = true
+                    await self.startDisplayLink() // Ensure lowest frame rate
+                }
+            }
+            
+            // Update display link frame rate
+            await startDisplayLink() // This will apply the background frame rate
         }
     }
     
     func prepareForForeground() {
-        configureAudioSession()
+        isPaused = false
+        configureAudioSession(forBackground: false)
         
-        // Restore normal frame rate
+        // End background task
         Task { @MainActor in
-            displayLink?.preferredFramesPerSecond = 30
+            await BackgroundTaskManager.shared.endBackgroundTask(identifier: "backgroundCapture")
+            
+            // Update display link frame rate
+            await startDisplayLink() // This will restore normal frame rate
         }
     }
 }
