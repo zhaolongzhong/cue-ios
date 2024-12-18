@@ -115,6 +115,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         // Initialize WebSocket
         let wsURL = "wss://\(host)/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=\(apiKey)"
         guard let url = URL(string: wsURL) else {
+            logger.error("Invalid WebSocket URL: \(wsURL)")
             throw LiveAPIError.invalidURL
         }
         
@@ -168,15 +169,15 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
 
     private func setupAudioEngine() async throws {
         do {
-            // Configure AVAudioSession for 16kHz, 16-bit PCM
+            // Configure AVAudioSession for 16kHz, 16-bit PCM with voice chat mode
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
-                                        mode: .default,
-                                        options: [.defaultToSpeaker, .allowBluetooth])
+                                        mode: .voiceChat, // Changed to .voiceChat for echo cancellation
+                                        options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
                 try session.setPreferredSampleRate(SEND_SAMPLE_RATE) // 16kHz
                 try session.setActive(true)
-                self.logger.debug("Audio session category set and activated.")
+                self.logger.debug("Audio session category set to .voiceChat and activated.")
                 self.logger.debug("Preferred sample rate: \(self.SEND_SAMPLE_RATE) Hz")
                 self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
@@ -185,7 +186,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             // Define input format as 16kHz, 16-bit PCM little-endian
             let inputFormatSettings: [String: Any] = [
                 AVFormatIDKey: Int(kAudioFormatLinearPCM),
-                AVSampleRateKey: SEND_SAMPLE_RATE,
+                AVSampleRateKey: SEND_SAMPLE_RATE, // 16kHz
                 AVNumberOfChannelsKey: CHANNELS,
                 AVLinearPCMBitDepthKey: 16,
                 AVLinearPCMIsBigEndianKey: false,
@@ -262,7 +263,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
         
         // Estimate destination buffer frame capacity
-        let ratio = destinationFormat.sampleRate / sourceFormat.sampleRate
+        let ratio = destinationFormat.sampleRate / sourceFormat.sampleRate // e.g., 16000 / 48000 = 0.3333
         let destinationFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
         
         guard let destinationBuffer = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: destinationFrameCapacity) else {
@@ -302,7 +303,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     }
 
     // MARK: - Play Audio Data with Correct Format Handling
-    
+
     private func playAudioData(_ data: Data) async {
         // Log the first few bytes for debugging
         if data.count >= 4 {
@@ -324,11 +325,11 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             return
         }
         
-        // Assume all data is 16-bit PCM at 16kHz
+        // Assume all data is 16-bit PCM at 24kHz
         let frameCount = data.count / 2 // 2 bytes per Int16 sample
         
-        // Define source format as 16-bit PCM at 16kHz
-        let sourceSampleRate = SEND_SAMPLE_RATE // 16000 Hz
+        // Define source format as 16-bit PCM at 24kHz
+        let sourceSampleRate = 24000.0 // 24kHz
         let sourceFormatSettings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: sourceSampleRate,
@@ -363,17 +364,22 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
         logger.debug("Filled source buffer with 16-bit Int data")
         
-        // Perform Resampling and conversion to Float32 at 24kHz
+        // Perform Resampling and conversion to Float32 at 48kHz
         let destinationFormatSettings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: RECEIVE_SAMPLE_RATE, // 24kHz
+            AVSampleRateKey: RECEIVE_SAMPLE_RATE, // 24kHz, but adjusted below
             AVNumberOfChannelsKey: CHANNELS,
             AVLinearPCMBitDepthKey: 32,
             AVLinearPCMIsBigEndianKey: false,
             AVLinearPCMIsFloatKey: true,
         ]
         
-        guard let destinationFormat = AVAudioFormat(settings: destinationFormatSettings) else {
+        // Adjust destination sample rate to match audio session's actual sample rate
+        let destinationSampleRate = audioFormat.sampleRate // 48kHz
+        var adjustedDestinationFormatSettings = destinationFormatSettings
+        adjustedDestinationFormatSettings[AVSampleRateKey] = destinationSampleRate
+        
+        guard let destinationFormat = AVAudioFormat(settings: adjustedDestinationFormatSettings) else {
             logger.error("Failed to create destination AVAudioFormat")
             return
         }
@@ -384,7 +390,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
         
         // Calculate the required frame capacity for the destination buffer
-        let ratio = destinationFormat.sampleRate / sourceSampleRate
+        let ratio = destinationFormat.sampleRate / sourceSampleRate // 48kHz / 24kHz = 2.0
         let destinationFrameCapacity = AVAudioFrameCount(Double(sourceBuffer.frameLength) * ratio)
         
         guard let destinationBuffer = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: destinationFrameCapacity) else {
@@ -454,11 +460,12 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
     func send<T: Encodable>(_ message: T) async throws { // allow extensions access
         guard let messageData = try? JSONEncoder().encode(message),
               let messageString = String(data: messageData, encoding: .utf8) else {
+            logger.error("Failed to encode message to JSON")
             throw LiveAPIError.encodingError
         }
         
         // Log the message being sent
-        logger.debug("Sending message: \(messageString)")
+        logger.debug("Sending message: \(String(messageString.prefix(100)))")
         
         try await webSocketTask?.send(.string(messageString))
     }
@@ -531,7 +538,7 @@ final class LiveAPIWebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             return
         }
         
-        logger.debug("Binary message as string: \(messageString)")
+        logger.debug("Binary message as string: \(String(messageString.prefix(200)))")
         
         // Attempt to decode the string as LiveAPIResponse
         guard let jsonData = messageString.data(using: .utf8) else {
