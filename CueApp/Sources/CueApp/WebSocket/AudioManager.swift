@@ -126,7 +126,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
             guard let audioFormat = audioFormat else {
                 throw AudioManagerError.audioError(message: "Failed to create audio format")
             }
-            
+
             // Attach and connect nodes
             audioEngine.attach(playerNode)
             audioEngine.connect(playerNode, to: audioEngine.outputNode, format: audioFormat)

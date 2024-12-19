@@ -60,7 +60,7 @@ struct macOSApp: App {
 
         WindowGroup(id: "gemini-chat-window") {
             if let apiKey = viewModel.getAPIKey(for: APIKeyType.gemini) {
-                GeminiChatView(apiKey: apiKey, liveAPIWebSocketManager: LiveAPIWebSocketManager())
+                GeminiChatView(viewModelFactory: dependencies.viewModelFactory.makeGeminiViewModel, broadcastViewModelFactory: dependencies.viewModelFactory.makeBroadcastViewModel, apiKey: apiKey)
                     .navigationTitle("Gemini")
             }
         }

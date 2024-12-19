@@ -4,7 +4,7 @@ import BroadcastShared
 import CoreImage
 #if os(iOS)
 @MainActor
-class BroadcastViewModel: ObservableObject {
+public class BroadcastViewModel: ObservableObject {
     @Published var frameData: [String: Any]?
     @Published var lastFrameImage: Data?
     @Published var lastUIImage: UIImage?
@@ -75,7 +75,7 @@ class BroadcastViewModel: ObservableObject {
             print("❌ Failed to create CIImage from UIImage")
             return nil
         }
-        
+
         // Apply any necessary image processing (similar to ScreenManager)
         // For example, you might want to resize or adjust quality
 

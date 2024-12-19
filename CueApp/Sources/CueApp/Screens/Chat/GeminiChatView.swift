@@ -7,19 +7,17 @@ public struct GeminiChatView: View {
     @FocusState private var isInputFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
-    private var manager: LiveAPIWebSocketManager
     @Environment(\.scenePhase) private var scenePhase
     private let apiKey: String
     #if os(iOS)
     @StateObject private var broadcastVM: BroadcastViewModel
     #endif
 
-    public init(apiKey: String, liveAPIWebSocketManager: LiveAPIWebSocketManager) {
+    public init(viewModelFactory: @escaping () -> GeminiChatViewModel, broadcastViewModelFactory: @escaping () -> BroadcastViewModel, apiKey: String) {
         self.apiKey = apiKey
-        self.manager = liveAPIWebSocketManager
-        _viewModel = StateObject(wrappedValue: GeminiChatViewModel(apiKey: apiKey))
+        _viewModel = StateObject(wrappedValue: viewModelFactory())
         #if os(iOS)
-        _broadcastVM = StateObject(wrappedValue: BroadcastViewModel(webSocketManager: liveAPIWebSocketManager))
+        _broadcastVM = StateObject(wrappedValue: broadcastViewModelFactory())
         #endif
     }
 
@@ -31,7 +29,7 @@ public struct GeminiChatView: View {
                         print("Connect")
                         Task {
                             do {
-                                try await manager.connect(apiKey: apiKey)
+                                try await viewModel.liveAPIWebSocketManager.connect(apiKey: apiKey)
                             } catch {
                                 print("Failed to connect: \(error)")
                             }
@@ -43,7 +41,7 @@ public struct GeminiChatView: View {
                         print("Send Message")
                         Task {
                             do {
-                                try await manager.sendText("""
+                                try await viewModel.liveAPIWebSocketManager.sendText("""
                                     Hey, I need you to do three things for me.
 
                                     1. Turn on the lights
@@ -63,7 +61,7 @@ public struct GeminiChatView: View {
                         print("Send Message About Model")
                         Task {
                             do {
-                                try await manager.sendText("What are your model card info? Who are you?")
+                                try await viewModel.liveAPIWebSocketManager.sendText("What are your model card info? Who are you?")
                             } catch {
                                 print("Failed to send model message: \(error)")
                             }
@@ -75,7 +73,7 @@ public struct GeminiChatView: View {
                         print("Start Screen Capture")
                         Task {
                             do {
-                                try await manager.startScreenCapture()
+                                try await viewModel.liveAPIWebSocketManager.startScreenCapture()
                             } catch ScreenCaptureError.permissionDenied {
                                 print("Screen capture permission denied")
                             } catch {
@@ -88,7 +86,7 @@ public struct GeminiChatView: View {
                         print("Stop Screen Capture")
                         Task {
                             do {
-                                try await manager.stopScreenCapture()
+                                try await viewModel.liveAPIWebSocketManager.stopScreenCapture()
                             } catch {
                                 print("Failed to stop screen capture: \(error)")
                             }
@@ -97,7 +95,7 @@ public struct GeminiChatView: View {
 
                     Button("Disconnect") {
                         print("Disconnect")
-                        manager.disconnect()
+                        viewModel.liveAPIWebSocketManager.disconnect()
                     }
                     .buttonStyle(.bordered)
 

@@ -8,6 +8,8 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     // @Published public var conversationManager: ConversationManager
     @Published public var webSocketStore: WebSocketManagerStore
     @Published public var appStateViewModel: AppStateViewModel
+    @Published public var liveAPIWebSocketManager: LiveAPIWebSocketManager
+    @Published public var apiKeysViewModel: APIKeysViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
         ViewModelFactory(dependencies: self)
@@ -18,12 +20,14 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     }
 
     public init() {
+        self.apiKeysViewModel = APIKeysViewModel()
         self.webSocketStore = WebSocketManagerStore()
         // self.conversationManager = ConversationManager()
         let authService = AuthService()
         self.authService = authService
         self.assistantService = AssistantService()
         self.appStateViewModel = AppStateViewModel(authService: authService)
+        self.liveAPIWebSocketManager = LiveAPIWebSocketManager()
         self.appStateViewModel.delegate = self
     }
 
@@ -39,10 +43,14 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
 @MainActor
 public class ViewModelFactory {
     let dependencies: AppDependencies
+    private var apiKeysViewModel: APIKeysViewModel?
+    private var settingsViewModel: SettingsViewModel?
     private var assistantsViewModel: AssistantsViewModel?
     private var chatViewModels: [String: ChatViewModel] = [:]
-    private var settingsViewModel: SettingsViewModel?
-    private var apiKeysViewModel: APIKeysViewModel?
+    private var anthropicViewModel: AnthropicChatViewModel?
+    private var geminialViewModel: GeminiChatViewModel?
+    private var openaiViewModel: OpenAIChatViewModel?
+    private var broadcastViewModel: BroadcastViewModel?
 
     public init(dependencies: AppDependencies) {
         self.dependencies = dependencies
@@ -88,6 +96,28 @@ public class ViewModelFactory {
             self.apiKeysViewModel = apiKeysViewModel
             return apiKeysViewModel
         }
+    }
+    
+    func makeGeminiViewModel() -> GeminiChatViewModel {
+        if let geminialViewModel = self.geminialViewModel {
+            return geminialViewModel
+        }
+
+        self.geminialViewModel = GeminiChatViewModel(
+            liveAPIWebSocketManager: dependencies.liveAPIWebSocketManager
+        )
+        return self.geminialViewModel!
+    }
+    
+    func makeBroadcastViewModel() -> BroadcastViewModel {
+        if let broadcastViewModel = self.broadcastViewModel {
+            return broadcastViewModel
+        }
+
+        self.broadcastViewModel = BroadcastViewModel(
+            webSocketManager: dependencies.liveAPIWebSocketManager
+        )
+        return self.broadcastViewModel!
     }
 
     func cleanup() {

@@ -2,10 +2,10 @@ import Foundation
 import Combine
 
 @MainActor
-class GeminiChatViewModel: ObservableObject {
-    private let apiKey: String
+public class GeminiChatViewModel: ObservableObject {
+    let liveAPIWebSocketManager: LiveAPIWebSocketManager
 
-    init(apiKey: String) {
-        self.apiKey = apiKey
+    init(liveAPIWebSocketManager: LiveAPIWebSocketManager) {
+        self.liveAPIWebSocketManager = liveAPIWebSocketManager
     }
 }

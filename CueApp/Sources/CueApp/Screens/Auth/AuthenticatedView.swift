@@ -33,9 +33,11 @@ private struct AuthenticatedContent: View {
                 #if os(iOS)
                 AppTabView()
                     .environmentObject(viewModel)
+                    .environmentObject(dependencies.viewModelFactory.makeAPIKeysViewModel())
                 #else
                 MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                     .environmentObject(viewModel)
+                    .environmentObject(dependencies.viewModelFactory.makeAPIKeysViewModel())
                 #endif
             } else {
                 LoginView()

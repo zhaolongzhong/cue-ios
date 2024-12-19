@@ -44,42 +44,54 @@ public class APIKeysViewModel: ObservableObject {
     }
 
     private func setupObservers() {
-        // Observe changes for each key
-        $openAIKey
-            .dropFirst()
-            .sink { [weak self] newKey in
-                self?.saveKey(.openai, value: newKey)
-            }
-            .store(in: &cancellables)
-
-        $anthropicKey
-            .dropFirst()
-            .sink { [weak self] newKey in
-                self?.saveKey(.anthropic, value: newKey)
-            }
-            .store(in: &cancellables)
-
-        $geminiKey
-            .dropFirst()
-            .sink { [weak self] newKey in
-                self?.saveKey(.gemini, value: newKey)
-            }
-            .store(in: &cancellables)
-    }
+          // Remove dropFirst() to ensure initial values trigger updates
+          $openAIKey
+              .sink { [weak self] newKey in
+                  self?.saveKey(.openai, value: newKey)
+              }
+              .store(in: &cancellables)
+          
+          $anthropicKey
+              .sink { [weak self] newKey in
+                  self?.saveKey(.anthropic, value: newKey)
+              }
+              .store(in: &cancellables)
+          
+          $geminiKey
+              .sink { [weak self] newKey in
+                  self?.saveKey(.gemini, value: newKey)
+              }
+              .store(in: &cancellables)
+      }
 
     private func loadAPIKeys() {
         openAIKey = UserDefaults.standard.string(forKey: APIKeyType.openai.rawValue) ?? ""
         anthropicKey = UserDefaults.standard.string(forKey: APIKeyType.anthropic.rawValue) ?? ""
         geminiKey = UserDefaults.standard.string(forKey: APIKeyType.gemini.rawValue) ?? ""
     }
-
+    
     private func saveKey(_ keyType: APIKeyType, value: String) {
         if value.isEmpty {
             UserDefaults.standard.removeObject(forKey: keyType.rawValue)
         } else {
             UserDefaults.standard.set(value, forKey: keyType.rawValue)
         }
+        UserDefaults.standard.synchronize() // Force immediate save
         print("Saved key for \(keyType.displayName): \(value.isEmpty ? "empty" : "set")")
+    }
+    
+    func deleteKey(_ keyType: APIKeyType) {
+        switch keyType {
+        case .openai:
+            openAIKey = ""
+        case .anthropic:
+            anthropicKey = ""
+        case .gemini:
+            geminiKey = ""
+        }
+        UserDefaults.standard.removeObject(forKey: keyType.rawValue)
+        UserDefaults.standard.synchronize()
+        objectWillChange.send() // Force update
     }
 
     public func getAPIKey(for keyType: APIKeyType) -> String? {
@@ -122,9 +134,5 @@ public class APIKeysViewModel: ObservableObject {
     private func stopEditing() {
         editingKeyType = nil
         isAlertPresented = false
-    }
-
-    func deleteKey(_ keyType: APIKeyType) {
-        updateAPIKey(keyType, with: "")
     }
 }

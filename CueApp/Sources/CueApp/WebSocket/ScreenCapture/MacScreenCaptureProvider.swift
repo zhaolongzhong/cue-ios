@@ -18,7 +18,7 @@ class MacScreenCaptureProvider: NSObject, ScreenCaptureProvider, SCStreamDelegat
 
                 // Remove the stream output
                 try stream.removeStreamOutput(self, type: .screen)
-                
+
                 // Clean up the stream reference
                 self.stream = nil
 
