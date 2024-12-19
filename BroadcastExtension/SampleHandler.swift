@@ -1,14 +1,21 @@
 import ReplayKit
 import Foundation
 import BroadcastShared
+import os.log
+
+@_cdecl("CreateSampleHandler")
+public func CreateSampleHandler() -> RPBroadcastSampleHandler {
+    os_log("🔴 CreateSampleHandler called", type: .fault)
+    return SampleHandler()
+}
 
 class SampleHandler: RPBroadcastSampleHandler {
     private var frameCount = 0
     private let dataManager = SharedDataManager.shared
+    private let logger = OSLog(subsystem: "ai.nextlabs.app.BroadcastExtension", category: "Broadcast")
     
     override func broadcastStarted(withSetupInfo setupInfo: [String : NSObject]?) {
-        print("🔴 BroadcastExtension: Started")
-        // Try to write test data immediately when broadcast starts
+        os_log("🔴 BroadcastExtension: Started", log: logger, type: .info)
         dataManager.saveFrameData(width: 999, height: 999, frameCount: -999)
     }
     
@@ -16,32 +23,30 @@ class SampleHandler: RPBroadcastSampleHandler {
         switch sampleBufferType {
         case .video:
             frameCount += 1
-            print("🔴 BroadcastExtension: Processing video frame #\(frameCount)")
+            os_log("🔴 BroadcastExtension: Frame #%d", log: logger, type: .info, frameCount)
             
             if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
                 let width = CVPixelBufferGetWidth(pixelBuffer)
                 let height = CVPixelBufferGetHeight(pixelBuffer)
-                print("🔴 BroadcastExtension: Saving frame data: \(width)x\(height)")
-                
-                // Try to read data before writing
-                if let existingData = dataManager.getLastFrameData() {
-                    print("🔴 BroadcastExtension: Found existing data: \(existingData)")
-                }
-                
+                os_log("🔴 BroadcastExtension: Size %dx%d", log: logger, type: .info, width, height)
                 dataManager.saveFrameData(width: width, height: height, frameCount: frameCount)
-                
-                // Verify data was written
-                if let verifyData = dataManager.getLastFrameData() {
-                    print("🔴 BroadcastExtension: Verified saved data: \(verifyData)")
-                }
             }
             
         case .audioApp:
-            print("🔴 BroadcastExtension: Audio app")
+            os_log("🔴 BroadcastExtension: Audio app", log: logger, type: .info)
         case .audioMic:
-            print("🔴 BroadcastExtension: Audio mic")
+            os_log("🔴 BroadcastExtension: Audio mic", log: logger, type: .info)
         @unknown default:
-            print("🔴 BroadcastExtension: Unknown type")
+            os_log("🔴 BroadcastExtension: Unknown type", log: logger, type: .error)
         }
+    }
+    
+    override func broadcastFinished() {
+        os_log("🔴 BroadcastExtension: Finished", log: logger, type: .info)
+    }
+    
+    override func finishBroadcastWithError(_ error: Error) {
+        os_log("🔴 BroadcastExtension: Error - %{public}@", log: logger, type: .error, error.localizedDescription)
+        super.finishBroadcastWithError(error)
     }
 }

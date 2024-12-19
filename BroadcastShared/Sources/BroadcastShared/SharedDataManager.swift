@@ -1,20 +1,23 @@
-
 import Foundation
+import os.log
 
 public class SharedDataManager: @unchecked Sendable {
     public static let shared = SharedDataManager()
     private let userDefaults: UserDefaults
+    private let logger = OSLog(subsystem: "ai.nextlabs.app.BroadcastShared", category: "DataManager")
     
     public let appGroupIdentifier = "group.ai.nextlabs.app.broadcast"
     
     public init() {
-        print("📱 SharedDataManager: initializing with group: \(appGroupIdentifier)")
-        guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            print("❌ SharedDataManager: Failed to initialize UserDefaults")
+        os_log("📱 Initializing with group: %{public}@", log: logger, type: .info, appGroupIdentifier)
+        // Use suiteName directly instead of any user
+        if let defaults = UserDefaults(suiteName: appGroupIdentifier) {
+            self.userDefaults = defaults
+            os_log("✅ Initialized successfully", log: logger, type: .info)
+        } else {
+            os_log("❌ Failed to initialize UserDefaults", log: logger, type: .fault)
             fatalError("Could not initialize UserDefaults with app group")
         }
-        self.userDefaults = defaults
-        print("✅ SharedDataManager: initialized successfully")
     }
     
     public func saveFrameData(width: Int, height: Int, frameCount: Int) {
@@ -24,14 +27,17 @@ public class SharedDataManager: @unchecked Sendable {
             "frameCount": frameCount,
             "timestamp": Date().timeIntervalSince1970
         ]
-        print("💾 SharedDataManager: Saving frame data: \(frameData)")
-        userDefaults.set(frameData, forKey: "lastFrameData")
-        userDefaults.synchronize()
+        
+        // Write to defaults synchronously
+        userDefaults.setValue(frameData, forKey: "lastFrameData")
+        os_log("💾 Saved frame data: %{public}@", log: logger, type: .info, String(describing: frameData))
     }
     
     public func getLastFrameData() -> [String: Any]? {
-        let data = userDefaults.dictionary(forKey: "lastFrameData")
-        print("📖 SharedDataManager: Retrieved data: \(String(describing: data))")
-        return data
+        if let data = userDefaults.dictionary(forKey: "lastFrameData") {
+            os_log("📖 Retrieved data: %{public}@", log: logger, type: .info, String(describing: data))
+            return data
+        }
+        return nil
     }
 }
