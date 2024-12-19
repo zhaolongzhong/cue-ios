@@ -34,9 +34,10 @@ final class AudioManager: NSObject, @unchecked Sendable {
     private var audioFormat: AVAudioFormat?
 
     private var isAudioSetup = false
+    private var inputTapInstalled = false
 
     weak var delegate: AudioManagerDelegate?
-    
+
     // MARK: - Initialization
 
     override init() {
@@ -50,7 +51,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
-    
+
     // MARK: - Audio Session Notifications
     #if os(iOS)
     private func setupAudioSessionNotifications() {
@@ -99,78 +100,60 @@ final class AudioManager: NSObject, @unchecked Sendable {
     // MARK: - Setup Audio Engine
 
     func setupAudioEngine() async throws {
-        guard !isAudioSetup else {
-            logger.debug("Audio engine is already set up")
-            return
+        // First ensure previous setup is properly cleared
+        if isAudioSetup {
+            stopAudioEngine()
+            // Add a small delay to ensure cleanup is complete
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         }
-        
+
         do {
-            // Configure AVAudioSession for 16kHz, 16-bit PCM with voice chat mode
+            // Configure AVAudioSession
             #if os(iOS)
             let session = AVAudioSession.sharedInstance()
             try await MainActor.run {
                 try session.setCategory(.playAndRecord,
-                                        mode: .voiceChat, // Voice chat mode for echo cancellation
-                                        options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
-                try session.setPreferredSampleRate(SEND_SAMPLE_RATE) // 16kHz
+                                     mode: .voiceChat,
+                                     options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+                try session.setPreferredSampleRate(SEND_SAMPLE_RATE)
                 try session.setActive(true)
-                self.logger.debug("Audio session category set to .playAndRecord and activated.")
-                self.logger.debug("Preferred sample rate: \(self.SEND_SAMPLE_RATE) Hz")
-                self.logger.debug("Actual sample rate: \(session.sampleRate) Hz")
             }
             #endif
-            
-            let actualSampleRate = RECEIVE_SAMPLE_RATE
-            // Define input format as 16kHz, 16-bit PCM little-endian
-            let inputFormatSettings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatLinearPCM),
-                AVSampleRateKey: SEND_SAMPLE_RATE, // 16kHz
-                AVNumberOfChannelsKey: CHANNELS,
-                AVLinearPCMBitDepthKey: 16,
-                AVLinearPCMIsBigEndianKey: false,
-                AVLinearPCMIsFloatKey: false,
-            ]
 
-            guard let inputAudioFormat = AVAudioFormat(settings: inputFormatSettings) else {
-                throw AudioManagerError.audioError(message: "Failed to create input audio format")
-            }
-
-            logger.debug("Input AudioFormat created with sampleRate: \(inputAudioFormat.sampleRate) Hz, channels: \(inputAudioFormat.channelCount)")
-
-            // Initialize format for playback node (Float32 at actualSampleRate)
-            audioFormat = AVAudioFormat(standardFormatWithSampleRate: actualSampleRate, channels: CHANNELS)
+            // Initialize format for playback
+            audioFormat = AVAudioFormat(standardFormatWithSampleRate: RECEIVE_SAMPLE_RATE, channels: CHANNELS)
 
             guard let audioFormat = audioFormat else {
                 throw AudioManagerError.audioError(message: "Failed to create audio format")
             }
             
-            logger.debug("AudioFormat created with sampleRate: \(audioFormat.sampleRate) Hz, channels: \(audioFormat.channelCount)")
-
-            // Attach and connect player node directly to outputNode to prevent playback audio from being captured
+            // Attach and connect nodes
             audioEngine.attach(playerNode)
             audioEngine.connect(playerNode, to: audioEngine.outputNode, format: audioFormat)
             logger.debug("Connected playerNode directly to outputNode")
 
-            // Install tap on input node with the hardware's actual format
+            // Install tap on input node
             audioEngine.inputNode.installTap(onBus: 0,
-                                             bufferSize: 4096,
-                                             format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, _ in
+                                          bufferSize: 4096,
+                                          format: audioEngine.inputNode.inputFormat(forBus: 0)) { [weak self] buffer, _ in
                 guard let self = self else { return }
-
-                // Perform conversion and send audio data on a background thread
                 DispatchQueue.global(qos: .userInitiated).async {
                     self.convertAndSend(buffer: buffer)
                 }
             }
+            inputTapInstalled = true
             logger.debug("Installed tap on inputNode with hardware's actual format")
 
             // Prepare and start the engine
-            audioEngine.prepare()
+            try audioEngine.prepare()
             try audioEngine.start()
             logger.debug("Audio engine started successfully")
-            
+
             isAudioSetup = true
+
         } catch {
+            // Cleanup on error
+            stopAudioEngine()
             logger.error("Error setting up audio engine: \(error.localizedDescription)")
             throw error
         }
@@ -183,7 +166,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
             logger.debug("Skipping audio capture while playing")
             return
         }
-        
+
         if delegate?.checkIsServerTurn() == true {
 //            logger.debug("Skipping audio capture because it's server turn")
             return
@@ -216,7 +199,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         // Estimate destination buffer frame capacity
         let ratio = destinationFormat.sampleRate / sourceFormat.sampleRate // e.g., 16000 / 48000 = 0.3333
         let destinationFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
-        
+
         guard let destinationBuffer = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: destinationFrameCapacity) else {
             logger.error("Failed to create destination PCM buffer")
             return
@@ -254,7 +237,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
     }
 
     // MARK: - Play Audio Data
-    
+
     func playAudioData(_ data: Data) async {
         isPlaying = true
         // Log the first few bytes for debugging
@@ -303,7 +286,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         }
 
         sourceBuffer.frameLength = AVAudioFrameCount(frameCount)
-        
+
         // Fill source buffer with Int16 data
         data.withUnsafeBytes { ptr in
             guard let samples = ptr.bindMemory(to: Int16.self).baseAddress else {
@@ -330,7 +313,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         let destinationSampleRate = audioFormat.sampleRate // e.g., 48000 Hz
         var adjustedDestinationFormatSettings = destinationFormatSettings
         adjustedDestinationFormatSettings[AVSampleRateKey] = destinationSampleRate
-        
+
         guard let destinationFormat = AVAudioFormat(settings: adjustedDestinationFormatSettings) else {
             logger.error("Failed to create destination AVAudioFormat")
             return
@@ -352,20 +335,20 @@ final class AudioManager: NSObject, @unchecked Sendable {
 
         // Initialize the destination buffer
         destinationBuffer.frameLength = destinationFrameCapacity
-        
+
         var error: NSError?
         let status = converter.convert(to: destinationBuffer, error: &error) { _, outStatus in
             outStatus.pointee = AVAudioConverterInputStatus.haveData
             return sourceBuffer
         }
-        
+
         if status == .error {
             logger.error("Error during conversion: \(error?.localizedDescription ?? "Unknown error")")
             return
         }
 
 //        logger.debug("Resampled buffer from \(sourceSampleRate) Hz to \(destinationFormat.sampleRate) Hz")
-        
+
         // Schedule the converted buffer for playback
         playerNode.scheduleBuffer(destinationBuffer) { [weak self] in
             guard let self = self else { return }
@@ -392,16 +375,32 @@ final class AudioManager: NSObject, @unchecked Sendable {
 
     func stopAudioEngine() {
         isPlaying = false
+
+        // 1. First stop playback
         playerNode.stop()
         logger.debug("playerNode stopped")
 
+        // 2. Stop the engine before doing anything else
         audioEngine.stop()
         logger.debug("audioEngine stopped")
 
-        // Reset audio session
+        // 3. Remove tap from input node if installed
+        if inputTapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            inputTapInstalled = false
+            logger.debug("Removed tap from input node")
+        }
+
+        // 4. Now safe to detach nodes since engine is stopped
+        if audioEngine.attachedNodes.contains(playerNode) {
+            audioEngine.detach(playerNode)
+            logger.debug("Detached player node")
+        }
+
+        // 5. Reset audio session
         #if os(iOS)
         do {
-            try AVAudioSession.sharedInstance().setActive(false)
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             logger.debug("Audio session deactivated")
         } catch {
             logger.error("Failed to deactivate audio session: \(error.localizedDescription)")
@@ -431,7 +430,7 @@ final class AudioManager: NSObject, @unchecked Sendable {
         }
 
         convertedBuffer.frameLength = 0 // Initialize buffer
-        
+
         var error: NSError?
         let status = converter.convert(to: convertedBuffer, error: &error) { _, outStatus in
             outStatus.pointee = AVAudioConverterInputStatus.haveData

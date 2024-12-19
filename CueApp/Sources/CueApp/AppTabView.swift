@@ -12,9 +12,11 @@ public struct AppTabView: View {
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @State private var selectedTab: TabSelection = .assistants
     private let apiKeyModel: APIKeysViewModel
+    private let liveAPIWebSocketManager: LiveAPIWebSocketManager
 
     public init() {
         apiKeyModel = APIKeysViewModel()
+        liveAPIWebSocketManager = LiveAPIWebSocketManager()
     }
 
     public var body: some View {
@@ -28,7 +30,7 @@ public struct AppTabView: View {
             }
 
             if let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.gemini) {
-                GeminiChatView(apiKey: apiKey)
+                GeminiChatView(apiKey: apiKey, liveAPIWebSocketManager: liveAPIWebSocketManager)
                     .tabItem {
                         Label("Gemini", systemImage: "wand.and.stars")
                     }

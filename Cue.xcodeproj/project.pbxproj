@@ -17,7 +17,7 @@
 		3AA289EB2D13865F00B35547 /* BroadcastShared in Resources */ = {isa = PBXBuildFile; fileRef = 3AA289E92D13865F00B35547 /* BroadcastShared */; };
 		3AA289EC2D13865F00B35547 /* BroadcastShared in Resources */ = {isa = PBXBuildFile; fileRef = 3AA289E92D13865F00B35547 /* BroadcastShared */; };
 		3ABBC88C2D13575B003E04A8 /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3ABBC88B2D13575B003E04A8 /* ReplayKit.framework */; };
-		3ABBC8A22D13575B003E04A8 /* BroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3ABBC88A2D13575B003E04A8 /* BroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3ABBC8A22D13575B003E04A8 /* BroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3ABBC88A2D13575B003E04A8 /* BroadcastExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3AD9DDB92D13872100770D82 /* CueOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 3A368F722D0432B1000F8D8B /* CueOpenAI */; };
 		3AD9DDEB2D1389F200770D82 /* BroadcastShared in Frameworks */ = {isa = PBXBuildFile; productRef = 3AD9DDEA2D1389F200770D82 /* BroadcastShared */; };
 /* End PBXBuildFile section */
@@ -434,6 +434,7 @@
 		};
 		3ABBC8A12D13575B003E04A8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 3ABBC8892D13575B003E04A8 /* BroadcastExtension */;
 			targetProxy = 3ABBC8A02D13575B003E04A8 /* PBXContainerItemProxy */;
 		};

@@ -20,22 +20,26 @@ public class SharedDataManager: @unchecked Sendable {
         }
     }
     
-    public func saveFrameData(width: Int, height: Int, frameCount: Int) {
-        let frameData: [String: Any] = [
+    public func saveFrameData(width: Int, height: Int, frameCount: Int, frameData: Data?) {
+        var frameInfo: [String: Any] = [
             "width": width,
             "height": height,
             "frameCount": frameCount,
             "timestamp": Date().timeIntervalSince1970
         ]
         
-        // Write to defaults synchronously
-        userDefaults.setValue(frameData, forKey: "lastFrameData")
-        os_log("💾 Saved frame data: %{public}@", log: logger, type: .info, String(describing: frameData))
+        if let frameData = frameData {
+            frameInfo["frameData"] = frameData
+        }
+        
+        userDefaults.set(frameInfo, forKey: "lastFrameData")
+        userDefaults.synchronize()
+        os_log("💾 Saved frame #%d with data size: %d", log: logger, type: .info, frameCount, frameData?.count ?? 0)
     }
     
     public func getLastFrameData() -> [String: Any]? {
         if let data = userDefaults.dictionary(forKey: "lastFrameData") {
-            os_log("📖 Retrieved data: %{public}@", log: logger, type: .info, String(describing: data))
+//            os_log("📖 Retrieved data: %{public}@", log: logger, type: .info, String(describing: data))
             return data
         }
         return nil

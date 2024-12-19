@@ -1,6 +1,7 @@
 import SwiftUI
 import ReplayKit
 
+#if os(iOS)
 struct BroadcastPickerView: UIViewRepresentable {
     let preferredExtension: String
 
@@ -18,7 +19,7 @@ struct BroadcastPickerView: UIViewRepresentable {
             button.imageView?.tintColor = .systemBlue
             button.isEnabled = true
             button.isUserInteractionEnabled = true
-            
+
             // Force layout
             button.frame = picker.bounds
             button.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -36,3 +37,4 @@ struct BroadcastPickerView: UIViewRepresentable {
         uiView.layoutIfNeeded()
     }
 }
+#endif

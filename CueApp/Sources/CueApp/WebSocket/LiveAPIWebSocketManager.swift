@@ -6,7 +6,7 @@ import SwiftUI
 
 // MARK: - LiveAPIWebSocketManager Class
 
-final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate, AudioManagerDelegate, @unchecked Sendable {
+public final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate, AudioManagerDelegate, @unchecked Sendable {
     // MARK: - Properties
 
     private var webSocketTask: URLSessionWebSocketTask?
@@ -18,14 +18,14 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
 
     let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiveAPI",
                                 category: "LiveAPIWebSocketManager")
-    
+
     // Queues for audio/video processing
     private var audioInQueue: AsyncQueue<Data>?
     private var outQueue: AsyncQueue<Data>?
 
     @Published private(set) var isPlaying: Bool = false
     private var isAudioSetup = false
-    
+
     // Dedicated background queues for thread safety
     private let webSocketQueue = DispatchQueue(label: "com.yourapp.webSocketQueue")
     private let audioProcessingQueue = DispatchQueue(label: "com.yourapp.audioProcessingQueue")
@@ -40,7 +40,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
 
     // MARK: - Initialization
 
-    override init() {
+    public override init() {
         super.init()
         setupSession()
         audioManager.delegate = self
@@ -88,7 +88,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
             self.webSocketTask = self.session?.webSocketTask(with: request)
             self.webSocketTask?.resume()
             self.logger.debug("WebSocket task resumed")
-            
+
             // Send initial setup message with only the model inside "setup"
 
             // Create the tools
@@ -135,7 +135,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
             isAudioSetup = true
             logger.debug("Audio engine setup completed and marked as setup")
         }
-        
+
         // Start receiving messages
         receiveMessage()
     }
@@ -150,7 +150,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
         }
 
         // Log the message being sent
-//        logger.debug("Sending message: \(String(messageString.prefix(100)))")
+        logger.debug("Sending message: \(String(messageString.prefix(100)))")
 
         try await webSocketTask?.send(.string(messageString))
     }
@@ -174,7 +174,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
                     }
                     // Continue receiving
                     self.receiveMessage()
-                    
+
                 case .failure(let error):
                     self.logger.error("WebSocket receive error: \(error.localizedDescription)")
                 }
@@ -216,7 +216,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
 
     private func handleBinaryMessage(_ data: Data) async {
 //        logger.debug("Received binary message of size: \(data.count) bytes")
-        
+
         // Attempt to convert binary data to string
         guard let messageString = String(data: data, encoding: .utf8) else {
             logger.error("Failed to convert binary data to string")
@@ -230,7 +230,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
             logger.error("Failed to convert message string back to data")
             return
         }
-        
+
         do {
             let response = try JSONDecoder().decode(LiveAPIResponse.self, from: jsonData)
 
@@ -310,7 +310,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
         Task { [weak self] in
             guard let self = self else { return }
             let base64Data = data.base64EncodedString()
-            
+
             let chunk = LiveAPIRealtimeInput.RealtimeInput.MediaChunk(
                 mimeType: "audio/pcm",
                 data: base64Data
@@ -332,7 +332,7 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
             self.logger.debug("isPlaying updated to \(isPlaying)")
         }
     }
-    
+
     func checkIsServerTurn() -> Bool {
         return self.isServerTurn
     }
@@ -340,27 +340,6 @@ final class LiveAPIWebSocketManager: NSObject, ObservableObject, URLSessionWebSo
 
 // Add ScreenManagerDelegate conformance
 extension LiveAPIWebSocketManager: ScreenManagerDelegate {
-    
-//    // Add new method for starting screen capture
-//    func startScreenCapture() async throws {
-//        guard !isScreenCapturing else { return }
-//        
-//        #if os(macOS)
-//        try await screenManager.startCapturingMacScreen()
-//        #elseif os(iOS)
-//        try await screenManager.startCapturingIOSScreen()
-//        #endif
-//
-//        isScreenCapturing = true
-//    }
-//
-//    // Add new method for stopping screen capture
-//    func stopScreenCapture() async {
-//        guard isScreenCapturing else { return }
-//        await screenManager.stopCapturing()
-//        isScreenCapturing = false
-//    }
-
     func screenManager(_ manager: ScreenManager, didReceiveFrame data: Data) {
         Task {
             let base64Data = data.base64EncodedString()
@@ -383,14 +362,20 @@ extension LiveAPIWebSocketManager: ScreenManagerDelegate {
 
 extension LiveAPIWebSocketManager {
     func startScreenCapture() async throws {
-        guard !isScreenCapturing else { return }
+        print("inx LiveAPIWebSocketManager startScreenCapture()")
+        guard !isScreenCapturing else {
+            print("inx LiveAPIWebSocketManager isScreenCapturing is true, skip")
+            return
+        }
 
         let isAvailable = await screenManager.requestScreenCapturePermission()
         guard isAvailable else {
             throw ScreenCaptureError.permissionDenied
         }
 
-        try await screenManager.startCapturingIOSScreen()
+        print("inx LiveAPIWebSocketManager startCapturingScreen start")
+
+        try await screenManager.startCapturingScreen()
         isScreenCapturing = true
     }
 
@@ -398,41 +383,5 @@ extension LiveAPIWebSocketManager {
         guard isScreenCapturing else { return }
         await screenManager.stopCapturing()
         isScreenCapturing = false
-    }
-}
-
-// 3. Update LiveAPIWebSocketManager with background handling
-extension LiveAPIWebSocketManager {
-    func handleScenePhaseChange(_ newPhase: ScenePhase) {
-        switch newPhase {
-        case .background:
-            Task { @MainActor in
-                if isScreenCapturing {
-                    // Start a long-running background task
-                    logger.debug("newPhase: background, Starting screen capture background task")
-                    await BackgroundTaskManager.shared.startBackgroundTask(identifier: "screenCapture") {
-                        Task {
-                            self.logger.debug("stopScreenCapture")
-                            await self.stopScreenCapture()
-                        }
-                    }
-
-                    // Configure for background operation
-                    await screenManager.prepareForBackground()
-                }
-            }
-
-        case .active:
-            Task { @MainActor in
-                if isScreenCapturing {
-                    // Restore normal operation
-                    logger.debug("newPhase: active, Starting screen capture background task")
-                    await screenManager.prepareForForeground()
-                }
-            }
-
-        default:
-            break
-        }
     }
 }
