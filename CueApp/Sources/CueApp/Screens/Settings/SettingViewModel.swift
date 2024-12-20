@@ -7,7 +7,7 @@ public final class SettingsViewModel: ObservableObject {
     @Published private(set) var generatedToken: String?
     @Published private(set) var tokenError: String?
     @Published private(set) var isGeneratingToken = false
-    @Published private(set) var userError: String?
+    @Published private(set) var error: String?
 
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
@@ -35,12 +35,12 @@ public final class SettingsViewModel: ObservableObject {
         Task {
             do {
                 _ = try await authService.fetchUserProfile()
-                userError = nil
+                self.error = nil
             } catch AuthError.unauthorized {
-                userError = "Please log in to continue"
+                self.error = "Please log in to continue"
             } catch {
                 AppLog.log.error("Failed to fetch user profile: \(error.localizedDescription)")
-                userError = error.localizedDescription
+                self.error = error.localizedDescription
             }
         }
     }
@@ -74,7 +74,7 @@ public final class SettingsViewModel: ObservableObject {
     }
 
     public func clearError() {
-        userError = nil
+        error = nil
         tokenError = nil
     }
 }

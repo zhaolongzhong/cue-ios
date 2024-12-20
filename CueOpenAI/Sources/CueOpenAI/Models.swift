@@ -114,7 +114,7 @@ extension OpenAI {
         
         private enum CodingKeys: String, CodingKey {
             case model, messages, temperature, tools
-            case maxTokens = "max_tokens"
+            case maxTokens = "max_completion_tokens"
             case toolChoice = "tool_choice"
         }
         

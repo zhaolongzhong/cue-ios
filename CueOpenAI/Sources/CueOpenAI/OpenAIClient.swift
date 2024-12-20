@@ -34,12 +34,19 @@ final class OpenAIClient {
             }
             
             if !(200...299).contains(httpResponse.statusCode) {
-                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-                throw OpenAI.Error.apiError(errorMessage)
+                if let apiError = try? JSONDecoder().decode(OpenAI.APIError.self, from: data) {
+                    throw OpenAI.Error.apiError(apiError)
+                } else {
+                    let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    throw OpenAI.Error.unexpectedAPIResponse(errorMessage)
+                }
             }
             
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: data)
+            
+        } catch let error as OpenAI.Error {
+            throw error
         } catch let error as DecodingError {
             throw OpenAI.Error.decodingError(error)
         } catch {

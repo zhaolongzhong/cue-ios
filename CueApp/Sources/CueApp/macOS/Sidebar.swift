@@ -1,10 +1,16 @@
 import SwiftUI
 
 struct Sidebar: View {
-    @ObservedObject var assistantsViewModel: AssistantsViewModel
-    @Binding var selectedAssistant: Assistant?
+    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @ObservedObject private var assistantsViewModel: AssistantsViewModel
+    @Binding private var selectedAssistant: Assistant?
     @State private var isShowingNewAssistantSheet = false
     @Environment(\.openWindow) private var openWindow
+
+    init(assistantsViewModel: AssistantsViewModel, selectedAssistant: Binding<Assistant?>) {
+        self.assistantsViewModel = assistantsViewModel
+        self._selectedAssistant = selectedAssistant
+    }
 
     var body: some View {
         VStack {

@@ -34,7 +34,7 @@ private struct AuthenticatedContent: View {
                 AppTabView(apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
                     .environmentObject(viewModel)
                 #else
-                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
+                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel, apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
                     .environmentObject(viewModel)
                 #endif
             } else {
@@ -51,32 +51,7 @@ private struct AuthenticatedContent: View {
         .sheet(isPresented: $coordinator.showSettings) {
             SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
         }
-        .alert(item: $coordinator.activeAlert) { alertType in
-            switch alertType {
-            case .error(let message):
-                return Alert(
-                    title: Text("Error"),
-                    message: Text(message),
-                    dismissButton: .default(Text("OK"))
-                )
-
-            case .confirmation(let title, let message):
-                return Alert(
-                    title: Text(title),
-                    message: Text(message),
-                    primaryButton: .default(Text("OK")),
-                    secondaryButton: .cancel()
-                )
-
-            case .custom(let title, let message, let action):
-                return Alert(
-                    title: Text(title),
-                    message: Text(message),
-                    primaryButton: .default(Text("OK"), action: action),
-                    secondaryButton: .cancel()
-                )
-            }
-        }
+        .withCoordinatorAlert()
         .onAppear {
             AppLog.log.debug("AuthenticatedContent onAppear isAuthenticated: \(viewModel.state.isAuthenticated)")
         }

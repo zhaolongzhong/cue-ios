@@ -31,7 +31,7 @@ extension MessageModel {
 
         let messageContent = MessageContent(
             type: nil,
-            content: Content.fromString(payload.message ?? ""),
+            content: ContentDetail.fromString(payload.message ?? ""),
             toolCalls: nil
         )
 
@@ -70,7 +70,7 @@ extension MessageContent {
     }
 }
 
-extension Content {
+extension ContentDetail {
     init(string: String) {
         // Try to decode as JSON first
         if let data = string.data(using: .utf8),
@@ -91,8 +91,8 @@ extension Content {
     }
 
     // Convenience static method to create from string
-    static func fromString(_ string: String) -> Content {
-        return Content(string: string)
+    static func fromString(_ string: String) -> ContentDetail {
+        return ContentDetail(string: string)
     }
     func getText() -> String {
         switch self {
@@ -246,8 +246,8 @@ extension MessageModel {
     }
 }
 
-extension Content: Equatable {
-    static func == (lhs: Content, rhs: Content) -> Bool {
+extension ContentDetail: Equatable {
+    static func == (lhs: ContentDetail, rhs: ContentDetail) -> Bool {
         switch (lhs, rhs) {
         case (.string(let lhsValue), .string(let rhsValue)):
             return lhsValue == rhsValue

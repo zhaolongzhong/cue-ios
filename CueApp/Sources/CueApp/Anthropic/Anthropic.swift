@@ -17,12 +17,21 @@ public struct Anthropic {
     }
 
     // MARK: - Errors
+    public struct APIError: Decodable, Sendable {
+        public let error: ErrorDetails
+
+        public struct ErrorDetails: Decodable, Sendable {
+            public let message: String
+            public let type: String
+        }
+    }
+
     public enum Error: Swift.Error {
-        case invalidURL
-        case networkError(Swift.Error)
         case invalidResponse
-        case apiError(String)
-        case decodingError(Swift.Error)
+        case networkError(Swift.Error)
+        case decodingError(DecodingError)
+        case apiError(APIError)
+        case unexpectedAPIResponse(String)
     }
 
     // MARK: - Message Types

@@ -1,15 +1,18 @@
 import Foundation
 import CueOpenAI
+import Combine
 
 @MainActor
 final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
     private let toolManager: ToolManager
+    private let model: String = "gpt-4o-mini"
 
     @Published var messages: [OpenAI.ChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
     @Published var availableTools: [Tool] = []
+    @Published var error: ChatError?
 
     init(apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)
@@ -30,11 +33,12 @@ final class OpenAIChatViewModel: ObservableObject {
 
         isLoading = true
         newMessage = ""
+
         do {
             let tools = toolManager.getTools()
 
             let response = try await openAI.chat.completions.create(
-                model: "gpt-4o-mini",
+                model: self.model,
                 messages: messages,
                 tools: tools,
                 toolChoice: "auto"
@@ -42,42 +46,56 @@ final class OpenAIChatViewModel: ObservableObject {
 
             AppLog.log.debug("response: \(String(describing: response))")
 
-            if let assistantResponse = response.choices.first?.message {
-                if let toolCalls = assistantResponse.toolCalls {
-                    let toolMessages = await callTools(toolCalls)
+            guard let assistantResponse = response.choices.first?.message else {
+                return
+            }
 
+            if let toolCalls = assistantResponse.toolCalls {
+                let toolMessages = await callTools(toolCalls)
+
+                let assistantMessage = OpenAI.ChatMessage.assistantMessage(
+                    assistantResponse
+                )
+                messages.append(assistantMessage)
+                for toolMessage in toolMessages {
+                    messages.append(OpenAI.ChatMessage.toolMessage(toolMessage))
+                }
+
+                // Get the final response with tool results
+                let finalResponse = try await openAI.chat.completions.create(
+                    model: self.model,
+                    messages: messages,
+                    tools: tools,
+                    toolChoice: "auto"
+                )
+
+                if let finalMessage = finalResponse.choices.first?.message {
                     let assistantMessage = OpenAI.ChatMessage.assistantMessage(
-                        assistantResponse
-                    )
-                    messages.append(assistantMessage)
-                    for toolMessage in toolMessages {
-                        messages.append(OpenAI.ChatMessage.toolMessage(toolMessage))
-                    }
-
-                    // Get the final response with tool results
-                    let finalResponse = try await openAI.chat.completions.create(
-                        model: "gpt-4o-mini",
-                        messages: messages,
-                        tools: tools,
-                        toolChoice: "auto"
-                    )
-
-                    if let finalMessage = finalResponse.choices.first?.message {
-                        let assistantMessage = OpenAI.ChatMessage.assistantMessage(
-                            finalMessage
-                        )
-                        messages.append(assistantMessage)
-                    }
-                } else {
-                    // Normal message without tool calls
-                    let assistantMessage = OpenAI.ChatMessage.assistantMessage(
-                        assistantResponse
+                        finalMessage
                     )
                     messages.append(assistantMessage)
                 }
+            } else {
+                // Normal message without tool calls
+                let assistantMessage = OpenAI.ChatMessage.assistantMessage(
+                    assistantResponse
+                )
+                messages.append(assistantMessage)
             }
+        } catch let error as OpenAI.Error {
+            let chatError: ChatError
+            switch error {
+            case .apiError(let apiError):
+                chatError = .apiError(apiError.error.message)
+            default:
+                chatError = .unknownError(error.localizedDescription)
+            }
+            self.error = chatError
+            ErrorLogger.log(chatError)
         } catch {
-            AppLog.log.error("Error: \(error)")
+            let chatError = ChatError.unknownError(error.localizedDescription)
+            self.error = chatError
+            ErrorLogger.log(chatError)
         }
         isLoading = false
     }
@@ -99,7 +117,8 @@ final class OpenAIChatViewModel: ObservableObject {
                         toolCallId: toolCall.id
                     ))
                 } catch {
-                    AppLog.log.error("Tool error: \(error)")
+                    let toolError = ChatError.toolError(error.localizedDescription)
+                    ErrorLogger.log(toolError)
                     results.append(OpenAI.ToolMessage(
                         role: "tool",
                         content: "Error: \(error.localizedDescription)",
@@ -110,5 +129,9 @@ final class OpenAIChatViewModel: ObservableObject {
         }
 
         return results
+    }
+
+    func clearError() {
+        error = nil
     }
 }

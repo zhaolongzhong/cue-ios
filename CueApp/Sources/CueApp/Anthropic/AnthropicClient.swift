@@ -36,12 +36,18 @@ final class AnthropicClient {
             }
 
             if !(200...299).contains(httpResponse.statusCode) {
-                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-                throw Anthropic.Error.apiError(errorMessage)
+                if let apiError = try? JSONDecoder().decode(Anthropic.APIError.self, from: data) {
+                    throw Anthropic.Error.apiError(apiError)
+                } else {
+                    let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    throw Anthropic.Error.unexpectedAPIResponse(errorMessage)
+                }
             }
 
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: data)
+        } catch let error as Anthropic.Error {
+            throw error
         } catch let error as DecodingError {
             throw Anthropic.Error.decodingError(error)
         } catch {

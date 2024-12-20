@@ -5,6 +5,7 @@ public struct MainWindowView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
+    @StateObject private var apiKeysViewModel: APIKeysViewModel
     @State private var selectedAssistant: Assistant?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var lastStatusUpdate: Date = Date()
@@ -13,8 +14,9 @@ public struct MainWindowView: View {
     @State private var windowDelegate: WindowDelegate?
     #endif
 
-    init(viewModelFactory: @escaping () -> AssistantsViewModel) {
+    init(viewModelFactory: @escaping () -> AssistantsViewModel, apiKeysViewModelFactory: @escaping () -> APIKeysViewModel) {
         self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
+        self._apiKeysViewModel = StateObject(wrappedValue: apiKeysViewModelFactory())
     }
 
     public var body: some View {
@@ -32,6 +34,7 @@ public struct MainWindowView: View {
                 )
             }
         }
+        .environmentObject(apiKeysViewModel)
         .onChange(of: appStateViewModel.state.currentUser) { _, newUser in
             if let userId = newUser?.id {
                 assistantsViewModel.webSocketManagerStore.initialize(for: userId)

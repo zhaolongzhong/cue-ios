@@ -2,6 +2,7 @@ import SwiftUI
 import CueOpenAI
 
 public struct OpenAIChatView: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: OpenAIChatViewModel
     @FocusState private var isInputFocused: Bool
     @Namespace private var bottomID
@@ -24,6 +25,12 @@ public struct OpenAIChatView: View {
         .onChange(of: viewModel.messages.count) { _, _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isInputFocused = true
+            }
+        }
+        .onChange(of: viewModel.error) { _, error in
+            if let error = error {
+                coordinator.showError(error.message)
+                viewModel.clearError()
             }
         }
         .sheet(isPresented: $showingToolsList) {

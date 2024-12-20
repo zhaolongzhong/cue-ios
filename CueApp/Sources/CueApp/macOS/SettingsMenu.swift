@@ -1,25 +1,30 @@
 import SwiftUI
 
 struct SettingsMenu: View {
+    @EnvironmentObject var apiKeysViewModel: APIKeysViewModel
     let onOpenAIChat: () -> Void
     let onAnthropicChat: () -> Void
     let onOpenSettings: () -> Void
 
     var body: some View {
         Menu {
-            Button(action: onOpenAIChat) {
-                Text("OpenAI Chat")
-                    .frame(minWidth: 200, alignment: .leading)
+            if !apiKeysViewModel.openAIKey.isEmpty {
+                Button(action: onOpenAIChat) {
+                    Text("OpenAI Chat")
+                        .frame(minWidth: 200, alignment: .leading)
+                }
+
+                Divider()
             }
 
-            Divider()
+            if !apiKeysViewModel.anthropicKey.isEmpty {
+                Button(action: onAnthropicChat) {
+                    Text("Anthropic Chat")
+                        .frame(minWidth: 200, alignment: .leading)
+                }
 
-            Button(action: onAnthropicChat) {
-                Text("Anthropic Chat")
-                    .frame(minWidth: 200, alignment: .leading)
+                Divider()
             }
-
-            Divider()
 
             Button(action: onOpenSettings) {
                 Text("Settings")

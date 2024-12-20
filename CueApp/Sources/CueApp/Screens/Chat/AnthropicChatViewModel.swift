@@ -6,12 +6,13 @@ import CueOpenAI
 final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
     private let toolManager: ToolManager
-    private let model = "claude-3-5-haiku-20241022"
+    private let model: String = "claude-3-5-haiku-20241022"
 
     @Published var messages: [Anthropic.ChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
     @Published var availableTools: [Tool] = []
+    @Published var error: ChatError?
 
     init(apiKey: String) {
         self.anthropic = Anthropic(apiKey: apiKey)
@@ -25,7 +26,9 @@ final class AnthropicChatViewModel: ObservableObject {
     }
 
     func sendMessage() async {
-        let userMessage = Anthropic.ChatMessage.userMessage(Anthropic.MessageParam(role: "user", content: [ContentBlock(content: newMessage)]))
+        let userMessage = Anthropic.ChatMessage.userMessage(
+            Anthropic.MessageParam(role: "user", content: [ContentBlock(content: newMessage)])
+        )
         messages.append(userMessage)
 
         isLoading = true
@@ -94,14 +97,21 @@ final class AnthropicChatViewModel: ObservableObject {
                     }
                 }
             }
+        } catch let error as Anthropic.Error {
+            let chatError: ChatError
+            switch error {
+            case .apiError(let apiError):
+                chatError = .apiError(apiError.error.message)
+            default:
+                chatError = .unknownError(error.localizedDescription)
+            }
+            self.error = chatError
+            ErrorLogger.log(chatError)
         } catch {
-            AppLog.log.error("Error: \(error)")
-            let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                Anthropic.MessageParam(role: "assistant", content: [ContentBlock(content: "Error: \(error.localizedDescription)")])
-            )
-            messages.append(assistantMessage)
+            let chatError = ChatError.unknownError(error.localizedDescription)
+            self.error = chatError
+            ErrorLogger.log(chatError)
         }
-
         isLoading = false
     }
 
@@ -132,5 +142,9 @@ final class AnthropicChatViewModel: ObservableObject {
             AppLog.log.error("Tool error: \(error)")
             return "Error: \(error.localizedDescription)"
         }
+    }
+
+    func clearError() {
+        error = nil
     }
 }

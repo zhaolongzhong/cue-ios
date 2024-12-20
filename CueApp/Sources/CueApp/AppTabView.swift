@@ -2,6 +2,7 @@ import SwiftUI
 
 enum TabSelection: String {
     case chat = "Chat"
+    case anthropic = "Anthropic"
     case assistants = "Assistants"
     case settings = "Settings"
 }
@@ -28,9 +29,9 @@ public struct AppTabView: View {
             if !apiKeysViewModel.anthropicKey.isEmpty {
                 AnthropicChatView(apiKey: apiKeysViewModel.anthropicKey)
                     .tabItem {
-                        Label("Anthropic", systemImage: "wand.and.stars")
+                        Label("Anthropic", systemImage: "character")
                     }
-                    .tag(TabSelection.chat)
+                    .tag(TabSelection.anthropic)
             }
             AssistantsView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                 .tabItem {

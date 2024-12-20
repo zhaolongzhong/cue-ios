@@ -11,7 +11,7 @@ public struct SettingsView: View {
 
     public var body: some View {
         SettingsContentView(viewModel: viewModel)
-            .onChange(of: viewModel.userError) { _, error in
+            .onChange(of: viewModel.error) { _, error in
                 if let error = error {
                     coordinator.showError(error)
                     viewModel.clearError()

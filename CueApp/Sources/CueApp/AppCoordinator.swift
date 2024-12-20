@@ -33,3 +33,44 @@ public class AppCoordinator: ObservableObject {
         activeAlert = .custom(title: title, message: message, primaryAction: action)
     }
 }
+
+@MainActor
+public struct CoordinatorAlertModifier: ViewModifier {
+    @EnvironmentObject var coordinator: AppCoordinator
+
+    public func body(content: Content) -> some View {
+        content
+            .alert(item: $coordinator.activeAlert) { alertType in
+                switch alertType {
+                case .error(let message):
+                    Alert(
+                        title: Text("Error"),
+                        message: Text(message),
+                        dismissButton: .default(Text("OK"))
+                    )
+
+                case .confirmation(let title, let message):
+                    Alert(
+                        title: Text(title),
+                        message: Text(message),
+                        primaryButton: .default(Text("OK")),
+                        secondaryButton: .cancel()
+                    )
+
+                case .custom(let title, let message, let action):
+                    Alert(
+                        title: Text(title),
+                        message: Text(message),
+                        primaryButton: .default(Text("OK"), action: action),
+                        secondaryButton: .cancel()
+                    )
+                }
+            }
+    }
+}
+
+extension View {
+    public func withCoordinatorAlert() -> some View {
+        modifier(CoordinatorAlertModifier())
+    }
+}

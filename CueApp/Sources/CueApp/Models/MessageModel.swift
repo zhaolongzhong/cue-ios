@@ -13,7 +13,7 @@ struct Author: Codable, Sendable {
     }
 }
 
-enum Content: Codable, Sendable {
+enum ContentDetail: Codable, Sendable {
     case string(String)
     case array([JSONValue])
     case dictionary([String: JSONValue])
@@ -48,7 +48,7 @@ enum Content: Codable, Sendable {
 
 struct MessageContent: Codable, Sendable {
     let type: String?
-    let content: Content
+    let content: ContentDetail
     let toolCalls: [ToolCall]?
 
     enum CodingKeys: String, CodingKey {
@@ -57,7 +57,7 @@ struct MessageContent: Codable, Sendable {
         case toolCalls = "tool_calls"
     }
 
-    init(type: String?, content: Content, toolCalls: [ToolCall]?) {
+    init(type: String?, content: ContentDetail, toolCalls: [ToolCall]?) {
         self.type = type
         self.content = content
         self.toolCalls = toolCalls
@@ -67,7 +67,7 @@ struct MessageContent: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Handle the case where content might be directly in the JSON
-        if let directContent = try? container.decode(Content.self, forKey: .content) {
+        if let directContent = try? container.decode(ContentDetail.self, forKey: .content) {
             self.content = directContent
         } else {
             // Fallback to handling the string content case
