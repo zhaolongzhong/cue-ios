@@ -3,11 +3,11 @@ import Combine
 
 @MainActor
 public class AppDependencies: ObservableObject, AppStateDelegate {
-    @Published public var authService: AuthService
-    @Published public var assistantService: AssistantService
-    // @Published public var conversationManager: ConversationManager
-    @Published public var webSocketStore: WebSocketManagerStore
-    @Published public var appStateViewModel: AppStateViewModel
+    public var authService: AuthService
+    public var assistantService: AssistantService
+    // public var conversationManager: ConversationManager
+    public var webSocketStore: WebSocketManagerStore
+    public var appStateViewModel: AppStateViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
         ViewModelFactory(dependencies: self)
@@ -42,6 +42,7 @@ public class ViewModelFactory {
     private var assistantsViewModel: AssistantsViewModel?
     private var chatViewModels: [String: ChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
+    private var apiKeysViewModel: APIKeysViewModel?
 
     public init(dependencies: AppDependencies) {
         self.dependencies = dependencies
@@ -77,6 +78,24 @@ public class ViewModelFactory {
             self.settingsViewModel = settingsViewModel
             return settingsViewModel
         }
+    }
+
+    public func makeAPIKeysViewModel() -> APIKeysViewModel {
+        if let apiKeysViewModel = self.apiKeysViewModel {
+            return apiKeysViewModel
+        } else {
+            let apiKeysViewModel = APIKeysViewModel()
+            self.apiKeysViewModel = apiKeysViewModel
+            return apiKeysViewModel
+        }
+    }
+
+    func makeLoginViewModel() -> LoginViewModel {
+        LoginViewModel(authService: dependencies.authService)
+    }
+
+    func makeSignUpViewModel() -> SignUpViewModel {
+        SignUpViewModel(authService: dependencies.authService)
     }
 
     func cleanup() {

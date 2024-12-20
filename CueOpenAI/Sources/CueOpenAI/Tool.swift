@@ -6,6 +6,14 @@ public struct Tool: Codable, Sendable {
         self.type = type
         self.function = function
     }
+    
+    public var name: String {
+        function.name
+    }
+    
+    public var description: String {
+        function.description
+    }
 }
 
 public struct FunctionDefinition: Codable, Sendable {

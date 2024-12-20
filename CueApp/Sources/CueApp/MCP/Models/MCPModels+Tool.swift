@@ -3,7 +3,7 @@ import CueOpenAI
 
 // MARK: - Tool Models
 
-public  struct MCPTool: Codable {
+public struct MCPTool: Codable {
     let name: String
     let description: String
     let inputSchema: InputSchema

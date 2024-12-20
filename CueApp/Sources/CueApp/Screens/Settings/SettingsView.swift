@@ -1,7 +1,6 @@
 import SwiftUI
 
 public struct SettingsView: View {
-    @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: SettingsViewModel
@@ -12,12 +11,19 @@ public struct SettingsView: View {
 
     public var body: some View {
         SettingsContentView(viewModel: viewModel)
+            .onChange(of: viewModel.userError) { _, error in
+                if let error = error {
+                    coordinator.showError(error)
+                    viewModel.clearError()
+                }
+            }
     }
 }
 
 private struct SettingsContentView: View {
-    private let viewModel: SettingsViewModel
+    @EnvironmentObject private var dependencies: AppDependencies
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: SettingsViewModel
     @State private var isShowingAPIKeys = false
 
     init(viewModel: SettingsViewModel) {
@@ -36,7 +42,7 @@ private struct SettingsContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
             .sheet(isPresented: $isShowingAPIKeys) {
-                APIKeysManagementView()
+                APIKeysManagementView(viewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
             }
         }
         #else
@@ -48,7 +54,7 @@ private struct SettingsContentView: View {
         .background(Color.clear)
         .frame(maxWidth: .infinity, alignment: .center)
         .sheet(isPresented: $isShowingAPIKeys) {
-            APIKeysManagementView()
+            APIKeysManagementView(viewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
         }
         #endif
     }
@@ -133,7 +139,7 @@ private struct SettingsList: View {
                     SettingsRow(
                         systemName: "info.circle",
                         title: "Version",
-                        value: "\(viewModel.marketingVersion) (\(viewModel.buildVersion))",
+                        value: "\(viewModel.getVersionInfo())",
                         showChevron: false
                     )
                 }
@@ -198,7 +204,7 @@ private struct SettingsList: View {
                         SettingsRow(
                             systemName: "info.circle",
                             title: "Version",
-                            value: "\(viewModel.marketingVersion) (\(viewModel.buildVersion))",
+                            value: "\(viewModel.getVersionInfo())",
                             showChevron: false
                         ).padding(.horizontal, 6)
                     }
@@ -259,12 +265,10 @@ private struct APIKeysButton: View {
 
     var body: some View {
         Button {
-            Task { @MainActor in
-                #if os(iOS)
-                HapticManager.shared.impact(style: .light)
-                #endif
-                isShowingAPIKeys = true
-            }
+            #if os(iOS)
+            HapticManager.shared.impact(style: .light)
+            #endif
+            isShowingAPIKeys = true
         } label: {
             SettingsRow(
                 systemName: "key",

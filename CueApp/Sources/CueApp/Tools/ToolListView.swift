@@ -1,8 +1,9 @@
 import SwiftUI
+import CueOpenAI
 
 struct ToolsListView: View {
     @Environment(\.dismiss) var dismiss
-    let tools: [MCPTool]
+    let tools: [Tool]
 
     var body: some View {
         #if os(macOS)

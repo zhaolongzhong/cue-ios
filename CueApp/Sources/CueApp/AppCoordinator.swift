@@ -1,18 +1,14 @@
 import SwiftUI
-import Combine
 
+@MainActor
 public class AppCoordinator: ObservableObject {
     public enum AlertType: Identifiable {
         case error(String)
         case confirmation(title: String, message: String)
         case custom(title: String, message: String, primaryAction: () -> Void)
 
-        public var id: String {
-            switch self {
-            case .error: return "error"
-            case .confirmation: return "confirmation"
-            case .custom: return "custom"
-            }
+        public var id: UUID {
+            UUID()
         }
     }
 

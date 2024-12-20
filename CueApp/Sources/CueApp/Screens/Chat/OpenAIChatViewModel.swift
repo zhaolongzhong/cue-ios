@@ -1,26 +1,25 @@
 import Foundation
 import CueOpenAI
-import Combine
 
 @MainActor
-class OpenAIChatViewModel: ObservableObject {
+final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
     private let toolManager: ToolManager
 
     @Published var messages: [OpenAI.ChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
-    @Published var availableTools: [MCPTool] = []
+    @Published var availableTools: [Tool] = []
 
     init(apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
-        self.availableTools = toolManager.getMCPTools()
+        self.availableTools = toolManager.getTools()
     }
 
     func startServer() async {
         await self.toolManager.startMcpServer()
-        self.availableTools = toolManager.getMCPTools()
+        self.availableTools = toolManager.getTools()
     }
 
     func sendMessage() async {

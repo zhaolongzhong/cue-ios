@@ -2,31 +2,57 @@ import SwiftUI
 import Combine
 
 @MainActor
-public class SettingsViewModel: ObservableObject {
-    @Published var currentUser: User?
-    @Published var generatedToken: String?
-    @Published var tokenError: String?
-    @Published var isGeneratingToken = false
-    var marketingVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    }
-
-    var buildVersion: String {
-        Bundle.main.infoDictionary?["BUILD_VERSION"] as? String ?? "1"
-    }
+public final class SettingsViewModel: ObservableObject {
+    @Published private(set) var currentUser: User?
+    @Published private(set) var generatedToken: String?
+    @Published private(set) var tokenError: String?
+    @Published private(set) var isGeneratingToken = false
+    @Published private(set) var userError: String?
 
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(authService: AuthService) {
         self.authService = authService
-        self.authService.$currentUser
-            .assign(to: \.currentUser, on: self)
-            .store(in: &cancellables)
+        setupSubscription()
+        refreshUserProfile()
+    }
 
+    private func setupSubscription() {
+        self.authService.$currentUser
+            .receive(on: RunLoop.main)
+            .sink(receiveCompletion: { completion in
+                if case let .failure(error) = completion {
+                    AppLog.log.error("Failed to fetch user profile: \(error)")
+                }
+            }, receiveValue: {[weak self] user in
+                self?.currentUser = user
+            })
+            .store(in: &cancellables)
+    }
+
+    private func refreshUserProfile() {
         Task {
-            await authService.fetchUserProfile()
+            do {
+                _ = try await authService.fetchUserProfile()
+                userError = nil
+            } catch AuthError.unauthorized {
+                userError = "Please log in to continue"
+            } catch {
+                AppLog.log.error("Failed to fetch user profile: \(error.localizedDescription)")
+                userError = error.localizedDescription
+            }
         }
+    }
+
+    func getVersionInfo() -> String {
+        guard let marketing = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+              let build = Bundle.main.infoDictionary?["BUILD_VERSION"] as? String
+        else {
+            AppLog.log.error("Failed to load error info")
+            return "1.0.0 (1)"
+        }
+        return "\(marketing)(\(build))"
     }
 
     func logout() async {
@@ -45,5 +71,10 @@ public class SettingsViewModel: ObservableObject {
             tokenError = error.localizedDescription
         }
         isGeneratingToken = false
+    }
+
+    public func clearError() {
+        userError = nil
+        tokenError = nil
     }
 }

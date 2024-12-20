@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-class AssistantDetailViewModel: ObservableObject {
+final class AssistantDetailViewModel: ObservableObject {
     let assistantsViewModel: AssistantsViewModel
     let onUpdate: (Assistant) -> Void
 

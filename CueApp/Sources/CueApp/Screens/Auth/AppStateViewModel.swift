@@ -10,20 +10,23 @@ struct AppState {
     var isLoading: Bool
     var isAuthenticated: Bool
     var currentUser: User?
+    var error: String?
 
     public init(
         isLoading: Bool = true,
         isAuthenticated: Bool = false,
-        currentUser: User? = nil
+        currentUser: User? = nil,
+        error: String? = nil
     ) {
         self.isLoading = isLoading
         self.isAuthenticated = isAuthenticated
         self.currentUser = currentUser
+        self.error = error
     }
 }
 
 @MainActor
-public class AppStateViewModel: ObservableObject {
+public final class AppStateViewModel: ObservableObject {
     @Published private(set) var state: AppState
 
     private let authService: AuthService
@@ -53,10 +56,26 @@ public class AppStateViewModel: ObservableObject {
 
                 if authenticated && self.state.currentUser == nil {
                     Task {
-                        AppLog.log.debug("AppStateViewModel fetchUserProfile")
-                        let user = await authService.fetchUserProfile()
-                        self.updateState { state in
-                            state.currentUser = user
+                        do {
+                            let user = try await authService.fetchUserProfile()
+                            self.updateState { state in
+                                state.currentUser = user
+                                state.error = nil
+                            }
+                        } catch AuthError.unauthorized {
+                            self.updateState { state in
+                                state.error = "Session expired. Please log in again."
+                            }
+                            await self.handleLogout()
+                        } catch AuthError.networkError {
+                            self.updateState { state in
+                                state.error = "Network error occurred. Please try again."
+                            }
+                        } catch {
+                            self.updateState { state in
+                                state.error = "An unexpected error occurred."
+                            }
+                            AppLog.log.error("Unexpected error: \(error.localizedDescription)")
                         }
                     }
                 }
@@ -71,6 +90,12 @@ public class AppStateViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
+    private func updateState(_ mutation: (inout AppState) -> Void) {
+        var newState = state
+        mutation(&newState)
+        state = newState
+    }
+
     public func signOut() async {
         AppLog.log.debug("AppStateViewModel signOut")
         await authService.logout()
@@ -80,13 +105,14 @@ public class AppStateViewModel: ObservableObject {
     private func handleLogout() async {
         updateState { state in
             state.currentUser = nil
+            state.error = nil
         }
         await delegate?.handleLogout()
     }
 
-    private func updateState(_ mutation: (inout AppState) -> Void) {
-        var newState = state
-        mutation(&newState)
-        state = newState
+    public func clearError() {
+        updateState { state in
+            state.error = nil
+        }
     }
 }

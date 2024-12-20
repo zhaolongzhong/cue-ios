@@ -31,7 +31,7 @@ public struct AnthropicChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(viewModel.messages, id: \.id) { message in
+                    ForEach(viewModel.messages) { message in
                         MessageBubble(role: message.role, content: message.content)
                     }
                     // Invisible marker view at bottom

@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-class SignUpViewModel: ObservableObject {
+final class SignUpViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var confirmPassword = ""
@@ -48,11 +48,5 @@ class SignUpViewModel: ObservableObject {
         }
 
         isLoading = false
-    }
-}
-
-extension ViewModelFactory {
-    func makeSignUpViewModel() -> SignUpViewModel {
-        SignUpViewModel(authService: dependencies.authService)
     }
 }

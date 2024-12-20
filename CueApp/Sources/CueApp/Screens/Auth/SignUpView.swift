@@ -6,11 +6,15 @@ import UIKit
 struct SignUpView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject private var dependencies: AppDependencies
+    @StateObject private var signUpViewModel: SignUpViewModel
+
+    init(signUpiewModelFactory: @escaping () -> SignUpViewModel) {
+        _signUpViewModel = StateObject(wrappedValue: signUpiewModelFactory())
+    }
 
     var body: some View {
-        let viewModel = dependencies.viewModelFactory.makeSignUpViewModel()
         SignUpContent(
-            viewModel: viewModel,
+            viewModel: signUpViewModel,
             presentationMode: presentationMode
         )
     }

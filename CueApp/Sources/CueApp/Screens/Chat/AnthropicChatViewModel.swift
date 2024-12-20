@@ -1,8 +1,9 @@
 import Foundation
 import Combine
+import CueOpenAI
 
 @MainActor
-class AnthropicChatViewModel: ObservableObject {
+final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
     private let toolManager: ToolManager
     private let model = "claude-3-5-haiku-20241022"
@@ -10,17 +11,17 @@ class AnthropicChatViewModel: ObservableObject {
     @Published var messages: [Anthropic.ChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
-    @Published var availableTools: [MCPTool] = []
+    @Published var availableTools: [Tool] = []
 
     init(apiKey: String) {
         self.anthropic = Anthropic(apiKey: apiKey)
         self.toolManager = ToolManager()
-        self.availableTools = toolManager.getMCPTools()
+        self.availableTools = toolManager.getTools()
     }
 
     func startServer() async {
         await self.toolManager.startMcpServer()
-        self.availableTools = toolManager.getMCPTools()
+        self.availableTools = toolManager.getTools()
     }
 
     func sendMessage() async {

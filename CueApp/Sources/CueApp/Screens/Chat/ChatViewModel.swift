@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-class ChatViewModel: ObservableObject {
+final class ChatViewModel: ObservableObject {
     @Published private(set) var messageModels: [MessageModel] = []
     @Published private(set) var assistant: Assistant
     @Published private(set) var isLoading = false

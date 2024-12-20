@@ -31,15 +31,22 @@ private struct AuthenticatedContent: View {
                 #endif
             } else if viewModel.state.isAuthenticated {
                 #if os(iOS)
-                AppTabView()
+                AppTabView(apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
                     .environmentObject(viewModel)
                 #else
                 MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                     .environmentObject(viewModel)
                 #endif
             } else {
-                LoginView()
+                LoginView(loginViewModelFactory: dependencies.viewModelFactory.makeLoginViewModel)
             }
+        }
+        .onChange(of: viewModel.state.error) { _, error in
+            if let error = error {
+                coordinator.showError(error)
+                viewModel.clearError()
+            }
+
         }
         .sheet(isPresented: $coordinator.showSettings) {
             SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)

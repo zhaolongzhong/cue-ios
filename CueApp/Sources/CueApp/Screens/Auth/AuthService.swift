@@ -37,25 +37,23 @@ public class AuthService: ObservableObject {
     @Published private(set) var currentUser: User?
     @Published private(set) var isGeneratingToken = false
 
-    public init() {
-        if let token = getAccessToken(), !token.isEmpty {
-            isAuthenticated = true
-        } else {
-            isAuthenticated = false
-        }
-    }
-
+    private let userDefaults: UserDefaults
     private let logger = Logger(subsystem: "AuthService", category: "Auth")
 
-    func login(email: String, password: String) async throws -> String {
+    public init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        self.isAuthenticated = getAccessToken()?.isEmpty == false
+    }
+
+    func login(email: String, password: String) async throws {
         do {
             let response: TokenResponse = try await NetworkClient.shared.request(
                 AuthEndpoint.login(email: email, password: password)
             )
 
-            UserDefaults.standard.set(response.accessToken, forKey: "ACCESS_TOKEN_KEY")
+            userDefaults.set(response.accessToken, forKey: "ACCESS_TOKEN_KEY")
             isAuthenticated = true
-            return response.accessToken
+            _ = try await fetchUserProfile()
         } catch NetworkError.unauthorized {
             throw AuthError.invalidCredentials
         } catch NetworkError.httpError(let code, _) where code == 409 {
@@ -96,24 +94,32 @@ public class AuthService: ObservableObject {
     func logout() async {
         AppLog.log.debug("AuthService logout")
         isAuthenticated = false
-        UserDefaults.standard.removeObject(forKey: "ACCESS_TOKEN_KEY")
+        userDefaults.removeObject(forKey: "ACCESS_TOKEN_KEY")
         currentUser = nil
     }
 
     func getAccessToken() -> String? {
-        return UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
+        return userDefaults.string(forKey: "ACCESS_TOKEN_KEY")
     }
 
-    func fetchUserProfile() async -> User? {
+    func fetchUserProfile() async throws -> User {
+        guard isAuthenticated else {
+            throw AuthError.unauthorized
+        }
+
         do {
             let user: User = try await NetworkClient.shared.request(AuthEndpoint.me)
-            logger.debug("fetchUserProfile userid: \(user.email)")
+            logger.debug("Fetched user profile: \(user.email)")
             currentUser = user
             return user
+        } catch NetworkError.unauthorized {
+            isAuthenticated = false
+            currentUser = nil
+            throw AuthError.unauthorized
         } catch {
-            logger.error("Logout error: \(error.localizedDescription)")
+            logger.error("Fetch user profile error: \(error.localizedDescription)")
+            throw AuthError.networkError
         }
-        return nil
     }
 }
 

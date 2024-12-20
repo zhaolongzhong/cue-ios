@@ -1,8 +1,7 @@
 import SwiftUI
-import Combine
 
 @MainActor
-class LoginViewModel: ObservableObject {
+final class LoginViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var error: String?
@@ -23,8 +22,8 @@ class LoginViewModel: ObservableObject {
 
         isLoading = true
         do {
-            _ = try await authService.login(email: email, password: password)
-            self.error = nil // Clear error on successful login
+            try await authService.login(email: email, password: password)
+            self.error = nil
         } catch AuthError.invalidCredentials {
             self.error = "Invalid email or password"
         } catch {
@@ -32,11 +31,5 @@ class LoginViewModel: ObservableObject {
         }
 
         isLoading = false
-    }
-}
-
-extension ViewModelFactory {
-    func makeLoginViewModel() -> LoginViewModel {
-        LoginViewModel(authService: dependencies.authService)
     }
 }

@@ -1,8 +1,12 @@
 import SwiftUI
 
 struct APIKeysManagementView: View {
-    @StateObject private var viewModel = APIKeysViewModel()
+    @StateObject private var viewModel: APIKeysViewModel
     @Environment(\.dismiss) private var dismiss
+
+    init(viewModelFactory: @escaping () -> APIKeysViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory())
+    }
 
     var body: some View {
         #if os(iOS)

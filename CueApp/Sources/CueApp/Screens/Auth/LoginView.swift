@@ -2,13 +2,16 @@ import SwiftUI
 
 // Main View
 struct LoginView: View {
-    @EnvironmentObject private var dependencies: AppDependencies
+    @StateObject private var loginViewModel: LoginViewModel
     @State private var showSignUp = false
 
+    init(loginViewModelFactory: @escaping () -> LoginViewModel) {
+        _loginViewModel = StateObject(wrappedValue: loginViewModelFactory())
+    }
+
     var body: some View {
-        let viewModel = dependencies.viewModelFactory.makeLoginViewModel()
         LoginContent(
-            viewModel: viewModel,
+            viewModel: loginViewModel,
             showSignUp: $showSignUp
         )
     }
@@ -42,6 +45,7 @@ private struct LoginContent: View {
 // iOS Content
 #if os(iOS)
 private struct iOSLoginContent: View {
+    @EnvironmentObject private var dependencies: AppDependencies
     @ObservedObject var viewModel: LoginViewModel
     @Binding var showSignUp: Bool
 
@@ -115,7 +119,7 @@ private struct iOSLoginContent: View {
             .padding(.bottom, 20)
         }
         .sheet(isPresented: $showSignUp) {
-            SignUpView()
+            SignUpView(signUpiewModelFactory: dependencies.viewModelFactory.makeSignUpViewModel)
         }
     }
 }
@@ -124,6 +128,7 @@ private struct iOSLoginContent: View {
 // macOS Content
 #if os(macOS)
 private struct macOSLoginContent: View {
+    @EnvironmentObject private var dependencies: AppDependencies
     @ObservedObject var viewModel: LoginViewModel
     @Binding var showSignUp: Bool
 
@@ -192,7 +197,7 @@ private struct macOSLoginContent: View {
         }
         .padding(24)
         .sheet(isPresented: $showSignUp) {
-            SignUpView()
+            SignUpView(signUpiewModelFactory: dependencies.viewModelFactory.makeSignUpViewModel)
         }
         .frame(minWidth: 340, minHeight: 480)
         .onAppear {

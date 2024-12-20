@@ -5,7 +5,7 @@ import UIKit
 
 // MARK: - Haptic Manager
 @MainActor
-final class HapticManager: @unchecked Sendable {
+final class HapticManager {
     static let shared = HapticManager()
 
     private init() {}

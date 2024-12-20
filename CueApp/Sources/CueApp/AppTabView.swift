@@ -10,19 +10,25 @@ public struct AppTabView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @State private var selectedTab: TabSelection = .assistants
-    private let apiKeyModel: APIKeysViewModel
+    @StateObject private var apiKeysViewModel: APIKeysViewModel
 
-    public init() {
-        apiKeyModel = APIKeysViewModel()
+    public init(apiKeysViewModelFactory: @escaping () -> APIKeysViewModel) {
+        _apiKeysViewModel = StateObject(wrappedValue: apiKeysViewModelFactory())
     }
 
     public var body: some View {
         TabView(selection: $selectedTab) {
-            let apiKey = apiKeyModel.getAPIKey(for: APIKeyType.openai)
-            if !apiKey.isEmpty {
-                OpenAIChatView(apiKey: apiKey)
+            if !apiKeysViewModel.openAIKey.isEmpty {
+                OpenAIChatView(apiKey: apiKeysViewModel.openAIKey)
                     .tabItem {
                         Label("Chat", systemImage: "wand.and.stars")
+                    }
+                    .tag(TabSelection.chat)
+            }
+            if !apiKeysViewModel.anthropicKey.isEmpty {
+                AnthropicChatView(apiKey: apiKeysViewModel.anthropicKey)
+                    .tabItem {
+                        Label("Anthropic", systemImage: "wand.and.stars")
                     }
                     .tag(TabSelection.chat)
             }
@@ -44,11 +50,9 @@ public struct AppTabView: View {
         #endif
         .accentColor(Color(.darkGray))
         .onChange(of: selectedTab) { _, _ in
-            Task { @MainActor in
-                #if os(iOS)
-                HapticManager.shared.impact(style: .light)
-                #endif
-            }
+            #if os(iOS)
+            HapticManager.shared.impact(style: .light)
+            #endif
         }
         .onAppear {
             AppLog.log.debug("AppTabView onAppear isAuthenticated:\(appStateViewModel.state.isAuthenticated)")
