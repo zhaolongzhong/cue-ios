@@ -1,11 +1,42 @@
 import SwiftUI
 
+struct SidebarAssistantActions: AssistantActions {
+    var assistantsViewModel: AssistantsViewModel
+    var setAssistantToDelete: (Assistant) -> Void
+    var onDetailsPressed: (Assistant) -> Void
+
+    func onDelete(assistant: Assistant) {
+        setAssistantToDelete(assistant)
+    }
+
+    func onDetails(assistant: Assistant) {
+       onDetailsPressed(assistant)
+   }
+
+    func onSetPrimary(assistant: Assistant) async {
+        _ = await assistantsViewModel.setPrimaryAssistant(id: assistant.id)
+    }
+
+    func onChat(assistant: Assistant) {
+
+    }
+}
+
 struct Sidebar: View {
+    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
     @State private var isShowingNewAssistantSheet = false
-    @Environment(\.openWindow) private var openWindow
+    @State private var assistantForDetails: Assistant?
+    @State private var assistantToDelete: Assistant?
+
+    private var showDeleteAlert: Binding<Bool> {
+        Binding(
+            get: { assistantToDelete != nil },
+            set: { if !$0 { assistantToDelete = nil } }
+        )
+    }
 
     init(assistantsViewModel: AssistantsViewModel, selectedAssistant: Binding<Assistant?>) {
         self.assistantsViewModel = assistantsViewModel
@@ -18,7 +49,16 @@ struct Sidebar: View {
                 ForEach(assistantsViewModel.assistants) { assistant in
                     AssistantRow(
                         assistant: assistant,
-                        viewModel: assistantsViewModel
+                        status: assistantsViewModel.getClientStatus(for: assistant),
+                        actions: SidebarAssistantActions(
+                            assistantsViewModel: assistantsViewModel,
+                            setAssistantToDelete: { assistant in
+                                assistantToDelete = assistant
+                            },
+                            onDetailsPressed: { _ in
+                                assistantForDetails = assistant
+                            }
+                        )
                     )
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
@@ -26,6 +66,19 @@ struct Sidebar: View {
                     .listItemTint(Color.clear)
                     .tag(assistant)
                 }
+            }
+            .alert("Delete Assistant", isPresented: showDeleteAlert, presenting: assistantToDelete) { assistant in
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await assistantsViewModel.deleteAssistant(assistant)
+                        assistantToDelete = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    assistantToDelete = nil
+                }
+            } message: { assistant in
+                Text("Are you sure you want to delete \"\(assistant.name)\"?")
             }
             .scrollContentBackground(.hidden)
             #if os(macOS)
@@ -57,6 +110,15 @@ struct Sidebar: View {
             ToolbarItem {
                 NewAssistantButton(action: { isShowingNewAssistantSheet = true })
             }
+        }
+        .sheet(item: $assistantForDetails) { assistant in
+            AssistantDetailView(
+                assistant: assistant,
+                assistantsViewModel: self.assistantsViewModel,
+                onUpdate: nil
+            )
+            .frame(minWidth: 400, minHeight: 300)
+            .presentationCompactAdaptation(.popover)
         }
         .sheet(isPresented: $isShowingNewAssistantSheet) {
             NewAssistantSheet(

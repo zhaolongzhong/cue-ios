@@ -7,7 +7,7 @@ struct AssistantDetailView: View {
     init(
         assistant: Assistant,
         assistantsViewModel: AssistantsViewModel,
-        onUpdate: @escaping (Assistant) -> Void
+        onUpdate: ((Assistant) -> Void)? = nil
     ) {
         _viewModel = StateObject(
             wrappedValue: AssistantDetailViewModel(
@@ -20,11 +20,16 @@ struct AssistantDetailView: View {
 
     var body: some View {
         List {
-            SettingsRow(
-                systemName: "person.circle",
-                title: "Name",
-                value: viewModel.assistant.name
-            )
+            Button {
+                viewModel.prepareNameEdit()
+            } label: {
+                SettingsRow(
+                    systemName: "person.circle",
+                    title: "Name",
+                    value: viewModel.assistant.name
+                )
+            }
+            .buttonStyle(.plain)
 
             AssistantIDView(id: viewModel.assistant.id)
 

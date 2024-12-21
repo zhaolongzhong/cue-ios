@@ -31,7 +31,6 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
         AppLog.log.debug("AppDependencies handleLogout")
         webSocketStore.disconnect()
         // conversationManager.cleanup()
-        await assistantService.cleanup()
         self.viewModelFactory.cleanup()
     }
 }

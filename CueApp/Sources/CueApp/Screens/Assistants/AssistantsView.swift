@@ -3,58 +3,65 @@ import Combine
 
 enum AppDestination: Hashable {
     case chat(Assistant)
+    case details(Assistant)
+}
+
+struct NavigationAssistantActions: AssistantActions {
+    var navigationPath: Binding<NavigationPath>
+    var assistantsViewModel: AssistantsViewModel
+    var setAssistantToDelete: (Assistant) -> Void
+
+    func onDelete(assistant: Assistant) {
+        setAssistantToDelete(assistant)
+    }
+
+    func onDetails(assistant: Assistant) {
+        navigationPath.wrappedValue.append(AppDestination.details(assistant))
+    }
+
+    func onSetPrimary(assistant: Assistant) async {
+        _ = await assistantsViewModel.setPrimaryAssistant(id: assistant.id)
+    }
+
+    func onChat(assistant: Assistant) {
+        navigationPath.wrappedValue.append(AppDestination.chat(assistant))
+    }
 }
 
 struct AssistantsView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @StateObject private var viewModel: AssistantsViewModel
+    @StateObject private var assistantsViewModel: AssistantsViewModel
     @State private var isShowingNameDialog = false
     @State private var newAssistantName = ""
     @State private var navigationPath = NavigationPath()
+    @State private var isShowingDeleteConfirmation = false
+    @State private var assistantToDelete: Assistant?
+
+    private var showDeleteAlert: Binding<Bool> {
+        Binding(
+            get: { assistantToDelete != nil },
+            set: { if !$0 { assistantToDelete = nil } }
+        )
+    }
 
     init(viewModelFactory: @escaping () -> AssistantsViewModel) {
-        self._viewModel = StateObject(wrappedValue: viewModelFactory())
+        self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
         AppLog.log.debug("AssistantsView init()")
     }
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            List(viewModel.assistants) { assistant in
-                NavigationLink(
-                    value: AppDestination.chat(assistant)
-                ) {
-                    AssistantRowView(
-                        assistant: assistant,
-                        status: viewModel.getClientStatus(for: assistant)
-                    )
-                }
-                .contextMenu {
-                    if assistant.isPrimary {
-                        AssistantContextMenu(
-                            assistant: assistant,
-                            viewModel: viewModel
-                        )
+            AssistantsList(
+                assistantsViewModel: assistantsViewModel,
+                actions: NavigationAssistantActions(
+                    navigationPath: $navigationPath,
+                    assistantsViewModel: assistantsViewModel,
+                    setAssistantToDelete: { assistant in
+                        assistantToDelete = assistant
                     }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if assistant.isPrimary {
-                        Button(role: .destructive) {
-                            viewModel.assistantToDelete = assistant
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                }
-            }
-            .refreshable {
-                viewModel.refreshAssistants()
-            }
-            .overlay {
-                if viewModel.isLoading {
-                    ProgressView()
-                }
-            }
+                )
+            )
             .navigationTitle("Assistants")
             #if os(iOS)
             .listStyle(InsetGroupedListStyle())
@@ -79,21 +86,28 @@ struct AssistantsView: View {
                         assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(),
                         tag: "assistants"
                     )
+                case .details(let assistant):
+                    AssistantDetailView(
+                        assistant: assistant,
+                        assistantsViewModel: assistantsViewModel,
+                        onUpdate: nil
+                    )
                 }
             }
         }
-        .deleteConfirmation(
-            isPresented: Binding(
-                get: { viewModel.assistantToDelete != nil },
-                set: { if !$0 { viewModel.assistantToDelete = nil } }
-            ),
-            assistant: viewModel.assistantToDelete,
-            onDelete: { assistant in
+        .alert("Delete Assistant", isPresented: showDeleteAlert, presenting: assistantToDelete) { assistant in
+            Button("Delete", role: .destructive) {
                 Task {
-                    await viewModel.deleteAssistant(assistant)
+                    await assistantsViewModel.deleteAssistant(assistant)
+                    assistantToDelete = nil
                 }
             }
-        )
+            Button("Cancel", role: .cancel) {
+                assistantToDelete = nil
+            }
+        } message: { assistant in
+            Text("Are you sure you want to delete \"\(assistant.name)\"?")
+        }
         .overlay {
             if isShowingNameDialog {
                 TextFieldAlert(
@@ -103,7 +117,7 @@ struct AssistantsView: View {
                     message: "Enter a name for the new assistant"
                 ) { name in
                     Task {
-                        await viewModel.createAssistant(name: name)
+                        await assistantsViewModel.createAssistant(name: name)
                     }
                 }
             }
@@ -112,7 +126,7 @@ struct AssistantsView: View {
             AppLog.log.debug("AssistantsView onAppear isAuthenticated: \(appStateViewModel.state.isAuthenticated)")
             Task {
                 if appStateViewModel.state.isAuthenticated {
-                    await viewModel.fetchAssistants(tag: "onAppear")
+                    await assistantsViewModel.fetchAssistants(tag: "onAppear")
                 }
             }
         }

@@ -43,29 +43,6 @@ public struct NewAssistantSheet: View {
     }
 }
 
-public struct AssistantContextMenu: View {
-    let assistant: Assistant
-    @ObservedObject var viewModel: AssistantsViewModel
-
-    public var body: some View {
-        Group {
-            Button {
-                Task {
-                    _ = await viewModel.setPrimaryAssistant(id: assistant.id)
-                }
-            } label: {
-                Label("Set as Primary", systemImage: "star.fill")
-            }
-
-            Button(role: .destructive) {
-                viewModel.assistantToDelete = assistant
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-    }
-}
-
 // MARK: - View Extensions
 extension View {
     func deleteConfirmation(

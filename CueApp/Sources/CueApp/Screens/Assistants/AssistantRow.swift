@@ -1,15 +1,16 @@
 import SwiftUI
 
-struct AssistantRowView: View {
+public struct AssistantRow: View {
+    @Environment(\.colorScheme) var colorScheme
     let assistant: Assistant
     let status: ClientStatus?
-    @Environment(\.colorScheme) var colorScheme
+    var actions: AssistantActions?
 
-    var isOnline: Bool {
+    private var isOnline: Bool {
         return status?.isOnline == true
     }
 
-    var body: some View {
+    public var body: some View {
         HStack(spacing: 12) {
             Circle()
                 .fill(self.isOnline ? Color.green : Color.gray.opacity(0.5))
@@ -45,25 +46,42 @@ struct AssistantRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .contextMenu {
+            AssistantContextMenu(
+                assistant: assistant,
+                actions: actions
+            )
+        }
     }
 }
 
-public struct AssistantRow: View {
+public struct AssistantContextMenu: View {
     let assistant: Assistant
-    let viewModel: AssistantsViewModel
+    var actions: AssistantActions?
 
     public var body: some View {
-        AssistantRowView(
-            assistant: assistant,
-            status: viewModel.getClientStatus(for: assistant)
-        )
-        .tag(assistant.id)
-        .contextMenu {
-            if assistant.metadata?.isPrimary != true {
-                AssistantContextMenu(
-                    assistant: assistant,
-                    viewModel: viewModel
-                )
+        Group {
+            Button {
+                actions?.onDetails(assistant: assistant)
+            } label: {
+                Label("Details", systemImage: "pencil")
+            }
+
+            if !assistant.isPrimary {
+                Button {
+                    Task {
+                        await actions?.onSetPrimary(assistant: assistant)
+                    }
+                } label: {
+                    Label("Set as Primary", systemImage: "star.fill")
+                }
+            }
+
+            Button(role: .destructive) {
+                actions?.onDelete(assistant: assistant)
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }

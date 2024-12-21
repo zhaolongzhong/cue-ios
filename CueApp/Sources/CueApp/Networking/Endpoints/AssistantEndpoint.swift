@@ -9,7 +9,7 @@ enum AssistantEndpoint {
     case getMessage(id: String)
     case update(id: String, name: String?, metadata: AssistantMetadataUpdate?)
     case delete(id: String)
-    case createConversation(assistantId: String, isPriamary: Bool)
+    case createConversation(assistantId: String, isPrimary: Bool)
     case generateToken
 }
 

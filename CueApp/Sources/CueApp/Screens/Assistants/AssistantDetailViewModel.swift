@@ -4,7 +4,7 @@ import Combine
 @MainActor
 final class AssistantDetailViewModel: ObservableObject {
     let assistantsViewModel: AssistantsViewModel
-    let onUpdate: (Assistant) -> Void
+    let onUpdate: ((Assistant) -> Void)?
 
     @Published var assistant: Assistant
     @Published var showingNameEdit = false
@@ -30,7 +30,7 @@ final class AssistantDetailViewModel: ObservableObject {
     init(
         assistant: Assistant,
         assistantsViewModel: AssistantsViewModel,
-        onUpdate: @escaping (Assistant) -> Void
+        onUpdate: ((Assistant) -> Void)? = nil
     ) {
         self.assistant = assistant
         self.assistantsViewModel = assistantsViewModel
@@ -52,7 +52,7 @@ final class AssistantDetailViewModel: ObservableObject {
             return
         }
         self.assistant = updatedAssistant
-        onUpdate(updatedAssistant)
+        onUpdate?(updatedAssistant)
     }
 
     func updateMetadata(
@@ -72,7 +72,7 @@ final class AssistantDetailViewModel: ObservableObject {
             return
         }
         self.assistant = updatedAssistant
-        onUpdate(updatedAssistant)
+        onUpdate?(updatedAssistant)
     }
 
     func prepareNameEdit() {
