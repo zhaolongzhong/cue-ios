@@ -47,7 +47,6 @@ struct AssistantsView: View {
 
     init(viewModelFactory: @escaping () -> AssistantsViewModel) {
         self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
-        AppLog.log.debug("AssistantsView init()")
     }
 
     var body: some View {
@@ -123,7 +122,6 @@ struct AssistantsView: View {
             }
         }
         .onAppear {
-            AppLog.log.debug("AssistantsView onAppear isAuthenticated: \(appStateViewModel.state.isAuthenticated)")
             Task {
                 if appStateViewModel.state.isAuthenticated {
                     await assistantsViewModel.fetchAssistants(tag: "onAppear")

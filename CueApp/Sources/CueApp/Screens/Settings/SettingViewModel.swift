@@ -1,19 +1,20 @@
 import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 public final class SettingsViewModel: ObservableObject {
+    @Dependency(\.authService) var authService
+
     @Published private(set) var currentUser: User?
     @Published private(set) var generatedToken: String?
     @Published private(set) var tokenError: String?
     @Published private(set) var isGeneratingToken = false
     @Published private(set) var error: String?
 
-    private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
-    init(authService: AuthService) {
-        self.authService = authService
+    init() {
         setupSubscription()
         refreshUserProfile()
     }

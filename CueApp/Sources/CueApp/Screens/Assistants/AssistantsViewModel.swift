@@ -1,8 +1,13 @@
 import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 final class AssistantsViewModel: ObservableObject {
+    @Dependency(\.clientStatusService) public var clientStatusService
+    @Dependency(\.webSocketService) public var webSocketService
+    @Dependency(\.assistantService) var assistantService
+
     @Published private(set) var assistants: [Assistant] = []
     @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
     @Published private(set) var isLoading = false
@@ -10,16 +15,15 @@ final class AssistantsViewModel: ObservableObject {
     @Published private(set) var primaryAssistant: Assistant?
     @Published var assistantToDelete: Assistant?
 
-    private let assistantService: AssistantService
-    let webSocketManagerStore: WebSocketManagerStore
     private var cancellables = Set<AnyCancellable>()
 
-    init(assistantService: AssistantService,
-         webSocketManagerStore: WebSocketManagerStore) {
-        self.assistantService = assistantService
-        self.webSocketManagerStore = webSocketManagerStore
+    init() {
         setupClientStatusSubscriptions()
         setupPrimaryAssistantSubscription()
+    }
+
+    func connect() async {
+        await webSocketService.connect()
     }
 
     private func setupPrimaryAssistantSubscription() {
@@ -39,26 +43,25 @@ final class AssistantsViewModel: ObservableObject {
 
     private func setupClientStatusSubscriptions() {
         // Subscribe to WebSocket status updates
-        webSocketManagerStore.$manager
-            .compactMap { $0 }
-            .flatMap { manager -> AnyPublisher<[ClientStatus], Never> in
-                manager.$clientStatuses
-                    .receive(on: DispatchQueue.main)
-                    .eraseToAnyPublisher()
-            }
+        clientStatusService.$clientStatuses
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] clientStatuses in
                 guard let self = self else { return }
                 Task {
-                    AppLog.log.debug("clientStatuses updated, updating view model")
-                    // Update the internal dictionary of statuses
-                    let statusDict = [String: ClientStatus](
-                        uniqueKeysWithValues: clientStatuses.compactMap { status in
+                    let statusDict = Dictionary(uniqueKeysWithValues:
+                        clientStatuses.values.compactMap { status -> (String, ClientStatus)? in
                             guard let assistantId = status.assistantId else {
                                 return nil
                             }
                             return (assistantId, status)
                         }
                     )
+                    .reduce(into: [String: ClientStatus]()) { result, entry in
+                        if let assistantId = entry.value.assistantId {
+                            result[assistantId] = entry.value
+                        }
+                    }
+
                     self.clientStatuses = statusDict
                     await self.findUnmatchedAssistants()
 
@@ -70,12 +73,10 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     private func updateAssistants(with assistants: [Assistant]) async {
-        AppLog.log.debug("updateAssistants")
         self.assistants = assistants
     }
 
     func fetchAssistants(tag: String? = nil) async {
-        AppLog.log.debug("fetchAssistants for: \(tag ?? "")")
         isLoading = true
         error = nil
 
@@ -101,7 +102,7 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     func getClientStatus(for assistant: Assistant) -> ClientStatus? {
-        return webSocketManagerStore.getClientStatus(for: assistant.id)
+        return clientStatusService.getClientStatus(for: assistant.id)
     }
 
     // MARK: - Assistant Management
@@ -122,7 +123,6 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     func createPrimaryAssistant() async {
-        AppLog.log.debug("Creating primary assistant.")
         do {
             let newAssistant = try await assistantService.createAssistant(name: nil, isPrimary: true)
             assistants.append(newAssistant)
@@ -138,7 +138,6 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     func createAssistant(name: String) async -> Assistant? {
-        AppLog.log.debug("Creating assistant with name: \(name)")
         do {
             let assistant = try await assistantService.createAssistant(name: name, isPrimary: false)
             assistants.append(assistant)
@@ -155,7 +154,6 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     func updateAssistantName(id: String, name: String) async -> Assistant? {
-        AppLog.log.debug("Updating name for assistant ID: \(id) to: \(name)")
         do {
             let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
             if let index = assistants.firstIndex(where: { $0.id == id }) {
@@ -183,7 +181,6 @@ final class AssistantsViewModel: ObservableObject {
         context: JSONValue? = nil,
         tools: [String]? = nil
     ) async -> Assistant? {
-        AppLog.log.debug("Updating metadata for assistant ID: \(id)")
         do {
             let metadata = AssistantMetadataUpdate(
                 isPrimary: isPrimary,
@@ -236,17 +233,13 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     private func findUnmatchedAssistants() async {
-        AppLog.log.debug("Finding unmatched assistants.")
         let existingAssistantIds = Set(assistants.map { $0.id })
         let statusAssistantIds = Set(clientStatuses.keys)
         let missingAssistantIds = statusAssistantIds.subtracting(existingAssistantIds)
 
         guard !missingAssistantIds.isEmpty else {
-            AppLog.log.debug("No unmatched assistants found.")
             return
         }
-
-        AppLog.log.debug("Found \(missingAssistantIds.count) unmatched assistants. Fetching...")
 
         await withTaskGroup(of: Void.self) { group in
             for assistantId in missingAssistantIds {

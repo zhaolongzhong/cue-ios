@@ -29,8 +29,6 @@ actor NetworkClient {
         }
         let request = try endpoint.urlRequest(with: token)
 
-        logger.debug("Making request to \(request.url?.absoluteString ?? "unknown URL")")
-
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -73,8 +71,6 @@ actor NetworkClient {
     func requestWithEmptyResponse(_ endpoint: Endpoint) async throws {
         let token = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
         let request = try endpoint.urlRequest(with: token)
-
-        logger.debug("Making request to \(request.url?.absoluteString ?? "unknown URL")")
 
         let (_, response) = try await session.data(for: request)
 

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Dependencies
 import os.log
 
 enum AuthError: LocalizedError {
@@ -31,8 +32,18 @@ enum AuthError: LocalizedError {
     }
 }
 
-@MainActor
-public class AuthService: ObservableObject {
+extension AuthService: DependencyKey {
+    public static let liveValue = AuthService()
+}
+
+extension DependencyValues {
+    var authService: AuthService {
+        get { self[AuthService.self] }
+        set { self[AuthService.self] = newValue }
+    }
+}
+
+public class AuthService: ObservableObject, @unchecked Sendable {
     @Published public var isAuthenticated = false
     @Published private(set) var currentUser: User?
     @Published private(set) var isGeneratingToken = false
@@ -42,7 +53,7 @@ public class AuthService: ObservableObject {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        self.isAuthenticated = getAccessToken()?.isEmpty == false
+        self.isAuthenticated = userDefaults.string(forKey: "ACCESS_TOKEN_KEY")?.isEmpty == false
     }
 
     func login(email: String, password: String) async throws {
@@ -52,7 +63,9 @@ public class AuthService: ObservableObject {
             )
 
             userDefaults.set(response.accessToken, forKey: "ACCESS_TOKEN_KEY")
-            isAuthenticated = true
+            await MainActor.run {
+                isAuthenticated = true
+            }
             _ = try await fetchUserProfile()
         } catch NetworkError.unauthorized {
             throw AuthError.invalidCredentials
@@ -98,10 +111,6 @@ public class AuthService: ObservableObject {
         currentUser = nil
     }
 
-    func getAccessToken() -> String? {
-        return userDefaults.string(forKey: "ACCESS_TOKEN_KEY")
-    }
-
     func fetchUserProfile() async throws -> User {
         guard isAuthenticated else {
             throw AuthError.unauthorized
@@ -109,7 +118,6 @@ public class AuthService: ObservableObject {
 
         do {
             let user: User = try await NetworkClient.shared.request(AuthEndpoint.me)
-            logger.debug("Fetched user profile: \(user.email)")
             currentUser = user
             return user
         } catch NetworkError.unauthorized {

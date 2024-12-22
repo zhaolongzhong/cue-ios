@@ -1,11 +1,13 @@
 import SwiftUI
+import Dependencies
 
 struct UserAvatarMenu: View {
+    @Dependency(\.authService) public var authService
     @EnvironmentObject private var dependencies: AppDependencies
     @Environment(\.openWindow) private var openWindow
 
     var userInitials: String {
-        guard let email = dependencies.authService.currentUser?.email else { return "?" }
+        guard let email = authService.currentUser?.email else { return "?" }
         return String(email.prefix(2).uppercased())
     }
 

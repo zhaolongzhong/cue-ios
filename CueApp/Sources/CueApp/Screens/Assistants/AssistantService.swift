@@ -1,4 +1,5 @@
 import Foundation
+import Dependencies
 import os.log
 
 enum AssistantError: LocalizedError {
@@ -18,6 +19,17 @@ enum AssistantError: LocalizedError {
         case .unknown:
             return "An unknown error occurred."
         }
+    }
+}
+
+extension AssistantService: DependencyKey {
+    public static let liveValue = AssistantService()
+}
+
+extension DependencyValues {
+    var assistantService: AssistantService {
+        get { self[AssistantService.self] }
+        set { self[AssistantService.self] = newValue }
     }
 }
 
@@ -52,7 +64,6 @@ public final class AssistantService: Sendable {
     }
 
     func listAssistants(skip: Int = 0, limit: Int = 5) async throws -> [Assistant] {
-        logger.debug("Listing assistants with skip: \(skip), limit: \(limit)")
         do {
             let assistants: [Assistant] = try await NetworkClient.shared.request(
                 AssistantEndpoint.list(skip: skip, limit: limit)
@@ -104,7 +115,6 @@ public final class AssistantService: Sendable {
             let messages: [MessageModel] = try await NetworkClient.shared.request(
                 AssistantEndpoint.listMessages(conversationId: conversationId, skip: skip, limit: limit)
             )
-            logger.debug("Fetched \(messages.count) messages for conversation ID: \(conversationId)")
             return messages
         } catch {
             throw mapNetworkError(error)

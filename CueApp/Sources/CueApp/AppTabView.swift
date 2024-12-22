@@ -1,4 +1,5 @@
 import SwiftUI
+import Dependencies
 
 enum TabSelection: String {
     case chat = "Chat"
@@ -8,6 +9,7 @@ enum TabSelection: String {
 }
 
 public struct AppTabView: View {
+    @Dependency(\.webSocketService) public var webSocketService
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @State private var selectedTab: TabSelection = .assistants
@@ -60,15 +62,16 @@ public struct AppTabView: View {
             self.initialize(userId: appStateViewModel.state.currentUser?.id)
         }
         .onChange(of: appStateViewModel.state.currentUser) { _, _ in
-            AppLog.log.debug("AppTabView onChange")
             self.initialize(userId: appStateViewModel.state.currentUser?.id)
         }
     }
 
     private func initialize(userId: String?) {
-        guard let userId = userId else {
+        guard let _ = userId else {
             return
         }
-        dependencies.webSocketStore.initialize(for: userId)
+        Task {
+            await webSocketService.connect()
+        }
     }
 }

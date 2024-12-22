@@ -1,26 +1,36 @@
 import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 final class ChatViewModel: ObservableObject {
+    @Dependency(\.webSocketService) public var webSocketService
+    @Dependency(\.clientStatusService) public var clientStatusService
+    @Dependency(\.assistantService) public var assistantService
+
     @Published private(set) var messageModels: [MessageModel] = []
     @Published private(set) var assistant: Assistant
     @Published private(set) var isLoading = false
+    @Published private(set) var currentConnectionState: ConnectionState = .disconnected
     @Published var errorAlert: ErrorAlert?
     @Published var inputMessage: String = ""
     @Published var showAssistantDetails = false
 
-    private let webSocketManagerStore: WebSocketManagerStore
     private let messageModelStore: MessageModelStore
-    private let assistantService: AssistantService
     private var primaryConversation: ConversationModel?
     private var cancellables = Set<AnyCancellable>()
 
-    init(assistant: Assistant,
-         webSocketManagerStore: WebSocketManagerStore) {
-        self.assistantService = AssistantService()
+    var isInputEnabled: Bool {
+         switch currentConnectionState {
+         case .connected:
+             return true
+         case .disconnected, .connecting, .error:
+             return false
+         }
+     }
+
+    init(assistant: Assistant) {
         self.assistant = assistant
-        self.webSocketManagerStore = webSocketManagerStore
 
         do {
             self.messageModelStore = try MessageModelStore()
@@ -28,10 +38,53 @@ final class ChatViewModel: ObservableObject {
             AppLog.websocket.error("Database initialization failed: \(error)")
             self.messageModelStore = try! MessageModelStore()
         }
+
+        setupConnectionStateSubscription()
+        setupMessageHandler()
     }
 
-    var isInputEnabled: Bool {
-        webSocketManagerStore.connectionState == .connected && !isLoading
+    private func setupConnectionStateSubscription() {
+        webSocketService.connectionStatePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.currentConnectionState = state
+            }
+            .store(in: &cancellables)
+    }
+
+    private func setupMessageHandler() {
+        webSocketService.webSocketMessagePublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] message in
+                    if case .messagePayload(let messagePayload) = message {
+                        self?.processMessagePayload(messagePayload)
+                    }
+                }
+                .store(in: &cancellables)
+    }
+
+    private func processMessagePayload(_ messagePayload: MessagePayload) {
+        guard let conversationId = self.primaryConversation?.id else {
+            AppLog.log.error("Error in processMessagePayload conversationId is nil")
+            return
+        }
+
+        let messageModel = MessageModel(
+            from: messagePayload,
+            conversationId: conversationId
+        )
+
+        withAnimation {
+            messageModels.append(messageModel)
+        }
+
+        Task {
+            do {
+                try await messageModelStore.save(messageModel)
+            } catch {
+                handleError(error, context: "Saving received message")
+            }
+        }
     }
 
     // MARK: - Setup
@@ -48,21 +101,19 @@ final class ChatViewModel: ObservableObject {
             if messages.count > 0 {
                 for message in messages {
                     do {
-                        try messageModelStore.save(message)
+                        try await messageModelStore.save(message)
                     } catch {
                         AppLog.log.error("Database error: \(error)")
                     }
                 }
                 _ = await loadMessagesFromDb(conversationId: conversationId)
             }
-            AppLog.log.debug("ChatViewModel: messages(\(self.primaryConversation!.id)) \(self.messageModels.count)")
         }
-        setupMessageHandler()
     }
 
     private func loadMessagesFromDb(conversationId: String) async -> [MessageModel] {
         do {
-            let messages = try messageModelStore.fetchAllMessages(forConversation: conversationId)
+            let messages = try await messageModelStore.fetchAllMessages(forConversation: conversationId)
             AppLog.log.debug("Fetch messsages from database, conversation id:\(conversationId), messages count: \(messages.count)")
             self.messageModels = messages
             return messages
@@ -75,12 +126,9 @@ final class ChatViewModel: ObservableObject {
 
     private func fetchAssistantConversation(id: String) async -> ConversationModel? {
         isLoading = true
-        AppLog.log.debug("fetchAssistantConversation assistant id: \(id)")
-
         do {
             let conversations = try await assistantService.listAssistantConversations(id: id, isPrimary: true, skip: 0, limit: 20)
             isLoading = false
-            AppLog.log.debug("Fetch primary conversation for assistant(\(id)): \(conversations.count)")
             if conversations.count == 0 {
                 let conversation = await createPrimaryAssistant()
                 return conversation
@@ -114,34 +162,6 @@ final class ChatViewModel: ObservableObject {
         return []
     }
 
-    private func setupMessageHandler() {
-        webSocketManagerStore.addMessageHandler { [weak self] messagePayload in
-            guard let self = self else { return }
-
-            guard let conversationId = self.primaryConversation?.id else {
-                AppLog.log.error("Error in setupMessageHandler conversationId is nil")
-                return
-            }
-
-            let messageModel = MessageModel(
-                from: messagePayload,
-                conversationId: conversationId
-            )
-            withAnimation {
-                self.messageModels.append(messageModel)
-            }
-
-            Task {
-                do {
-                    try self.messageModelStore.save(messageModel)
-
-                } catch {
-                    self.handleError(error, context: "Saving received message")
-                }
-            }
-        }
-    }
-
     // MARK: - Message Handling
     func handleSendMessage() {
         Task {
@@ -164,16 +184,33 @@ final class ChatViewModel: ObservableObject {
             isFromUser: true
         )
 
-        let clientStatus = webSocketManagerStore.getClientStatus(for: assistant.id)
+        let clientStatus = clientStatusService.getClientStatus(for: assistant.id)
 
         guard let runnerId = clientStatus?.runnerId else {
             AppLog.log.error("Client status is nil")
             return
         }
-        webSocketManagerStore.send(
+
+        let uuid = UUID().uuidString
+
+        let messagePayload = MessagePayload(
             message: messageToSend,
-            recipient: runnerId
+            sender: nil,
+            recipient: runnerId,
+            websocketRequestId: uuid,
+            metadata: nil,
+            userId: nil,
+            payload: nil
         )
+
+        let clientEvent = ClientEvent(
+            type: .user,
+            payload: .message(messagePayload),
+            clientId: EnvironmentConfig.shared.clientId,
+            metadata: nil,
+            websocketRequestId: uuid
+        )
+        webSocketService.send(event: clientEvent)
     }
 
     func updateAssistant(_ newAssistant: Assistant) {
@@ -191,6 +228,6 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Cleanup
     func cleanup() {
-        webSocketManagerStore.removeMessageHandler()
+
     }
 }

@@ -15,7 +15,8 @@ let package = Package(
     dependencies: [
         .package(path: "../CueOpenAI"),
         // .package(url: "https://github.com/m1guelpf/swift-realtime-openai.git", branch: "main"),
-        .package(url: "https://github.com/groue/GRDB.swift", from: "6.29.1")
+        .package(url: "https://github.com/groue/GRDB.swift", from: "6.29.1"),
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.0")
     ],
     targets: [
         .target(
@@ -23,7 +24,8 @@ let package = Package(
             dependencies: [
                 .product(name: "CueOpenAI", package: "CueOpenAI"),
                 // .product(name: "OpenAI", package: "swift-realtime-openai"),
-                .product(name: "GRDB", package: "GRDB.swift")
+                .product(name: "GRDB", package: "GRDB.swift"),
+                .product(name: "Dependencies", package: "swift-dependencies")
             ],
             path: "Sources/CueApp"),
         .testTarget(

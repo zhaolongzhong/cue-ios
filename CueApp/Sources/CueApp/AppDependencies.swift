@@ -1,16 +1,13 @@
 import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 public class AppDependencies: ObservableObject, AppStateDelegate {
-    public var authService: AuthService
-    public var assistantService: AssistantService
-    // public var conversationManager: ConversationManager
-    public var webSocketStore: WebSocketManagerStore
     public var appStateViewModel: AppStateViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
-        ViewModelFactory(dependencies: self)
+        ViewModelFactory()
     }()
 
     public var viewModelFactory: ViewModelFactory {
@@ -18,44 +15,29 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     }
 
     public init() {
-        self.webSocketStore = WebSocketManagerStore()
-        // self.conversationManager = ConversationManager()
-        let authService = AuthService()
-        self.authService = authService
-        self.assistantService = AssistantService()
-        self.appStateViewModel = AppStateViewModel(authService: authService)
+        self.appStateViewModel = AppStateViewModel()
         self.appStateViewModel.delegate = self
     }
 
     public func handleLogout() async {
         AppLog.log.debug("AppDependencies handleLogout")
-        webSocketStore.disconnect()
-        // conversationManager.cleanup()
         self.viewModelFactory.cleanup()
     }
 }
 
 @MainActor
 public class ViewModelFactory {
-    let dependencies: AppDependencies
     private var assistantsViewModel: AssistantsViewModel?
     private var chatViewModels: [String: ChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
     private var apiKeysViewModel: APIKeysViewModel?
-
-    public init(dependencies: AppDependencies) {
-        self.dependencies = dependencies
-    }
 
     func makeAssistantsViewModel() -> AssistantsViewModel {
         if let assistantsViewModel = self.assistantsViewModel {
             return assistantsViewModel
         }
 
-        self.assistantsViewModel = AssistantsViewModel(
-            assistantService: dependencies.assistantService,
-            webSocketManagerStore: dependencies.webSocketStore
-        )
+        self.assistantsViewModel = AssistantsViewModel()
         return self.assistantsViewModel!
     }
 
@@ -63,7 +45,7 @@ public class ViewModelFactory {
         if let existing = chatViewModels[assistant.id] {
             return existing
         } else {
-            let newViewModel = ChatViewModel(assistant: assistant, webSocketManagerStore: self.dependencies.webSocketStore)
+            let newViewModel = ChatViewModel(assistant: assistant)
             chatViewModels[assistant.id] = newViewModel
             return newViewModel
         }
@@ -73,7 +55,7 @@ public class ViewModelFactory {
         if let settingsViewModel = self.settingsViewModel {
             return settingsViewModel
         } else {
-            let settingsViewModel = SettingsViewModel(authService: dependencies.authService)
+            let settingsViewModel = SettingsViewModel()
             self.settingsViewModel = settingsViewModel
             return settingsViewModel
         }
@@ -90,15 +72,15 @@ public class ViewModelFactory {
     }
 
     func makeLoginViewModel() -> LoginViewModel {
-        LoginViewModel(authService: dependencies.authService)
+        LoginViewModel()
     }
 
     func makeSignUpViewModel() -> SignUpViewModel {
-        SignUpViewModel(authService: dependencies.authService)
+        SignUpViewModel()
     }
 
     func cleanup() {
-        AppLog.log.debug("ViewModelFactor clean up, set assistantsViewModel and chatViewModel to nil")
+        AppLog.log.debug("ViewModelFactory cleanup, set assistantsViewModel and chatViewModel to nil")
         self.assistantsViewModel?.cleanup()
         self.assistantsViewModel = nil
         self.chatViewModels.values.forEach { $0.cleanup() }

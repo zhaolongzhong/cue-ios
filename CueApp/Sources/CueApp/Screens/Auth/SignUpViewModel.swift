@@ -1,19 +1,16 @@
 import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 final class SignUpViewModel: ObservableObject {
+    @Dependency(\.authService) var authService
     @Published var email = ""
     @Published var password = ""
     @Published var confirmPassword = ""
     @Published var inviteCode = ""
     @Published var error: String?
     @Published var isLoading = false
-    private let authService: AuthService
-
-    init(authService: AuthService) {
-        self.authService = authService
-    }
 
     @MainActor
     func signUp() async {

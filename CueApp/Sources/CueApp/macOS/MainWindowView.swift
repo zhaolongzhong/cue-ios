@@ -35,9 +35,11 @@ public struct MainWindowView: View {
             }
         }
         .environmentObject(apiKeysViewModel)
-        .onChange(of: appStateViewModel.state.currentUser) { _, newUser in
-            if let userId = newUser?.id {
-                assistantsViewModel.webSocketManagerStore.initialize(for: userId)
+        .onChange(of: appStateViewModel.state) { _, state in
+            if let _ = state.currentUser?.id {
+                Task {
+                    await assistantsViewModel.connect()
+                }
             }
         }
         .onChange(of: assistantsViewModel.assistants) { _, newValue in

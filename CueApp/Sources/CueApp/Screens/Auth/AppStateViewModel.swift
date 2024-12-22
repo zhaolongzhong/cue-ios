@@ -1,12 +1,12 @@
-import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 public protocol AppStateDelegate: AnyObject {
     func handleLogout() async
 }
 
-struct AppState {
+struct AppState: Equatable {
     var isLoading: Bool
     var isAuthenticated: Bool
     var currentUser: User?
@@ -27,27 +27,65 @@ struct AppState {
 
 @MainActor
 public final class AppStateViewModel: ObservableObject {
-    @Published private(set) var state: AppState
+    @Published private(set) var state: AppState = AppState(
+        isLoading: true,
+        isAuthenticated: false,
+        currentUser: nil,
+        error: nil
+    )
 
-    private let authService: AuthService
+    @Dependency(\.authService) var authService
     private var cancellables = Set<AnyCancellable>()
     weak var delegate: AppStateDelegate?
 
-    public init(authService: AuthService) {
-        self.authService = authService
-        self.state = AppState(
-            isLoading: true,
-            isAuthenticated: authService.isAuthenticated,
-            currentUser: nil
-        )
+    public init() {
         setupAuthSubscription()
+
+        Task {
+            await initializeState()
+        }
+    }
+
+    private func initializeState() async {
+        let isAuthenticated = authService.isAuthenticated
+        await MainActor.run {
+            self.state.isAuthenticated = isAuthenticated
+            self.state.isLoading = false
+        }
+
+        if isAuthenticated && self.state.currentUser == nil {
+            await fetchUserProfile()
+        }
+    }
+
+    private func fetchUserProfile() async {
+        do {
+            let user = try await authService.fetchUserProfile()
+            updateState { state in
+                state.currentUser = user
+                state.error = nil
+            }
+        } catch AuthError.unauthorized {
+            updateState { state in
+                state.error = "Session expired. Please log in again."
+            }
+            await handleLogout()
+        } catch AuthError.networkError {
+            updateState { state in
+                state.error = "Network error occurred. Please try again."
+            }
+        } catch {
+            updateState { state in
+                state.error = "An unexpected error occurred."
+            }
+            AppLog.log.error("Unexpected error: \(error.localizedDescription)")
+        }
     }
 
     private func setupAuthSubscription() {
         authService.$isAuthenticated
             .sink { [weak self] authenticated in
                 guard let self = self else { return }
-                AppLog.log.debug("AppStateViewModel self.state.isAuthenticated: \(self.state.isAuthenticated), authenticated: \(authenticated)")
 
                 self.updateState { state in
                     state.isAuthenticated = authenticated
@@ -56,27 +94,7 @@ public final class AppStateViewModel: ObservableObject {
 
                 if authenticated && self.state.currentUser == nil {
                     Task {
-                        do {
-                            let user = try await authService.fetchUserProfile()
-                            self.updateState { state in
-                                state.currentUser = user
-                                state.error = nil
-                            }
-                        } catch AuthError.unauthorized {
-                            self.updateState { state in
-                                state.error = "Session expired. Please log in again."
-                            }
-                            await self.handleLogout()
-                        } catch AuthError.networkError {
-                            self.updateState { state in
-                                state.error = "Network error occurred. Please try again."
-                            }
-                        } catch {
-                            self.updateState { state in
-                                state.error = "An unexpected error occurred."
-                            }
-                            AppLog.log.error("Unexpected error: \(error.localizedDescription)")
-                        }
+                        await self.fetchUserProfile()
                     }
                 }
 

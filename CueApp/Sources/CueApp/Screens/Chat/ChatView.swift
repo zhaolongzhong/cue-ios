@@ -14,7 +14,6 @@ struct ChatView: View {
          tag: String? = nil) {
         self.assistantsViewModel = assistantsViewModel
         _viewModel = StateObject(wrappedValue: chatViewModel)
-        AppLog.log.debug("ChatView init() call from: \(tag ?? "")")
     }
 
     var body: some View {
@@ -94,7 +93,6 @@ struct ChatView: View {
         #endif
         .onAppear {
             Task {
-                AppLog.log.debug("Chatview onAppear setupChat assistant.id:\(viewModel.assistant.id)")
                 await viewModel.setupChat()
             }
         }

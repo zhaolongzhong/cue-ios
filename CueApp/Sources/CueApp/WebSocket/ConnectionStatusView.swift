@@ -25,14 +25,7 @@ struct ConnectionStatusView: View {
         case .disconnected:
             return "Disconnected"
         case .error(let error):
-            switch error {
-            case .invalidURL:
-                return "Error: Invalid URL"
-            case .connectionFailed(let message):
-                return "Error: Connection Failed (\(message))"
-            case .receiveFailed(let message):
-                return "Error: Receive Failed (\(message))"
-            }
+            return error.errorDescription
         }
     }
 
