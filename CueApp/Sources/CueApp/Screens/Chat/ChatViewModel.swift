@@ -220,7 +220,7 @@ final class ChatViewModel: ObservableObject {
             payload: nil
         )
 
-        let clientEvent = ClientEvent(
+        let clientEvent = EventMessage(
             type: .user,
             payload: .message(messagePayload),
             clientId: EnvironmentConfig.shared.clientId,

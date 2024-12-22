@@ -139,8 +139,6 @@ enum EventPayload: Codable, Sendable {
 
 // MARK: - EventMessage
 
-typealias ClientEvent = EventMessage
-
 public struct EventMessage: Codable, Sendable {
     var type: EventMessageType
     var payload: EventPayload

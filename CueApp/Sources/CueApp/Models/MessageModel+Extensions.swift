@@ -162,7 +162,7 @@ extension MessageModel {
                     return payload.toAnthropicMessage()
                 }
             } else {
-                var chatCompletion: ChatCompletion? {
+                var chatCompletion: OpenAI.ChatCompletion? {
                     guard let payload = self.metadata?.payload else {
                         return nil
                     }

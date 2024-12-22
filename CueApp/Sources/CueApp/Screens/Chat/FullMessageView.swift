@@ -8,7 +8,6 @@ struct FullMessageView: View {
             HStack {
                 Spacer()
                 DismissButton()
-                    .padding(.trailing, 4)
             }
             .padding([.top, .horizontal])
 

@@ -2,13 +2,19 @@ import SwiftUI
 import CueOpenAI
 
 public struct OpenAIChatView: View {
+    @Environment(\.openWindow) private var openWindow
+    @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: OpenAIChatViewModel
     @FocusState private var isInputFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
+    @State private var showingVoiceChat = false
+
+    private let apiKey: String
 
     public init(apiKey: String) {
+        self.apiKey = apiKey
         _viewModel = StateObject(wrappedValue: OpenAIChatViewModel(apiKey: apiKey))
     }
 
@@ -36,6 +42,14 @@ public struct OpenAIChatView: View {
         .sheet(isPresented: $showingToolsList) {
             ToolsListView(tools: viewModel.availableTools)
         }
+        #if os(iOS)
+        .fullScreenCover(isPresented: $showingVoiceChat) {
+            RealtimeChatScreen(
+                viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,
+                apiKey: apiKey
+            )
+        }
+        #endif
     }
 
     private var messageList: some View {
@@ -86,6 +100,22 @@ public struct OpenAIChatView: View {
                 .focused($isInputFocused)
             #endif
 
+            Button {
+                #if os(macOS)
+                openWindow(id: "realtime-chat-window")
+                #else
+                showingVoiceChat = true
+                #endif
+            } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 20))
+                        .foregroundColor(Color.secondary)
+                        .background(Color.clear)
+                }
+            }
+            .buttonStyle(.plain)
+
             if viewModel.availableTools.count > 0 {
                 Button {
                     showingToolsList = true
@@ -98,6 +128,7 @@ public struct OpenAIChatView: View {
                         Text("\(viewModel.availableTools.count)").foregroundColor(Color.secondary)
                     }
                 }
+                .buttonStyle(.plain)
             }
 
             Button {
