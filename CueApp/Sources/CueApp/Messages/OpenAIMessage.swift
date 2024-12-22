@@ -2,7 +2,7 @@ import Foundation
 import CueOpenAI
 
 extension JSONValue {
-    func toChatCompletion() -> ChatCompletion? {
+    func toChatCompletion() -> OpenAI.ChatCompletion? {
         guard case .dictionary(let dict) = self else { return nil }
 
         // Extract required fields
@@ -17,7 +17,7 @@ extension JSONValue {
         }
 
         // Parse choices
-        let choices: [Choice] = choicesArray.compactMap { choiceValue -> Choice? in
+        let choices: [OpenAI.Choice] = choicesArray.compactMap { choiceValue -> OpenAI.Choice? in
             guard case .dictionary(let choiceDict) = choiceValue,
                   let finishReason = choiceDict["finish_reason"]?.asString,
                   case .int(let index) = choiceDict["index"],
@@ -53,9 +53,9 @@ extension JSONValue {
                 }
             }()
 
-            return Choice(
+            return OpenAI.Choice(
                 finishReason: finishReason,
-                message: AssistantMessage(role: role, content: content, toolCalls: toolCalls),
+                message: OpenAI.AssistantMessage(role: role, content: content, toolCalls: toolCalls),
                 index: index
             )
         }
@@ -77,7 +77,7 @@ extension JSONValue {
             return nil
         }
 
-        let completionTokensDetails = TokenDetails(
+        let completionTokensDetails = OpenAI.TokenDetails(
             rejectedPredictionTokens: rejectedPredictionTokens,
             audioTokens: audioTokens,
             acceptedPredictionTokens: acceptedPredictionTokens,
@@ -90,12 +90,12 @@ extension JSONValue {
             return nil
         }
 
-        let promptTokensDetails = PromptTokenDetails(
+        let promptTokensDetails = OpenAI.PromptTokenDetails(
             cachedTokens: cachedTokens,
             audioTokens: promptAudioTokens
         )
 
-        let usage = Usage(
+        let usage = OpenAI.Usage(
             totalTokens: totalTokens,
             completionTokens: completionTokens,
             completionTokensDetails: completionTokensDetails,
@@ -103,7 +103,7 @@ extension JSONValue {
             promptTokens: promptTokens
         )
 
-        return ChatCompletion(
+        return OpenAI.ChatCompletion(
             systemFingerprint: systemFingerprint,
             usage: usage,
             choices: choices,

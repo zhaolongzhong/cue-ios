@@ -22,11 +22,11 @@ public struct AppTabView: View {
     public var body: some View {
         TabView(selection: $selectedTab) {
             if !apiKeysViewModel.openAIKey.isEmpty {
-                OpenAIChatView(apiKey: apiKeysViewModel.openAIKey)
-                    .tabItem {
-                        Label("Chat", systemImage: "wand.and.stars")
-                    }
-                    .tag(TabSelection.chat)
+            OpenAIChatView(apiKey: apiKeysViewModel.openAIKey)
+                .tabItem {
+                    Label("Chat", systemImage: "wand.and.stars")
+                }
+                .tag(TabSelection.chat)
             }
             if !apiKeysViewModel.anthropicKey.isEmpty {
                 AnthropicChatView(apiKey: apiKeysViewModel.anthropicKey)

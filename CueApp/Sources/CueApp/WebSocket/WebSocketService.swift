@@ -31,7 +31,9 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
     private let pingInterval: TimeInterval = 30.0
     private var lastPongReceived = Date()
     private var isReconnecting = false
-    private var backgroundTask: Task<Void, Never>?
+    private var listenTask: Task<Void, Never>?
+    private var retryCount = 0
+    private let backoffConfig: ExponentialBackoff.Configuration = .defaultConfig
 
     private var connectionState: ConnectionState = .disconnected {
         didSet {
@@ -118,8 +120,8 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
     }
 
     func disconnect() {
-        backgroundTask?.cancel()
-        backgroundTask = nil
+        listenTask?.cancel()
+        listenTask = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         connectionState = .disconnected
@@ -129,16 +131,29 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
 
     // MARK: - Message Handling
     private func startListening() {
-        backgroundTask?.cancel()
-        backgroundTask = Task {
+        listenTask?.cancel()
+        listenTask = Task {
             guard let task = webSocketTask else { return }
             while !Task.isCancelled {
                 do {
                     let message = try await task.receive()
+                    retryCount = 0
                     await handle(message)
+                } catch let error as URLError where error.code == .cancelled {
+                    AppLog.websocket.debug("WebSocket listener cancelled")
+                    break
                 } catch {
                     handleError(.receiveFailed(error.localizedDescription))
-                    break
+
+                    if !Task.isCancelled {
+                        let delay = ExponentialBackoff.calculateDelay(
+                            retryCount: retryCount,
+                            configuration: backoffConfig
+                        )
+                        try? await Task.sleep(for: .seconds(delay))
+                        retryCount += 1
+                        continue
+                    }
                 }
             }
         }
@@ -293,7 +308,7 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
 }
 
 extension WebSocketService {
-    func send(event: ClientEvent) throws {
+    func send(event: EventMessage) throws {
         guard let jsonData = try? encoder.encode(event),
               let messageData = String(data: jsonData, encoding: .utf8) else {
             AppLog.websocket.error("Failed to serialize message")

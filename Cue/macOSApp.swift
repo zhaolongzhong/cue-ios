@@ -29,6 +29,10 @@ struct macOSApp: App {
             OpenAIWindowView()
         }
 
+        CommonWindowGroup(id: "realtime-chat-window", dependencies: dependencies) {
+            RealtimeWindowView()
+        }
+
         CommonWindowGroup(id: "anthropic-chat-window", dependencies: dependencies) {
             AnthropicWindowView()
         }
@@ -43,12 +47,16 @@ struct CommonWindowGroup<Content: View>: Scene {
 
     var body: some Scene {
         WindowGroup(id: id) {
-            content()
-                .environmentObject(dependencies)
-                .environmentObject(openAICoordinator)
+            ZStack {
+                VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                    .opacity(0.3)
+                    .ignoresSafeArea()
+                content()
+                    .environmentObject(dependencies)
+                    .environmentObject(openAICoordinator)
+            }
         }
         .defaultSize(width: 500, height: 400)
-        .windowStyle(.titleBar)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
     }
@@ -75,7 +83,24 @@ struct OpenAIWindowView: View {
         let viewModel = APIKeysViewModel()
         let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
         OpenAIChatView(apiKey: apiKey)
+            .environmentObject(coordinator)
+            .environmentObject(dependencies)
             .navigationTitle("OpenAI")
+            .withCoordinatorAlert()
+    }
+}
+
+struct RealtimeWindowView: View {
+    @EnvironmentObject var coordinator: AppCoordinator
+    @EnvironmentObject var dependencies: AppDependencies
+
+    var body: some View {
+        let viewModel = APIKeysViewModel()
+        let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
+        RealtimeChatScreen(viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel, apiKey: apiKey)
+            .environmentObject(coordinator)
+            .environmentObject(dependencies)
+            .navigationTitle("")
             .withCoordinatorAlert()
     }
 }
@@ -89,8 +114,10 @@ struct AnthropicWindowView: View {
         let apiKey = viewModel.getAPIKey(for: APIKeyType.anthropic)
         AnthropicChatView(apiKey: apiKey)
             .environmentObject(coordinator)
+            .environmentObject(dependencies)
             .navigationTitle("Anthropic")
             .withCoordinatorAlert()
     }
 }
+
 #endif

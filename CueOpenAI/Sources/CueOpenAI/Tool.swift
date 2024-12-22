@@ -1,4 +1,4 @@
-public struct Tool: Codable, Sendable {
+public struct Tool: Codable, Equatable, Sendable {
     public let type: String
     public let function: FunctionDefinition
     
@@ -16,19 +16,34 @@ public struct Tool: Codable, Sendable {
     }
 }
 
-public struct FunctionDefinition: Codable, Sendable {
+public struct RealtimeTool: Codable, Equatable, Sendable {
+    public let type: String
+    public let name: String
+    public let description: String
+    public let parameters: Parameters
+}
+
+extension Tool {
+    public func asDefinition() -> FunctionDefinition {
+        .init(type: type, name: name, description: description, parameters: function.parameters)
+    }
+}
+
+public struct FunctionDefinition: Codable, Equatable, Sendable {
+    public let type: String?
     public let name: String
     public let description: String
     public let parameters: Parameters
     
-    public init(name: String, description: String, parameters: Parameters) {
+    public init(type: String? = nil, name: String, description: String, parameters: Parameters) {
+        self.type = type
         self.name = name
         self.description = description
         self.parameters = parameters
     }
 }
 
-public struct Parameters: Codable, Sendable {
+public struct Parameters: Codable, Equatable, Sendable {
     public let type: String
     public let properties: [String: Property]
     public let required: [String]
@@ -40,12 +55,12 @@ public struct Parameters: Codable, Sendable {
     }
 }
 
-public struct Property: Codable, Sendable {
+public struct Property: Codable, Equatable, Sendable {
     public let type: String
     public let description: String?
     public let items: PropertyItems?
     
-    public struct PropertyItems: Codable, Sendable {
+    public struct PropertyItems: Codable, Equatable, Sendable {
         public let type: String
         
         public init(type: String) {

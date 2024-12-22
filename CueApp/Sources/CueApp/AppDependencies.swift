@@ -41,6 +41,7 @@ public class ViewModelFactory {
     private var chatViewModels: [String: ChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
     private var apiKeysViewModel: APIKeysViewModel?
+    private var realtimeChatViewModel: RealtimeChatViewModel?
 
     func makeAssistantsViewModel() -> AssistantsViewModel {
         if let assistantsViewModel = self.assistantsViewModel {
@@ -78,6 +79,16 @@ public class ViewModelFactory {
             let apiKeysViewModel = APIKeysViewModel()
             self.apiKeysViewModel = apiKeysViewModel
             return apiKeysViewModel
+        }
+    }
+
+    public func makeRealtimeChatViewModel(apiKey: String) -> RealtimeChatViewModel {
+        if let realtimeChatViewModel = self.realtimeChatViewModel {
+            return realtimeChatViewModel
+        } else {
+            let realtimeChatViewModel = RealtimeChatViewModel(apiKey: apiKey)
+            self.realtimeChatViewModel = realtimeChatViewModel
+            return realtimeChatViewModel
         }
     }
 

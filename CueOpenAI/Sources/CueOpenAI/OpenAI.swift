@@ -73,7 +73,7 @@ public struct CompletionsAPI {
         temperature: Double = 1.0,
         tools: [Tool]? = nil,
         toolChoice: String? = nil
-    ) async throws -> ChatCompletion {
+    ) async throws -> OpenAI.ChatCompletion {
         let request = OpenAI.ChatCompletionRequest(
             model: model,
             messages: messages,

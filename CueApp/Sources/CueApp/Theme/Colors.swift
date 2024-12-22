@@ -128,6 +128,39 @@ extension AppTheme {
             #endif
         }
 
+        // Control Button Colors
+        public static var controlButtonBackground: Color {
+            #if os(iOS)
+            Color(uiColor: .systemFill)
+            #else
+            Color(nsColor: .systemGray).opacity(0.3)
+            #endif
+        }
+
+        public static var controlButtonDisabledBackground: Color {
+            #if os(iOS)
+            Color(uiColor: .tertiarySystemFill)
+            #else
+            Color(nsColor: .disabledControlTextColor)
+            #endif
+        }
+
+        public static var controlButtonForeground: Color {
+            #if os(iOS)
+            Color(uiColor: .secondaryLabel)
+            #else
+            Color(nsColor: .labelColor)
+            #endif
+        }
+
+        public static var controlButtonDisabledForeground: Color {
+            #if os(iOS)
+            Color(uiColor: .tertiaryLabel)
+            #else
+            Color(nsColor: .secondaryLabelColor)
+            #endif
+        }
+
         // Message colors
         enum Message {
             static let userBubble = Color(.lightGray)
