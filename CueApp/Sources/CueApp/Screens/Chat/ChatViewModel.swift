@@ -115,31 +115,33 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func setupMessageHandler() {
-        webSocketManagerStore.addMessageHandler { [weak self] messagePayload in
-            guard let self = self else { return }
+        webSocketManagerStore.webSocketManager.messagePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] messagePayload in
+                guard let self = self else { return }
+                guard let conversationId = self.primaryConversation?.id else {
+                    AppLog.log.error("Error in setupMessageHandler conversationId is nil")
+                    return
+                }
 
-            guard let conversationId = self.primaryConversation?.id else {
-                AppLog.log.error("Error in setupMessageHandler conversationId is nil")
-                return
-            }
+                let messageModel = MessageModel(
+                    from: messagePayload,
+                    conversationId: conversationId
+                )
+                withAnimation {
+                    self.messageModels.append(messageModel)
+                }
 
-            let messageModel = MessageModel(
-                from: messagePayload,
-                conversationId: conversationId
-            )
-            withAnimation {
-                self.messageModels.append(messageModel)
-            }
+                Task {
+                    do {
+                        try self.messageModelStore.save(messageModel)
 
-            Task {
-                do {
-                    try self.messageModelStore.save(messageModel)
-
-                } catch {
-                    self.handleError(error, context: "Saving received message")
+                    } catch {
+                        self.handleError(error, context: "Saving received message")
+                    }
                 }
             }
-        }
+            .store(in: &cancellables)
     }
 
     // MARK: - Message Handling
@@ -191,6 +193,6 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Cleanup
     func cleanup() {
-        webSocketManagerStore.removeMessageHandler()
+
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Dependencies
 import os.log
 
 enum AssistantError: LocalizedError {
@@ -18,6 +19,17 @@ enum AssistantError: LocalizedError {
         case .unknown:
             return "An unknown error occurred."
         }
+    }
+}
+
+extension AssistantService: DependencyKey {
+    public static let liveValue = AssistantService()
+}
+
+extension DependencyValues {
+    var assistantService: AssistantService {
+        get { self[AssistantService.self] }
+        set { self[AssistantService.self] = newValue }
     }
 }
 

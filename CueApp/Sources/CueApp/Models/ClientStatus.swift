@@ -1,12 +1,12 @@
 import Foundation
 
-struct ClientStatus: Identifiable, Equatable, Hashable {
+public struct ClientStatus: Identifiable, Equatable, Hashable, Sendable {
     let clientId: String
     let runnerId: String?
     let assistantId: String?
     let lastUpdated: Date
     let isOnline: Bool
-    var id: String { clientId }
+    public var id: String { clientId }
 
     init(clientId: String, assistantId: String?, runnerId: String?, isOnline: Bool, lastUpdated: Date = Date()) {
         self.clientId = clientId
@@ -16,7 +16,7 @@ struct ClientStatus: Identifiable, Equatable, Hashable {
         self.lastUpdated = lastUpdated
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(clientId)
         hasher.combine(runnerId)
         hasher.combine(assistantId)

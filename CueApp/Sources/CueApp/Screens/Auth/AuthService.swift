@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Dependencies
 import os.log
 
 enum AuthError: LocalizedError {
@@ -31,8 +32,18 @@ enum AuthError: LocalizedError {
     }
 }
 
-@MainActor
-public class AuthService: ObservableObject {
+extension AuthService: DependencyKey {
+    public static let liveValue = AuthService()
+}
+
+extension DependencyValues {
+    var authService: AuthService {
+        get { self[AuthService.self] }
+        set { self[AuthService.self] = newValue }
+    }
+}
+
+public class AuthService: ObservableObject, @unchecked Sendable {
     @Published public var isAuthenticated = false
     @Published private(set) var currentUser: User?
     @Published private(set) var isGeneratingToken = false
@@ -42,9 +53,10 @@ public class AuthService: ObservableObject {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        self.isAuthenticated = getAccessToken()?.isEmpty == false
+        self.isAuthenticated = userDefaults.string(forKey: "ACCESS_TOKEN_KEY")?.isEmpty == false
     }
 
+    @MainActor
     func login(email: String, password: String) async throws {
         do {
             let response: TokenResponse = try await NetworkClient.shared.request(
@@ -64,6 +76,7 @@ public class AuthService: ObservableObject {
         }
     }
 
+    @MainActor
     func signup(email: String, password: String, inviteCode: String?) async throws {
         do {
             let _: User = try await NetworkClient.shared.request(
@@ -78,6 +91,7 @@ public class AuthService: ObservableObject {
         }
     }
 
+    @MainActor
     func generateToken() async throws -> String {
         isGeneratingToken = true
         defer { isGeneratingToken = false }
@@ -91,6 +105,7 @@ public class AuthService: ObservableObject {
         }
     }
 
+    @MainActor
     func logout() async {
         AppLog.log.debug("AuthService logout")
         isAuthenticated = false
@@ -98,10 +113,7 @@ public class AuthService: ObservableObject {
         currentUser = nil
     }
 
-    func getAccessToken() -> String? {
-        return userDefaults.string(forKey: "ACCESS_TOKEN_KEY")
-    }
-
+    @MainActor
     func fetchUserProfile() async throws -> User {
         guard isAuthenticated else {
             throw AuthError.unauthorized

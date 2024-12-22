@@ -68,7 +68,7 @@ struct GenericMessagePayload: Codable {
 
 // MARK: - MessagePayload
 
-struct MessagePayload: Codable {
+public struct MessagePayload: Codable, Sendable {
     var message: String?
     var sender: String?
     var recipient: String?
@@ -138,7 +138,7 @@ struct PingPongEventPayload: Codable {
 
 // MARK: - EventPayload
 
-enum EventPayload: Codable {
+enum EventPayload: Codable, Sendable {
     case clientEvent(ClientEventPayload)
     case pingPongEvent(PingPongEventPayload)
     case message(MessagePayload)
