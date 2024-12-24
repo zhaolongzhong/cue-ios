@@ -15,7 +15,7 @@ extension EventMessage: CustomDebugStringConvertible {
 }
 
 extension MessagePayload: CustomDebugStringConvertible {
-    var debugDescription: String {
+    public var debugDescription: String {
         """
         MessagePayload(
             message: \(message ?? "nil")

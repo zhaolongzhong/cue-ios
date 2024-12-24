@@ -1,7 +1,7 @@
 import Foundation
 
 extension WebSocketManager {
-    nonisolated func urlSession(_ session: URLSession,
+    nonisolated public func urlSession(_ session: URLSession,
                        webSocketTask: URLSessionWebSocketTask,
                        didOpenWithProtocol protocol: String?) {
             Task { @MainActor in
@@ -12,7 +12,7 @@ extension WebSocketManager {
             }
         }
 
-    nonisolated func urlSession(_ session: URLSession,
+    nonisolated public func urlSession(_ session: URLSession,
                        webSocketTask: URLSessionWebSocketTask,
                        didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                        reason: Data?) {
@@ -28,7 +28,7 @@ extension WebSocketManager {
             }
         }
 
-    nonisolated func urlSession(_ session: URLSession,
+    nonisolated public func urlSession(_ session: URLSession,
                        task: URLSessionTask,
                        didCompleteWithError error: Error?) {
             Task { @MainActor in

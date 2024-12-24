@@ -2,7 +2,6 @@ import SwiftUI
 
 extension WebSocketManager {
     func handleReceivedMessage(_ message: URLSessionWebSocketTask.Message) async {
-        connectionState = .connected
         reconnectAttempts = 0
         lastPongReceived = Date()
 
@@ -11,7 +10,9 @@ extension WebSocketManager {
             if let data = text.data(using: .utf8) {
                 do {
                     let eventMessage = try JSONDecoder().decode(EventMessage.self, from: data)
-                    await processEventMessage(eventMessage)
+                    Task { @MainActor in
+                        await processEventMessage(eventMessage)
+                    }
                 } catch {
                     AppLog.websocket.error("Error decoding EventMessage: \(error)")
                 }
@@ -33,7 +34,9 @@ extension WebSocketManager {
             await handleClientEvent(eventMessage)
         case .assistant, .user:
             if case .message(let messagePayload) = eventMessage.payload {
-                onMessageReceived?(messagePayload)
+                await MainActor.run {
+                    self.onMessageReceived?(messagePayload)
+                }
             }
         case .generic, .error:
             if case .genericMessage(let genericPayload) = eventMessage.payload {
@@ -52,26 +55,39 @@ extension WebSocketManager {
         if let jsonPayload = clientEventPayload.payload, case .dictionary(let dict) = jsonPayload {
             let runnerId = dict["runner_id"]?.asString
             let assistantId = dict["assistant_id"]?.asString
-            let clientStatus = ClientStatus(clientId: clientEventPayload.clientId,
-                                            assistantId: assistantId,
-                                            runnerId: runnerId,
-                                            isOnline: true)
-            if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientStatus.id }) {
-                clientStatuses[existingIndex] = clientStatus
-            } else {
-                clientStatuses.append(clientStatus)
+            let clientStatus = ClientStatus(
+                clientId: clientEventPayload.clientId,
+                assistantId: assistantId,
+                runnerId: runnerId,
+                isOnline: true
+            )
+            await MainActor.run {
+                if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientStatus.id }) {
+                    clientStatuses[existingIndex] = clientStatus
+                } else {
+                    clientStatuses.append(clientStatus)
+                }
+                onClientStatusUpdated?(clientStatus)
             }
-            onClientStatusUpdated?(clientStatus)
         } else if eventMessage.type == .clientDisconnect {
-            if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientEventPayload.clientId }) {
-                let clientStatus = ClientStatus(clientId: clientEventPayload.clientId, assistantId: nil, runnerId: nil, isOnline: false)
-                clientStatuses[existingIndex] = clientStatus
-            } else {
-                let clientStatus = ClientStatus(clientId: clientEventPayload.clientId,
-                                                assistantId: nil,
-                                                runnerId: nil,
-                                                isOnline: false)
-                clientStatuses.append(clientStatus)
+            await MainActor.run {
+                if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientEventPayload.clientId }) {
+                    let clientStatus = ClientStatus(
+                        clientId: clientEventPayload.clientId,
+                        assistantId: nil,
+                        runnerId: nil,
+                        isOnline: false
+                    )
+                    clientStatuses[existingIndex] = clientStatus
+                } else {
+                    let clientStatus = ClientStatus(
+                        clientId: clientEventPayload.clientId,
+                        assistantId: nil,
+                        runnerId: nil,
+                        isOnline: false
+                    )
+                    clientStatuses.append(clientStatus)
+                }
             }
         }
     }

@@ -39,13 +39,8 @@ final class AssistantsViewModel: ObservableObject {
 
     private func setupClientStatusSubscriptions() {
         // Subscribe to WebSocket status updates
-        webSocketManagerStore.$manager
-            .compactMap { $0 }
-            .flatMap { manager -> AnyPublisher<[ClientStatus], Never> in
-                manager.$clientStatuses
-                    .receive(on: DispatchQueue.main)
-                    .eraseToAnyPublisher()
-            }
+        webSocketManagerStore.webSocketManager.$clientStatuses
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] clientStatuses in
                 guard let self = self else { return }
                 Task {

@@ -69,6 +69,8 @@ public struct AppTabView: View {
         guard let userId = userId else {
             return
         }
-        dependencies.webSocketStore.initialize(for: userId)
+        Task {
+            await dependencies.webSocketStore.initialize(for: userId)
+        }
     }
 }

@@ -1,9 +1,20 @@
 import Foundation
 import Combine
+import Dependencies
 import os.log
 
-@MainActor
-class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate {
+extension WebSocketManager: DependencyKey {
+    public static let liveValue = WebSocketManager()
+}
+
+extension DependencyValues {
+    var webSocketManager: WebSocketManager {
+        get { self[WebSocketManager.self] }
+        set { self[WebSocketManager.self] = newValue }
+    }
+}
+
+public class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate, @unchecked Sendable {
     @Published var connectionState: ConnectionState = .disconnected
     @Published var clientStatuses: [ClientStatus] = []
 
@@ -31,7 +42,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
     var onMessageReceived: ((MessagePayload) -> Void)?
     var onClientStatusUpdated: ((ClientStatus) -> Void)?
 
-    init(assistantId: String = "") {
+    public init(assistantId: String = "") {
         self.clientId = EnvironmentConfig.shared.clientId
         self.accessToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY") ?? ""
 
@@ -47,24 +58,23 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
                                         delegateQueue: nil)
     }
 
-    func connect() {
-        Task {
-            guard connectionState == .disconnected else {
-                AppLog.websocket.debug("Already connected or connecting.")
-                return
-            }
+    @MainActor
+    func connect() async {
+        guard connectionState == .disconnected else {
+            AppLog.websocket.debug("Already connected or connecting.")
+            return
+        }
 
-            do {
-                try await establishConnection()
-                connectionState = .connecting
-                shouldReconnect = true
-                reconnectAttempts = 0
-                await startReceiving()
-                await startKeepAlive()
-            } catch {
-                handleError(.connectionFailed(error.localizedDescription))
-                scheduleReconnection()
-            }
+        do {
+            try await establishConnection()
+            connectionState = .connecting
+            shouldReconnect = true
+            reconnectAttempts = 0
+            await startReceiving()
+            await startKeepAlive()
+        } catch {
+            handleError(.connectionFailed(error.localizedDescription))
+            scheduleReconnection()
         }
     }
 
@@ -80,7 +90,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
                         AppLog.websocket.error("Send ping error. \(String(describing: error))")
                     } else {
                         Task { [weak self] in
-                            await self?.updateLastPongReceived()
+                            self?.updateLastPongReceived()
                         }
                     }
                 })
@@ -243,6 +253,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
             while !Task.isCancelled {
                 do {
                     let message = try await task.receive()
+                    connectionState = .connected
                     await handleReceivedMessage(message)
                 } catch {
                     handleError(.receiveFailed(error.localizedDescription))
@@ -276,7 +287,7 @@ class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate 
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.isReconnecting = false
-                self?.connect()
+                await self?.connect()
             }
        }
    }
