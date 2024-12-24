@@ -15,6 +15,7 @@ extension DependencyValues {
 
 public final class WebSocketManagerStore: ObservableObject, @unchecked Sendable {
     @Dependency(\.webSocketManager) public var webSocketManager
+    @Dependency(\.clientStatusService) public var clientStatusService
 
     @Published public private(set) var connectionState: ConnectionState = .disconnected
 
@@ -51,7 +52,7 @@ public final class WebSocketManagerStore: ObservableObject, @unchecked Sendable 
     }
 
     private func observeWebSocketManager() {
-        webSocketManager.$connectionState
+        webSocketManager.connectionStatePublisher
             .receive(on: DispatchQueue.main)
             .assign(to: &$connectionState)
     }
@@ -74,17 +75,9 @@ public final class WebSocketManagerStore: ObservableObject, @unchecked Sendable 
         webSocketManager.send(message: message, recipient: recipient)
     }
 
-    public func addMessageHandler(_ handler: @escaping (MessagePayload) -> Void) {
-        webSocketManager.onMessageReceived = handler
-    }
-
-    public func removeMessageHandler() {
-        webSocketManager.onMessageReceived = nil
-    }
-
     public func getClientStatus(for assistantId: String?) -> ClientStatus? {
         guard let assistantId = assistantId else { return nil }
-        return webSocketManager.clientStatuses.first { $0.assistantId == assistantId }
+        return clientStatusService.clientStatuses.first { $0.assistantId == assistantId }
     }
 
     deinit {

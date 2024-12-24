@@ -39,7 +39,7 @@ final class AssistantsViewModel: ObservableObject {
 
     private func setupClientStatusSubscriptions() {
         // Subscribe to WebSocket status updates
-        webSocketManagerStore.webSocketManager.$clientStatuses
+        webSocketManagerStore.clientStatusService.$clientStatuses
             .receive(on: DispatchQueue.main)
             .sink { [weak self] clientStatuses in
                 guard let self = self else { return }
@@ -237,7 +237,6 @@ final class AssistantsViewModel: ObservableObject {
         let missingAssistantIds = statusAssistantIds.subtracting(existingAssistantIds)
 
         guard !missingAssistantIds.isEmpty else {
-            AppLog.log.debug("No unmatched assistants found.")
             return
         }
 

@@ -14,92 +14,93 @@ extension DependencyValues {
     }
 }
 
-public class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDelegate, @unchecked Sendable {
-    @Published var connectionState: ConnectionState = .disconnected
-    @Published var clientStatuses: [ClientStatus] = []
-
-    private let accessToken: String
+public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable {
+    private let clientId: String
+    private let session: URLSession?
     private var webSocketTask: URLSessionWebSocketTask?
-    private var session: URLSession?
     private let maxReconnectAttempts = 5
+    private var reconnectAttempts = 0
     private let baseReconnectDelay: TimeInterval = 5.0
     private let pingInterval: TimeInterval = 30.0
-    private let pongTimeout: TimeInterval = 40.0
-    private var keepAliveTask: Task<Void, Never>?
-    private var receiveTask: Task<Void, Never>?
-    private var reconnectTask: Task<Void, Never>?
-    private var reconnectTimer: Timer?
-    private let timeoutInterval: TimeInterval = TimeInterval.infinity
-    private var keepAliveTimer: Timer?
+    private var lastPongReceived = Date()
     private var isReconnecting = false
-    private let connectionLock = NSLock()
+    private var backgroundTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
-    let clientId: String
-    var reconnectAttempts = 0
-    var shouldReconnect = true
-    var lastPongReceived = Date()
+    private var connectionState: ConnectionState = .disconnected {
+        didSet {
+            AppLog.websocket.debug("Connection state changed to: \(self.connectionState.description)")
+            connectionStateSubject.send(connectionState)
 
-    var onMessageReceived: ((MessagePayload) -> Void)?
-    var onClientStatusUpdated: ((ClientStatus) -> Void)?
+        }
+    }
+
+    private(set) var lastError: WebSocketError?
+
+    private let connectionStateSubject = PassthroughSubject<ConnectionState, Never>()
+    private let eventMessageSubject = CurrentValueSubject<EventMessage?, Never>(nil)
+    private let messageSubject = PassthroughSubject<MessagePayload, Never>()
+    private let clientStatusSubject = PassthroughSubject<ClientStatus, Never>()
+
+    var connectionStatePublisher: AnyPublisher<ConnectionState, Never> {
+        connectionStateSubject.eraseToAnyPublisher()
+    }
+
+    var eventMessagePublisher: AnyPublisher<EventMessage, Never> {
+        eventMessageSubject
+            .compactMap { $0 }
+            .eraseToAnyPublisher()
+    }
+
+    var messagePublisher: AnyPublisher<MessagePayload, Never> {
+            messageSubject.eraseToAnyPublisher()
+        }
+
+    var clientStatusPublisher: AnyPublisher<ClientStatus, Never> {
+        clientStatusSubject.eraseToAnyPublisher()
+    }
 
     public init(assistantId: String = "") {
         self.clientId = EnvironmentConfig.shared.clientId
-        self.accessToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY") ?? ""
 
-        // Initialize the URLSession once
-        let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForResource = TimeInterval.infinity
-        configuration.waitsForConnectivity = true
-
-        // Need to call super.init before setting up session with self as delegate
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForResource = 60
+        config.waitsForConnectivity = true
+        self.session = URLSession(configuration: config)
         super.init()
-        self.session = URLSession(configuration: configuration,
-                                        delegate: self,
-                                        delegateQueue: nil)
+
+        setupSubscriptions()
+    }
+
+    deinit {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+    }
+
+    private func setupSubscriptions() {
+        eventMessagePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] message in
+                guard let self = self else { return }
+                Task {
+                    await self.processEventMessage(message)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     @MainActor
     func connect() async {
-        guard connectionState == .disconnected else {
-            AppLog.websocket.debug("Already connected or connecting.")
-            return
-        }
+        AppLog.websocket.debug("connect")
+        guard connectionState != .connected else { return }
+        connectionState = .connecting
 
         do {
-            try await establishConnection()
-            connectionState = .connecting
-            shouldReconnect = true
-            reconnectAttempts = 0
-            await startReceiving()
-            await startKeepAlive()
+            try establishConnection()
+        } catch let error as WebSocketError {
+            handleError(error)
         } catch {
             handleError(.connectionFailed(error.localizedDescription))
-            scheduleReconnection()
-        }
-    }
-
-    private func startKeepAlive() async {
-        keepAliveTask = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(pingInterval * 1_000_000_000))
-                guard connectionState == .connected else { continue }
-
-                webSocketTask?.sendPing(pongReceiveHandler: { [weak self] error in
-                    if let error {
-                        print("inx we get error: \(error)")
-                        AppLog.websocket.error("Send ping error. \(String(describing: error))")
-                    } else {
-                        Task { [weak self] in
-                            self?.updateLastPongReceived()
-                        }
-                    }
-                })
-                let pongReceived = lastPongReceived.addingTimeInterval(pongTimeout) > Date()
-                if !pongReceived {
-                    handleError(.connectionFailed("Pong not received in time"))
-                    break
-                }
-            }
         }
     }
 
@@ -107,70 +108,114 @@ public class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDe
         self.lastPongReceived = Date()
     }
 
-    private func establishConnection() async throws {
-        guard var components = URLComponents(string: EnvironmentConfig.shared.baseWebSocketURL) else {
-            throw ConnectionError.invalidURL
+    private func establishConnection() throws {
+        guard let accessToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY") else {
+            throw WebSocketError.unauthorized
         }
 
-        components.path = "\(components.path)/\(clientId)"
-        guard let wsURL = components.url else {
-            throw ConnectionError.invalidURL
+        guard let request = buildWebSocketURLRequest(accessToken) else {
+            throw WebSocketError.generic(("Invalid url"))
         }
-
-        var request = URLRequest(url: wsURL)
-        request.addValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
         webSocketTask = session?.webSocketTask(with: request)
-        webSocketTask?.delegate = self
         webSocketTask?.resume()
 
-        connectionState = .connecting
+        reconnectAttempts = 0
 
-        // Await confirmation of connection
-        try await waitForConnection()
+        startListening()
+        startPingTimer()
+
+        connectionState = .connected
+        AppLog.websocket.debug("WebSocket connected")
     }
 
-    private func waitForConnection() async throws {
-        // Implement a mechanism to wait until the connectionState is .connected or an error occurs
-        // This can be achieved using a continuation or other synchronization methods
-        try await withCheckedThrowingContinuation { continuation in
-            let checkInterval: TimeInterval = 0.5
-            Task {
-                while true {
-                    if connectionState == .connected {
-                        continuation.resume()
-                        break
-                    } else if case .error(let error) = connectionState {
-                        continuation.resume(throwing: error)
-                        break
-                    }
-                    try? await Task.sleep(nanoseconds: UInt64(checkInterval * 1_000_000_000))
+    func disconnect() {
+        backgroundTask?.cancel()
+        backgroundTask = nil
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        webSocketTask = nil
+        connectionState = .disconnected
+        reconnectAttempts = 0
+        AppLog.websocket.debug("WebSocket disconnected")
+    }
+
+    // MARK: - Message Handling
+    private func startListening() {
+        backgroundTask?.cancel()
+        backgroundTask = Task {
+            guard let task = webSocketTask else { return }
+            while !Task.isCancelled {
+                do {
+                    let message = try await task.receive()
+                    await handle(message)
+                } catch {
+                    handleError(.receiveFailed(error.localizedDescription))
+                    break
                 }
             }
         }
     }
 
-    private func cleanupExistingConnection() {
-        keepAliveTimer?.invalidate()
-        keepAliveTimer = nil
-        reconnectTimer?.invalidate()
-        reconnectTimer = nil
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
+    private func handle(_ message: URLSessionWebSocketTask.Message?) async {
+        guard let message = message else { return }
+
+        switch message {
+        case .string(let text):
+            do {
+                let decoder = JSONDecoder()
+                let wsMessage = try decoder.decode(EventMessage.self, from: Data(text.utf8))
+                await MainActor.run {
+                    eventMessageSubject.send(wsMessage)
+                }
+            } catch {
+                await MainActor.run {
+                    AppLog.websocket.error("Failed to decode message: \(error.localizedDescription)")
+                    lastError = .messageDecodingFailed
+                }
+            }
+
+        case .data(let data):
+            do {
+                let decoder = JSONDecoder()
+                let wsMessage = try decoder.decode(EventMessage.self, from: data)
+                await MainActor.run {
+                    eventMessageSubject.send(wsMessage)
+                }
+            } catch {
+                await MainActor.run {
+                    AppLog.websocket.error("Failed to decode message: \(error.localizedDescription)")
+                    lastError = .messageDecodingFailed
+                }
+            }
+
+        @unknown default:
+            await MainActor.run {
+                AppLog.websocket.error("Unknown message type received")
+            }
+        }
     }
 
-    func disconnect() {
-        AppLog.log.debug("WebSocketManager disconnect")
-        shouldReconnect = false
-        reconnectTimer?.invalidate()
-        reconnectTimer = nil
-        keepAliveTimer?.invalidate()
-        keepAliveTimer = nil
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-        connectionState = .disconnected
-        reconnectAttempts = 0 // Reset attempts on manual disconnect
+    func handleError(_ error: WebSocketError) {
+        Task {
+            connectionState = .error(error)
+
+            AppLog.websocket.error("handleError \(error.errorDescription)")
+
+            switch error {
+            case .unauthorized:
+                break
+            case .connectionFailed:
+                scheduleReconnection()
+            case .messageDecodingFailed:
+                break
+            case .receiveFailed:
+                scheduleReconnection()
+            case .generic:
+                break
+            case .unknown:
+                break
+            }
+        }
     }
 
     func send(message: String, recipient: String) {
@@ -224,71 +269,153 @@ public class WebSocketManager: NSObject, ObservableObject, URLSessionWebSocketDe
         }
     }
 
-    func handleError(_ error: ConnectionError) {
-        Task { @MainActor in
-            connectionState = .error(error)
-
-            switch error {
-            case .invalidURL:
-                AppLog.websocket.error("Invalid WebSocket URL.")
-            case .connectionFailed(let description):
-                AppLog.websocket.error("WebSocket connection failed: \(description)")
-                if description.contains("Socket is not connected") || description.contains("Socket not connected") {
-                    cleanupExistingConnection()
-                    scheduleReconnection()
-                }
-            case .receiveFailed(let description):
-                AppLog.websocket.error("WebSocket receive failed: \(description)")
-                if description.contains("Socket is not connected") || description.contains("Socket not connected") {
-                    cleanupExistingConnection()
-                    scheduleReconnection()
-                }
+    // MARK: - Connection Maintenance
+    private func startPingTimer() {
+        Task {
+            while !Task.isCancelled && connectionState == .connected {
+                try? await Task.sleep(nanoseconds: UInt64(pingInterval * 1_000_000_000))
+                AppLog.log.debug("Sending ping")
+                try? await ping()
             }
         }
     }
 
-    private func startReceiving() async {
-        receiveTask = Task {
-            guard let task = webSocketTask else { return }
-            while !Task.isCancelled {
-                do {
-                    let message = try await task.receive()
-                    connectionState = .connected
-                    await handleReceivedMessage(message)
-                } catch {
-                    handleError(.receiveFailed(error.localizedDescription))
-                    break
+    private func ping() async throws {
+        webSocketTask?.sendPing(pongReceiveHandler: { [weak self] error in
+            if let error {
+                AppLog.websocket.error("Send ping error. \(String(describing: error))")
+            } else {
+                AppLog.log.debug("Receive pong")
+                Task { [weak self] in
+                    self?.updateLastPongReceived()
                 }
             }
-        }
+        })
     }
 
     func scheduleReconnection() {
-        AppLog.websocket.debug("scheduleReconnection")
+        Task { @MainActor in
+            await reconnect()
+        }
+    }
+
+    private func reconnect() async {
+        guard !Task.isCancelled else { return }
+
         guard !isReconnecting else {
-           AppLog.websocket.debug("Reconnection already in progress")
-           return
+            AppLog.websocket.debug("Reconnection already in progress")
+            return
         }
 
-        reconnectTimer?.invalidate()
-
-        guard shouldReconnect, reconnectAttempts < maxReconnectAttempts else {
-            AppLog.websocket.error("Max reconnection attempts reached or shouldReconnect is false. Giving up.")
+        // Check reconnection conditions
+        guard reconnectAttempts < maxReconnectAttempts else {
+            AppLog.websocket.error("Max reconnection attempts reached. Giving up.")
             isReconnecting = false
             return
         }
 
         isReconnecting = true
-        let delay = baseReconnectDelay * pow(2.0, Double(reconnectAttempts))
+        
+        // Calculate exponential backoff delay
+        let delay = min(baseReconnectDelay * pow(2.0, Double(reconnectAttempts)), 32.0) // Cap at 32 seconds
         reconnectAttempts += 1
 
-        AppLog.websocket.debug("Scheduling reconnection attempt \(self.reconnectAttempts) in \(delay) seconds.")
+        AppLog.websocket.debug("Attempting reconnection \(self.reconnectAttempts) in \(delay) seconds")
 
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.isReconnecting = false
-                await self?.connect()
+        do {
+            try await Task.sleep(for: .seconds(delay))
+            await connect()
+            isReconnecting = false
+        } catch {
+            if error is CancellationError {
+                isReconnecting = false
+                return
             }
-       }
-   }
+
+            // If we haven't reached max attempts, try again
+            if reconnectAttempts < maxReconnectAttempts {
+                await reconnect()
+            } else {
+                connectionState = .error(.connectionFailed("Failed to reconnect after \(reconnectAttempts) attempts"))
+                isReconnecting = false
+            }
+        }
+    }
+}
+
+extension WebSocketManager {
+    // MARK: - Process Event Message
+
+    func processEventMessage(_ eventMessage: EventMessage) async {
+        switch eventMessage.type {
+        case .ping:
+            break
+        case .pong:
+            break
+        case .clientConnect, .clientDisconnect, .clientStatus:
+            if case .clientEvent(let payload) = eventMessage.payload {
+                await handleClientEvent(eventMessage, payload)
+            }
+        case .assistant, .user:
+            if case .message(let messagePayload) = eventMessage.payload {
+                await MainActor.run {
+                    messageSubject.send(messagePayload)
+                }
+            }
+        case .generic, .error:
+            if case .genericMessage(let genericPayload) = eventMessage.payload {
+                AppLog.websocket.debug("Received generic message: \(genericPayload.message ?? "")")
+            }
+        }
+    }
+
+    private func handleClientEvent(_ event: EventMessage, _ payload: ClientEventPayload) async {
+        guard clientId != payload.clientId else { return }
+
+        switch event.type {
+        case .clientConnect, .clientStatus:
+            if let jsonPayload = payload.payload,
+               case .dictionary(let dict) = jsonPayload {
+                let clientStatus = ClientStatus(
+                    clientId: payload.clientId,
+                    assistantId: dict["assistant_id"]?.asString,
+                    runnerId: dict["runner_id"]?.asString,
+                    isOnline: true
+                )
+                await MainActor.run {
+                    clientStatusSubject.send(clientStatus)
+                }
+            }
+        case .clientDisconnect:
+            let clientStatus = ClientStatus(
+                clientId: payload.clientId,
+                assistantId: nil,
+                runnerId: nil,
+                isOnline: false
+            )
+            await MainActor.run {
+                clientStatusSubject.send(clientStatus)
+            }
+        default:
+            break
+        }
+    }
+}
+
+extension WebSocketManager {
+    private func buildWebSocketURLRequest(_ accessToken: String) -> URLRequest? {
+        guard var components = URLComponents(string: EnvironmentConfig.shared.baseWebSocketURL) else {
+            return nil
+        }
+
+        components.path = "\(components.path)/\(clientId)"
+        guard let wsURL = components.url else {
+            return nil
+        }
+
+        var request = URLRequest(url: wsURL)
+        request.addValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        return request
+    }
 }
