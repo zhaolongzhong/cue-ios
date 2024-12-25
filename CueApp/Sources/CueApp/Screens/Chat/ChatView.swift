@@ -30,7 +30,8 @@ struct ChatView: View {
                 shouldAutoScroll: shouldAutoScroll,
                 onScrollProxyReady: { proxy in
                     scrollProxy = proxy
-                }
+                },
+                onLoadMore: viewModel.loadMoreMessages
             )
             .padding(.horizontal, 10)
             .background(Color.clear)
@@ -45,7 +46,9 @@ struct ChatView: View {
                 isFocused: _isFocused,
                 isEnabled: viewModel.isInputEnabled,
                 onSend: {
-                    viewModel.handleSendMessage()
+                    Task {
+                        await viewModel.sendMessage()
+                    }
                     withAnimation {
                         scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
                     }

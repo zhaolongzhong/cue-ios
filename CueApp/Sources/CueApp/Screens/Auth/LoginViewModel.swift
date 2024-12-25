@@ -3,13 +3,12 @@ import Dependencies
 
 @MainActor
 final class LoginViewModel: ObservableObject {
-    @Dependency(\.authService) var authService
+    @Dependency(\.authRepository) var authRepository
     @Published var email = ""
     @Published var password = ""
     @Published var error: String?
     @Published var isLoading = false
 
-    @MainActor
     func login() async {
         guard !email.isEmpty, !password.isEmpty else {
             error = "Please fill in all fields"
@@ -17,15 +16,24 @@ final class LoginViewModel: ObservableObject {
         }
 
         isLoading = true
-        do {
-            try await authService.login(email: email, password: password)
-            self.error = nil
-        } catch AuthError.invalidCredentials {
-            self.error = "Invalid email or password"
-        } catch {
-            self.error = "An error occurred. Please try again."
-        }
+        defer { isLoading = false }
 
-        isLoading = false
+        switch await authRepository.login(email: email, password: password) {
+        case .success:
+            error = nil
+
+        case .failure(.invalidCredentials):
+            error = "Invalid email or password"
+
+        case .failure(.networkError):
+            error = "Network error occurred. Please try again."
+
+        case .failure(.unauthorized):
+            error = "Invalid email or password"
+
+        case .failure:
+            error = "An unexpected error occurred. Please try again."
+            AppLog.log.error("Login failed with unknown error")
+        }
     }
 }

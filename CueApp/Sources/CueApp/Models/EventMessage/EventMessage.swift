@@ -52,13 +52,34 @@ struct GenericMessagePayload: Codable {
 
 public struct MessagePayload: Codable, Sendable {
     var message: String?
-    var sender: String?
+    var sender: String
     var recipient: String?
     var websocketRequestId: String?
     var metadata: Metadata?
-    var userId: String?
+    var userId: String
     var msgId: String?
     var payload: JSONValue?
+}
+
+extension MessagePayload {
+    var recipientAssistantId: String? {
+        // Special recipient values
+        if recipient == nil || recipient?.isEmpty == true || recipient == "all" {
+            if sender != userId {
+                return sender // If sender is assistant, return it
+            } else {
+                return nil // If sender is user, no assistant
+            }
+        }
+
+        // Normal recipient routing
+        if userId != recipient {
+            return recipient // Recipient is assistant
+        } else if sender != userId {
+            return sender // Sender is assistant, recipient is user
+        }
+        return nil
+    }
 }
 
 // MARK: - ClientEventPayload

@@ -4,6 +4,7 @@ struct MessagesListView: View {
     let messages: [MessageModel]
     let shouldAutoScroll: Bool
     let onScrollProxyReady: (ScrollViewProxy) -> Void
+    let onLoadMore: () async -> Void
 
     @State private var scrollProxy: ScrollViewProxy?
     @State private var hasInitialized = false
@@ -21,6 +22,9 @@ struct MessagesListView: View {
                 hasInitialized: $hasInitialized,
                 previousMessageCount: $previousMessageCount
             )
+            .refreshable {
+                await onLoadMore()
+            }
             .focusable(false)
 
             if showScrollButton {
@@ -36,7 +40,9 @@ struct MessagesListView: View {
 
     private func scrollToBottom() {
         guard let lastMessage = messages.last else { return }
-        scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
+        withAnimation(.easeOut(duration: 0.3)) {
+            scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
+        }
     }
 }
 

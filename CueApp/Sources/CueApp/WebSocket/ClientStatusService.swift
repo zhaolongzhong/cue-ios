@@ -13,7 +13,7 @@ extension DependencyValues {
     }
 }
 
-public final class ClientStatusService: ObservableObject, @unchecked Sendable {
+public final class ClientStatusService: ObservableObject, Cleanable, @unchecked Sendable {
     @Dependency(\.webSocketService) public var webSocketService
     @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
     private var cancellables = Set<AnyCancellable>()
@@ -34,7 +34,11 @@ public final class ClientStatusService: ObservableObject, @unchecked Sendable {
     }
 
     private func updateClientStatus(_ status: ClientStatus) {
-        clientStatuses[status.id] = status
+        if let assistantId = status.assistantId {
+            clientStatuses[assistantId] = status
+        } else {
+            clientStatuses[status.id] = status
+        }
     }
 
     func markClientOffline(_ clientId: String) {
@@ -50,5 +54,10 @@ public final class ClientStatusService: ObservableObject, @unchecked Sendable {
     func getClientStatus(for assistantId: String?) -> ClientStatus? {
         guard let assistantId = assistantId else { return nil }
         return clientStatuses.values.first { $0.assistantId == assistantId }
+    }
+
+    func cleanup() async {
+        cancellables.removeAll()
+        clientStatuses.removeAll()
     }
 }

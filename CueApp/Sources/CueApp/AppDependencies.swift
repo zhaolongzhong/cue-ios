@@ -2,8 +2,16 @@ import SwiftUI
 import Combine
 import Dependencies
 
+protocol Cleanable {
+    func cleanup() async
+}
+
 @MainActor
 public class AppDependencies: ObservableObject, AppStateDelegate {
+    @Dependency(\.assistantRepository) private var assistantRepository
+    @Dependency(\.messageRepository) private var messageRepository
+    @Dependency(\.clientStatusService) public var clientStatusService
+
     public var appStateViewModel: AppStateViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
@@ -19,9 +27,11 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
         self.appStateViewModel.delegate = self
     }
 
-    public func handleLogout() async {
+    public func onLogout() async {
         AppLog.log.debug("AppDependencies handleLogout")
         self.viewModelFactory.cleanup()
+        await self.assistantRepository.cleanup()
+        await self.messageRepository.cleanup()
     }
 }
 

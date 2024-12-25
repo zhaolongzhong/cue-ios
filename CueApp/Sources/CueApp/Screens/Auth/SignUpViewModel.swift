@@ -4,7 +4,7 @@ import Dependencies
 
 @MainActor
 final class SignUpViewModel: ObservableObject {
-    @Dependency(\.authService) var authService
+    @Dependency(\.authRepository) var authRepository
     @Published var email = ""
     @Published var password = ""
     @Published var confirmPassword = ""
@@ -12,8 +12,7 @@ final class SignUpViewModel: ObservableObject {
     @Published var error: String?
     @Published var isLoading = false
 
-    @MainActor
-    func signUp() async {
+    func signup() async {
         guard !email.isEmpty, !password.isEmpty else {
             error = "Please fill in all required fields"
             return
@@ -30,20 +29,30 @@ final class SignUpViewModel: ObservableObject {
         }
 
         isLoading = true
-        error = nil
+        defer { isLoading = false }
 
-        do {
-            _ = try await authService.signup(
-                email: email,
-                password: password,
-                inviteCode: inviteCode.isEmpty ? nil : inviteCode
-            )
-        } catch AuthError.emailAlreadyExists {
-            self.error = "Email already exists"
-        } catch {
-            self.error = "An error occurred. Please try again."
+        let inviteCodeToUse = inviteCode.isEmpty ? nil : inviteCode
+
+        switch await authRepository.signup(
+            email: email,
+            password: password,
+            inviteCode: inviteCodeToUse
+        ) {
+        case .success:
+            error = nil
+
+        case .failure(.emailAlreadyExists):
+            error = "Email already exists"
+
+        case .failure(.networkError):
+            error = "Network error occurred. Please try again."
+
+        case .failure(.invalidCredentials):
+            error = "Invalid email or password format"
+
+        case .failure:
+            error = "An unexpected error occurred. Please try again."
+            AppLog.log.error("Signup failed with unknown error")
         }
-
-        isLoading = false
     }
 }

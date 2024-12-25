@@ -1,36 +1,6 @@
 import Foundation
-import Combine
 import Dependencies
 import os.log
-
-enum AuthError: LocalizedError {
-    case invalidCredentials
-    case networkError
-    case invalidResponse
-    case emailAlreadyExists
-    case unauthorized
-    case unknown
-    case tokenGenerationFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidCredentials:
-            return "Invalid email or password"
-        case .networkError:
-            return "Network error occurred"
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .emailAlreadyExists:
-            return "Email already exists"
-        case .unauthorized:
-            return "Unauthorized access"
-        case .tokenGenerationFailed:
-            return "Failed to generate access token"
-        case .unknown:
-            return "An unknown error occurred"
-        }
-    }
-}
 
 extension AuthService: DependencyKey {
     public static let liveValue = AuthService()
@@ -43,30 +13,21 @@ extension DependencyValues {
     }
 }
 
-public class AuthService: ObservableObject, @unchecked Sendable {
-    @Published public var isAuthenticated = false
-    @Published private(set) var currentUser: User?
-    @Published private(set) var isGeneratingToken = false
+protocol AuthServiceProtocol: Sendable {
+    func login(email: String, password: String) async throws -> TokenResponse
+    func signup(email: String, password: String, inviteCode: String?) async throws -> User
+    func generateToken() async throws -> String
+    func fetchUserProfile() async throws -> User
+}
 
-    private let userDefaults: UserDefaults
+final class AuthService: AuthServiceProtocol {
     private let logger = Logger(subsystem: "AuthService", category: "Auth")
 
-    public init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
-        self.isAuthenticated = userDefaults.string(forKey: "ACCESS_TOKEN_KEY")?.isEmpty == false
-    }
-
-    func login(email: String, password: String) async throws {
+    func login(email: String, password: String) async throws -> TokenResponse {
         do {
-            let response: TokenResponse = try await NetworkClient.shared.request(
+            return try await NetworkClient.shared.request(
                 AuthEndpoint.login(email: email, password: password)
             )
-
-            userDefaults.set(response.accessToken, forKey: "ACCESS_TOKEN_KEY")
-            await MainActor.run {
-                isAuthenticated = true
-            }
-            _ = try await fetchUserProfile()
         } catch NetworkError.unauthorized {
             throw AuthError.invalidCredentials
         } catch NetworkError.httpError(let code, _) where code == 409 {
@@ -77,12 +38,11 @@ public class AuthService: ObservableObject, @unchecked Sendable {
         }
     }
 
-    func signup(email: String, password: String, inviteCode: String?) async throws {
+    func signup(email: String, password: String, inviteCode: String?) async throws -> User {
         do {
-            let _: User = try await NetworkClient.shared.request(
+            return try await NetworkClient.shared.request(
                 AuthEndpoint.signup(email: email, password: password, inviteCode: inviteCode)
             )
-            _ = try await login(email: email, password: password)
         } catch NetworkError.httpError(let code, _) where code == 409 {
             throw AuthError.emailAlreadyExists
         } catch {
@@ -92,9 +52,6 @@ public class AuthService: ObservableObject, @unchecked Sendable {
     }
 
     func generateToken() async throws -> String {
-        isGeneratingToken = true
-        defer { isGeneratingToken = false }
-
         do {
             let response: TokenResponse = try await NetworkClient.shared.request(AssistantEndpoint.generateToken)
             return response.accessToken
@@ -104,25 +61,10 @@ public class AuthService: ObservableObject, @unchecked Sendable {
         }
     }
 
-    func logout() async {
-        AppLog.log.debug("AuthService logout")
-        isAuthenticated = false
-        userDefaults.removeObject(forKey: "ACCESS_TOKEN_KEY")
-        currentUser = nil
-    }
-
     func fetchUserProfile() async throws -> User {
-        guard isAuthenticated else {
-            throw AuthError.unauthorized
-        }
-
         do {
-            let user: User = try await NetworkClient.shared.request(AuthEndpoint.me)
-            currentUser = user
-            return user
+            return try await NetworkClient.shared.request(AuthEndpoint.me)
         } catch NetworkError.unauthorized {
-            isAuthenticated = false
-            currentUser = nil
             throw AuthError.unauthorized
         } catch {
             logger.error("Fetch user profile error: \(error.localizedDescription)")
@@ -131,7 +73,6 @@ public class AuthService: ObservableObject, @unchecked Sendable {
     }
 }
 
-// MARK: - Response Models
 struct TokenResponse: Codable {
     let accessToken: String
     let refreshToken: String?

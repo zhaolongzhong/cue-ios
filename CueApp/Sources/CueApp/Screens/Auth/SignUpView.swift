@@ -84,7 +84,7 @@ private struct iOSContent: View {
 
                 Button(action: {
                     Task {
-                        await viewModel.signUp()
+                        await viewModel.signup()
                     }
                 }) {
                     if viewModel.isLoading {
@@ -172,7 +172,7 @@ private struct macOSContent: View {
             HStack(spacing: 12) {
                 Button("Sign Up") {
                     Task {
-                        await viewModel.signUp()
+                        await viewModel.signup()
                     }
                 }
                 .buttonStyle(.borderedProminent)

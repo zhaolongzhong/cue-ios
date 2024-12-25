@@ -124,7 +124,7 @@ struct AssistantsView: View {
         .onAppear {
             Task {
                 if appStateViewModel.state.isAuthenticated {
-                    await assistantsViewModel.fetchAssistants(tag: "onAppear")
+                    await assistantsViewModel.fetchAssistants()
                 }
             }
         }

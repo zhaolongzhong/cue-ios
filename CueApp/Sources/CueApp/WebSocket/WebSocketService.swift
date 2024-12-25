@@ -293,11 +293,11 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
 }
 
 extension WebSocketService {
-    func send(event: ClientEvent) {
+    func send(event: ClientEvent) throws {
         guard let jsonData = try? encoder.encode(event),
               let messageData = String(data: jsonData, encoding: .utf8) else {
             AppLog.websocket.error("Failed to serialize message")
-            return
+            throw WebSocketError.generic(("Failed to serialize message"))
         }
 
         sendRawMessage(messageData)

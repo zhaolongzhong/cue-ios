@@ -1,9 +1,10 @@
+import Foundation
 import Combine
 import Dependencies
 
 @MainActor
 public protocol AppStateDelegate: AnyObject {
-    func handleLogout() async
+    func onLogout() async
 }
 
 struct AppState: Equatable {
@@ -34,89 +35,91 @@ public final class AppStateViewModel: ObservableObject {
         error: nil
     )
 
-    @Dependency(\.authService) var authService
+    @Dependency(\.authRepository) private var authRepository
     private var cancellables = Set<AnyCancellable>()
     weak var delegate: AppStateDelegate?
 
     public init() {
-        setupAuthSubscription()
-
+        setupSubscriptions()
         Task {
-            await initializeState()
+            await initialize()
         }
     }
 
-    private func initializeState() async {
-        let isAuthenticated = authService.isAuthenticated
-        await MainActor.run {
-            self.state.isAuthenticated = isAuthenticated
-            self.state.isLoading = false
+    private func initialize() async {
+        let isAuthenticated = await authRepository.getCurrentAuthState()
+        updateState { state in
+            state.isAuthenticated = isAuthenticated
+            state.isLoading = false
         }
 
-        if isAuthenticated && self.state.currentUser == nil {
+        if isAuthenticated {
             await fetchUserProfile()
         }
     }
 
-    private func fetchUserProfile() async {
-        do {
-            let user = try await authService.fetchUserProfile()
-            updateState { state in
-                state.currentUser = user
-                state.error = nil
-            }
-        } catch AuthError.unauthorized {
-            updateState { state in
-                state.error = "Session expired. Please log in again."
-            }
-            await handleLogout()
-        } catch AuthError.networkError {
-            updateState { state in
-                state.error = "Network error occurred. Please try again."
-            }
-        } catch {
-            updateState { state in
-                state.error = "An unexpected error occurred."
-            }
-            AppLog.log.error("Unexpected error: \(error.localizedDescription)")
-        }
-    }
-
-    private func setupAuthSubscription() {
-        authService.$isAuthenticated
-            .sink { [weak self] authenticated in
-                guard let self = self else { return }
-
+    private func setupSubscriptions() {
+        authRepository.isAuthenticatedPublisher
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isAuthenticated in
+                guard let self else { return }
                 self.updateState { state in
-                    state.isAuthenticated = authenticated
+                    state.isAuthenticated = isAuthenticated
                     state.isLoading = false
                 }
 
-                if authenticated && self.state.currentUser == nil {
-                    Task {
-                        await self.fetchUserProfile()
-                    }
+                // Fetch user profile if authenticated but no current user
+                if isAuthenticated && self.state.currentUser == nil {
+                    Task { await self.fetchUserProfile() }
                 }
 
-                if !authenticated {
-                    Task {
-                        AppLog.log.debug("AppStateViewModel handleLogout")
-                        await self.handleLogout()
-                    }
+                // Handle logout if not authenticated
+                if !isAuthenticated {
+                    Task { await self.handleLogout() }
+                }
+            }
+            .store(in: &cancellables)
+        authRepository.currentUserPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] user in
+                self?.updateState { state in
+                    state.currentUser = user
                 }
             }
             .store(in: &cancellables)
     }
 
-    private func updateState(_ mutation: (inout AppState) -> Void) {
-        var newState = state
-        mutation(&newState)
-        state = newState
+    private func fetchUserProfile() async {
+        switch await authRepository.fetchUserProfile() {
+        case .success(let user):
+            updateState { state in
+                state.currentUser = user
+                state.error = nil
+            }
+
+        case .failure(.unauthorized):
+            updateState { state in
+                state.error = "Session expired. Please log in again."
+            }
+            await handleLogout()
+
+        case .failure(.networkError):
+            updateState { state in
+                state.error = "Network error occurred. Please try again."
+            }
+
+        case .failure:
+            updateState { state in
+                state.error = "An unexpected error occurred."
+            }
+            AppLog.log.error("Unexpected error fetching user profile")
+        }
     }
 
     public func signOut() async {
         AppLog.log.debug("AppStateViewModel signOut")
-        await authService.logout()
+        await authRepository.logout()
         await handleLogout()
     }
 
@@ -125,7 +128,13 @@ public final class AppStateViewModel: ObservableObject {
             state.currentUser = nil
             state.error = nil
         }
-        await delegate?.handleLogout()
+        await delegate?.onLogout()
+    }
+
+    private func updateState(_ mutation: (inout AppState) -> Void) {
+        var newState = state
+        mutation(&newState)
+        state = newState
     }
 
     public func clearError() {

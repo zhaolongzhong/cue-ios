@@ -2,12 +2,12 @@ import SwiftUI
 import Dependencies
 
 struct UserAvatarMenu: View {
-    @Dependency(\.authService) public var authService
+    @Dependency(\.authRepository) public var authRepository
     @EnvironmentObject private var dependencies: AppDependencies
     @Environment(\.openWindow) private var openWindow
 
     var userInitials: String {
-        guard let email = authService.currentUser?.email else { return "?" }
+        guard let email = authRepository.currentUser?.email else { return "?" }
         return String(email.prefix(2).uppercased())
     }
 
@@ -38,9 +38,4 @@ private struct AvatarView: View {
             )
             .frame(width: 32, height: 32)
     }
-}
-
-#Preview {
-    UserAvatarMenu()
-        .environmentObject(AuthService())
 }

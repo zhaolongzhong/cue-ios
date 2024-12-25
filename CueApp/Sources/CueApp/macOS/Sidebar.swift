@@ -128,7 +128,7 @@ struct Sidebar: View {
         }
         .onAppear {
             Task {
-                await assistantsViewModel.fetchAssistants(tag: "onAppear")
+                await assistantsViewModel.fetchAssistants()
             }
             self.onSelectedAssistantUpdate()
         }

@@ -116,7 +116,7 @@ struct MessageMetadata: Codable, Sendable {
 // MARK: - Message Model
 struct MessageModel: Codable, Equatable, Identifiable, Sendable {
     let id: String?
-    let conversationId: String?
+    let conversationId: String
     let author: Author
     let content: MessageContent
     let metadata: MessageMetadata?
@@ -137,7 +137,7 @@ struct MessageModel: Codable, Equatable, Identifiable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         id = try container.decodeIfPresent(String.self, forKey: .id)
-        conversationId = try container.decodeIfPresent(String.self, forKey: .conversationId)
+        conversationId = try container.decodeIfPresent(String.self, forKey: .conversationId) ?? ""
         author = try container.decode(Author.self, forKey: .author)
         content = try container.decode(MessageContent.self, forKey: .content)
         metadata = try container.decodeIfPresent(MessageMetadata.self, forKey: .metadata)

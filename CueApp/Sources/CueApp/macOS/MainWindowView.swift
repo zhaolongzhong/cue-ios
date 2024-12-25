@@ -48,7 +48,6 @@ public struct MainWindowView: View {
             }
         }
         .onReceive(assistantsViewModel.$clientStatuses) { _ in
-            AppLog.log.debug("Client status updated, forcing view refresh")
             lastStatusUpdate = Date()
         }
         .onAppear {
