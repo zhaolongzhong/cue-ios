@@ -5,10 +5,10 @@ import Dependencies
 // MARK: - Message Record for SQLite
 struct MessageModelRecord: Codable, FetchableRecord, PersistableRecord {
     let id: String
-    let conversationId: String?
-    let author: Data        // JSON blob for Author
-    let content: Data       // JSON blob for MessageContent
-    let metadata: Data?     // JSON blob for MessageMetadata
+    let conversationId: String
+    let author: Data
+    let content: Data
+    let metadata: Data?
     let createdAt: Date
     let updatedAt: Date
 
@@ -74,15 +74,25 @@ actor MessageModelStore {
     }
 
     // MARK: - CRUD Operations
-    func save(_ message: MessageModel) throws {
-        try dbPool.write { db in
-            let record = try MessageModelRecord(message: message)
+    func save(_ message: MessageModel) async throws {
+        let record = try MessageModelRecord(message: message)
+        try await dbPool.write { db in
             try record.save(db, onConflict: .replace)
         }
     }
 
-    func fetch(id: String) throws -> MessageModel? {
-        try dbPool.read { db in
+    func saveList(_ messages: [MessageModel]) async throws {
+        try dbPool.writeInTransaction { db in
+            for message in messages {
+                let record = try MessageModelRecord(message: message)
+                try record.save(db)
+            }
+            return .commit
+        }
+    }
+
+    func fetch(id: String) async throws -> MessageModel? {
+        try await dbPool.read { db in
             if let record = try MessageModelRecord.fetchOne(db, key: id) {
                 return try record.toMessageModel()
             }
@@ -90,8 +100,8 @@ actor MessageModelStore {
         }
     }
 
-    func fetchAllMessages(forConversation conversationId: String) throws -> [MessageModel] {
-        try dbPool.read { db in
+    func fetchAllMessages(forConversation conversationId: String) async throws -> [MessageModel] {
+        try await dbPool.read { db in
             let records = try MessageModelRecord
                 .filter(Column("conversationId") == conversationId)
                 .order(Column("createdAt").asc)
@@ -100,33 +110,29 @@ actor MessageModelStore {
         }
     }
 
-    func delete(id: String) throws {
-        try dbPool.write { db in
+    func delete(id: String) async throws {
+        try await dbPool.write { db in
             _ = try MessageModelRecord.deleteOne(db, key: id)
         }
     }
 
-    func deleteConversation(_ conversationId: String) throws {
-        try dbPool.write { db in
+    func deleteConversation(_ conversationId: String) async throws {
+        try await dbPool.write { db in
             _ = try MessageModelRecord
                 .filter(Column("conversationId") == conversationId)
                 .deleteAll(db)
         }
     }
 
-    func update(_ message: MessageModel) throws {
-        guard message.id != nil else {
-            throw NSError(domain: "MessageModelStore", code: -1, userInfo: [NSLocalizedDescriptionKey: "Message ID is required for update"])
-        }
-
-        try dbPool.write { db in
+    func update(_ message: MessageModel) async throws {
+        try await dbPool.write { db in
             let record = try MessageModelRecord(message: message)
             try record.update(db)
         }
     }
 
-    func fetchConversations() throws -> [String] {
-        try dbPool.read { db in
+    func fetchConversations() async throws -> [String] {
+        try await dbPool.read { db in
             let conversations = try String.fetchAll(db, sql: """
                 SELECT DISTINCT conversationId
                 FROM message_models

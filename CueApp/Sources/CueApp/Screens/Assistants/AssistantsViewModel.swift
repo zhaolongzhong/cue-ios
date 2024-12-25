@@ -6,7 +6,7 @@ import Dependencies
 final class AssistantsViewModel: ObservableObject {
     @Dependency(\.clientStatusService) public var clientStatusService
     @Dependency(\.webSocketService) public var webSocketService
-    @Dependency(\.assistantService) var assistantService
+    @Dependency(\.assistantRepository) private var assistantRepository
 
     @Published private(set) var assistants: [Assistant] = []
     @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
@@ -81,7 +81,7 @@ final class AssistantsViewModel: ObservableObject {
         error = nil
 
         do {
-            let assistants = try await assistantService.listAssistants()
+            let assistants = try await assistantRepository.listAssistants(skip: 0, limit: 5)
             self.assistants = assistants
         } catch let assistantError as AssistantError {
             self.error = assistantError
@@ -110,7 +110,7 @@ final class AssistantsViewModel: ObservableObject {
     func deleteAssistant(_ assistant: Assistant) async {
         AppLog.log.debug("Deleting assistant with ID: \(assistant.id)")
         do {
-            try await assistantService.deleteAssistant(id: assistant.id)
+            try await assistantRepository.deleteAssistant(id: assistant.id)
             assistants.removeAll { $0.id == assistant.id }
             AppLog.log.debug("Deleted assistant with ID: \(assistant.id)")
         } catch let assistantError as AssistantError {
@@ -124,7 +124,7 @@ final class AssistantsViewModel: ObservableObject {
 
     func createPrimaryAssistant() async {
         do {
-            let newAssistant = try await assistantService.createAssistant(name: nil, isPrimary: true)
+            let newAssistant = try await assistantRepository.createAssistant(name: nil, isPrimary: true)
             assistants.append(newAssistant)
             AppLog.log.debug("Created primary assistant with ID: \(newAssistant.id)")
         } catch let assistantError as AssistantError {
@@ -139,7 +139,7 @@ final class AssistantsViewModel: ObservableObject {
 
     func createAssistant(name: String) async -> Assistant? {
         do {
-            let assistant = try await assistantService.createAssistant(name: name, isPrimary: false)
+            let assistant = try await assistantRepository.createAssistant(name: name, isPrimary: false)
             assistants.append(assistant)
             AppLog.log.debug("Created assistant with ID: \(assistant.id)")
             return assistant
@@ -155,7 +155,7 @@ final class AssistantsViewModel: ObservableObject {
 
     func updateAssistantName(id: String, name: String) async -> Assistant? {
         do {
-            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: name, metadata: nil)
+            let updatedAssistant = try await assistantRepository.updateAssistant(id: id, name: name, metadata: nil)
             if let index = assistants.firstIndex(where: { $0.id == id }) {
                 assistants[index] = updatedAssistant
             }
@@ -191,7 +191,7 @@ final class AssistantsViewModel: ObservableObject {
                 context: context,
                 tools: tools
             )
-            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: metadata)
+            let updatedAssistant = try await assistantRepository.updateAssistant(id: id, name: nil, metadata: metadata)
             if let index = assistants.firstIndex(where: { $0.id == id }) {
                 assistants[index] = updatedAssistant
             }
@@ -211,13 +211,13 @@ final class AssistantsViewModel: ObservableObject {
         AppLog.log.debug("Setting primary assistant to ID: \(id)")
         do {
             let previousPrimaryId = primaryAssistant?.id
-            let updatedAssistant = try await assistantService.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: true, model: nil))
+            let updatedAssistant = try await assistantRepository.updateAssistant(id: id, name: nil, metadata: AssistantMetadataUpdate(isPrimary: true, model: nil))
             if let index = assistants.firstIndex(where: { $0.id == id }) {
                 assistants[index] = updatedAssistant
             }
             AppLog.log.debug("Set assistant ID \(id) as primary.")
             if let previousId = previousPrimaryId, previousId != id {
-                let previousUpdatedAssistant = try await assistantService.getAssistant(id: previousId)
+                let previousUpdatedAssistant = try await assistantRepository.getAssistant(id: previousId)
                 if let index = assistants.firstIndex(where: { $0.id == previousId }) {
                     assistants[index] = previousUpdatedAssistant
                     AppLog.log.debug("Updated previous primary assistant ID \(previousId) to non-primary.")
@@ -246,7 +246,7 @@ final class AssistantsViewModel: ObservableObject {
                 group.addTask { [weak self] in
                     guard let self = self else { return }
                     do {
-                        let fetchedAssistant = try await self.assistantService.getAssistant(id: assistantId)
+                        let fetchedAssistant = try await self.assistantRepository.getAssistant(id: assistantId)
                         await MainActor.run {
                             self.assistants.append(fetchedAssistant)
                             AppLog.log.debug("Fetched and added unmatched assistant ID: \(assistantId)")

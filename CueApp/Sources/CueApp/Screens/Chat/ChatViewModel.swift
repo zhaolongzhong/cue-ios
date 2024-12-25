@@ -6,7 +6,8 @@ import Dependencies
 final class ChatViewModel: ObservableObject {
     @Dependency(\.webSocketService) public var webSocketService
     @Dependency(\.clientStatusService) public var clientStatusService
-    @Dependency(\.assistantService) public var assistantService
+    @Dependency(\.assistantRepository) private var assistantRepository
+    @Dependency(\.messageRepository) private var messageRepository
 
     @Published private(set) var messageModels: [MessageModel] = []
     @Published private(set) var assistant: Assistant
@@ -16,9 +17,9 @@ final class ChatViewModel: ObservableObject {
     @Published var inputMessage: String = ""
     @Published var showAssistantDetails = false
 
-    private let messageModelStore: MessageModelStore
     private var primaryConversation: ConversationModel?
     private var cancellables = Set<AnyCancellable>()
+    private var messageSubscription: Task<Void, Never>?
 
     var isInputEnabled: Bool {
          switch currentConnectionState {
@@ -31,16 +32,12 @@ final class ChatViewModel: ObservableObject {
 
     init(assistant: Assistant) {
         self.assistant = assistant
-
-        do {
-            self.messageModelStore = try MessageModelStore()
-        } catch {
-            AppLog.websocket.error("Database initialization failed: \(error)")
-            self.messageModelStore = try! MessageModelStore()
-        }
-
         setupConnectionStateSubscription()
         setupMessageHandler()
+    }
+
+    deinit {
+        messageSubscription?.cancel()
     }
 
     private func setupConnectionStateSubscription() {
@@ -63,6 +60,18 @@ final class ChatViewModel: ObservableObject {
                 .store(in: &cancellables)
     }
 
+    private func subscribeToMessages(conversationId: String) {
+        messageSubscription?.cancel()
+        messageSubscription = Task {
+            for await message in await messageRepository.messageStream(forConversation: conversationId) {
+                guard !Task.isCancelled else { break }
+                withAnimation {
+                    self.messageModels.append(message)
+                }
+            }
+        }
+    }
+
     private func processMessagePayload(_ messagePayload: MessagePayload) {
         guard let conversationId = self.primaryConversation?.id else {
             AppLog.log.error("Error in processMessagePayload conversationId is nil")
@@ -74,13 +83,9 @@ final class ChatViewModel: ObservableObject {
             conversationId: conversationId
         )
 
-        withAnimation {
-            messageModels.append(messageModel)
-        }
-
         Task {
             do {
-                try await messageModelStore.save(messageModel)
+                _ = try await messageRepository.saveMessage(messageModel: messageModel)
             } catch {
                 handleError(error, context: "Saving received message")
             }
@@ -95,41 +100,19 @@ final class ChatViewModel: ObservableObject {
         self.primaryConversation = await fetchAssistantConversation(id: assistant.id)
 
         if let conversationId = primaryConversation?.id {
-            _ = await loadMessagesFromDb(conversationId: conversationId)
-            let messages = await fetchMessages(conversationId: conversationId)
-
-            if messages.count > 0 {
-                for message in messages {
-                    do {
-                        try await messageModelStore.save(message)
-                    } catch {
-                        AppLog.log.error("Database error: \(error)")
-                    }
-                }
-                _ = await loadMessagesFromDb(conversationId: conversationId)
-            }
-        }
-    }
-
-    private func loadMessagesFromDb(conversationId: String) async -> [MessageModel] {
-        do {
-            let messages = try await messageModelStore.fetchAllMessages(forConversation: conversationId)
-            AppLog.log.debug("Fetch messsages from database, conversation id:\(conversationId), messages count: \(messages.count)")
+            subscribeToMessages(conversationId: conversationId)
+            var messages  = await fetchMessages(conversationId: conversationId)
+            messages.sort { $0.createdAt < $1.createdAt }
             self.messageModels = messages
-            return messages
-        } catch {
-            handleError(error, context: "Loading messages")
         }
-
-        return []
     }
 
     private func fetchAssistantConversation(id: String) async -> ConversationModel? {
         isLoading = true
         do {
-            let conversations = try await assistantService.listAssistantConversations(id: id, isPrimary: true, skip: 0, limit: 20)
+            let conversations = try await assistantRepository.listAssistantConversations(id: id, isPrimary: true, skip: 0, limit: 20)
             isLoading = false
-            if conversations.count == 0 {
+            if conversations.isEmpty {
                 let conversation = await createPrimaryAssistant()
                 return conversation
             } else {
@@ -144,7 +127,7 @@ final class ChatViewModel: ObservableObject {
 
     func createPrimaryAssistant() async -> ConversationModel? {
         do {
-            let conversation = try await assistantService.createPrimaryConversation(assistantId: assistant.id)
+            let conversation = try await assistantRepository.createPrimaryConversation(assistantId: assistant.id, name: nil)
             return conversation
         } catch {
             AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
@@ -154,10 +137,10 @@ final class ChatViewModel: ObservableObject {
 
     func fetchMessages(conversationId: String) async -> [MessageModel] {
         do {
-            let messages = try await assistantService.listMessages(conversationId: conversationId)
+            let messages = try await messageRepository.listMessages(conversationId: conversationId, skip: 0, limit: 50)
             return messages
         } catch {
-            AppLog.log.error("Error creating assistant: \(error.localizedDescription)")
+            AppLog.log.error("Error fetching messages: \(error.localizedDescription)")
         }
         return []
     }
@@ -178,12 +161,6 @@ final class ChatViewModel: ObservableObject {
         guard !inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
         let messageToSend = inputMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        _ = Message(
-            assistantId: assistant.id,
-            content: messageToSend,
-            isFromUser: true
-        )
-
         let clientStatus = clientStatusService.getClientStatus(for: assistant.id)
 
         guard let runnerId = clientStatus?.runnerId else {
@@ -228,6 +205,6 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Cleanup
     func cleanup() {
-
+        messageSubscription?.cancel()
     }
 }

@@ -4,7 +4,7 @@ import CueOpenAI
 extension MessageModel {
     init(
         id: String?,
-        conversationId: String?,
+        conversationId: String,
         author: Author,
         content: MessageContent,
         metadata: MessageMetadata?,
@@ -42,7 +42,7 @@ extension MessageModel {
         )
 
         self.id = payload.msgId ?? "dirty_\(UUID().uuidString)"
-        self.conversationId = conversationId
+        self.conversationId = conversationId ?? ""
         self.author = author
         self.content = messageContent
         self.metadata = metadata
