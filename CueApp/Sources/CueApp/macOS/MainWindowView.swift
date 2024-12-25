@@ -35,10 +35,10 @@ public struct MainWindowView: View {
             }
         }
         .environmentObject(apiKeysViewModel)
-        .onChange(of: appStateViewModel.state.currentUser) { _, newUser in
-            if let userId = newUser?.id {
+        .onChange(of: appStateViewModel.state) { _, state in
+            if let userId = state.currentUser?.id {
                 Task {
-                    await assistantsViewModel.webSocketManagerStore.initialize(for: userId)
+                    await assistantsViewModel.webSocketManager.connect()
                 }
             }
         }

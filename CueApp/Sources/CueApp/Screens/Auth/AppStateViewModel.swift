@@ -6,7 +6,7 @@ public protocol AppStateDelegate: AnyObject {
     func handleLogout() async
 }
 
-struct AppState {
+struct AppState: Equatable {
     var isLoading: Bool
     var isAuthenticated: Bool
     var currentUser: User?

@@ -3,6 +3,13 @@ import Combine
 import Dependencies
 import os.log
 
+public enum WebSocketMessage: Sendable {
+    case clientStatus(ClientStatus)
+    case messagePayload(MessagePayload)
+    case event(EventMessage)
+    case error(WebSocketError)
+}
+
 extension WebSocketManager: DependencyKey {
     public static let liveValue = WebSocketManager()
 }
@@ -35,30 +42,29 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
     }
 
-    private(set) var lastError: WebSocketError?
+    // MARK: - Async Streams
+    private let webSocketMessageContinuation: AsyncStream<WebSocketMessage>.Continuation
+    private let errorContinuation: AsyncStream<WebSocketError>.Continuation
+
+    public let webSocketMessageStream: AsyncStream<WebSocketMessage>
+    public let errorStream: AsyncStream<WebSocketError>
 
     private let connectionStateSubject = PassthroughSubject<ConnectionState, Never>()
-    private let eventMessageSubject = CurrentValueSubject<EventMessage?, Never>(nil)
-    private let messageSubject = PassthroughSubject<MessagePayload, Never>()
-    private let clientStatusSubject = PassthroughSubject<ClientStatus, Never>()
-
     var connectionStatePublisher: AnyPublisher<ConnectionState, Never> {
         connectionStateSubject.eraseToAnyPublisher()
     }
 
-    var eventMessagePublisher: AnyPublisher<EventMessage, Never> {
-        eventMessageSubject
-            .compactMap { $0 }
-            .eraseToAnyPublisher()
-    }
+    private let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        return encoder
+    }()
 
-    var messagePublisher: AnyPublisher<MessagePayload, Never> {
-            messageSubject.eraseToAnyPublisher()
-        }
-
-    var clientStatusPublisher: AnyPublisher<ClientStatus, Never> {
-        clientStatusSubject.eraseToAnyPublisher()
-    }
+    private let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 
     public init(assistantId: String = "") {
         self.clientId = EnvironmentConfig.shared.clientId
@@ -67,26 +73,14 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         config.timeoutIntervalForResource = 60
         config.waitsForConnectivity = true
         self.session = URLSession(configuration: config)
-        super.init()
 
-        setupSubscriptions()
+        (webSocketMessageStream, webSocketMessageContinuation) = AsyncStream.makeStream()
+        (errorStream, errorContinuation) = AsyncStream.makeStream()
     }
 
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
-    }
-
-    private func setupSubscriptions() {
-        eventMessagePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] message in
-                guard let self = self else { return }
-                Task {
-                    await self.processEventMessage(message)
-                }
-            }
-            .store(in: &cancellables)
     }
 
     @MainActor
@@ -162,36 +156,34 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         switch message {
         case .string(let text):
             do {
-                let decoder = JSONDecoder()
-                let wsMessage = try decoder.decode(EventMessage.self, from: Data(text.utf8))
-                await MainActor.run {
-                    eventMessageSubject.send(wsMessage)
+                let eventMessage = try decoder.decode(EventMessage.self, from: Data(text.utf8))
+                switch eventMessage.type {
+                case .clientConnect, .clientDisconnect, .clientStatus:
+                    if let clientStatus = eventMessage.clientStatus {
+                        webSocketMessageContinuation.yield(.clientStatus(clientStatus))
+                    }
+                case .assistant, .user:
+                    if case .message(let messagePayload) = eventMessage.payload {
+                        webSocketMessageContinuation.yield(.messagePayload(messagePayload))
+                    }
+                case .generic, .error:
+                    if case .genericMessage(let genericPayload) = eventMessage.payload {
+                        AppLog.websocket.debug("Received generic message: \(genericPayload.message ?? "")")
+                    }
+                default:
+                    break
                 }
             } catch {
                 await MainActor.run {
                     AppLog.websocket.error("Failed to decode message: \(error.localizedDescription)")
-                    lastError = .messageDecodingFailed
+                    errorContinuation.yield(.messageDecodingFailed)
                 }
             }
 
-        case .data(let data):
-            do {
-                let decoder = JSONDecoder()
-                let wsMessage = try decoder.decode(EventMessage.self, from: data)
-                await MainActor.run {
-                    eventMessageSubject.send(wsMessage)
-                }
-            } catch {
-                await MainActor.run {
-                    AppLog.websocket.error("Failed to decode message: \(error.localizedDescription)")
-                    lastError = .messageDecodingFailed
-                }
-            }
-
+        case .data:
+            AppLog.websocket.error("Unexpected data received")
         @unknown default:
-            await MainActor.run {
-                AppLog.websocket.error("Unknown message type received")
-            }
+            AppLog.websocket.error("Unknown message type received")
         }
     }
 
@@ -218,52 +210,19 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
     }
 
-    func send(message: String, recipient: String) {
-        AppLog.websocket.debug("Sending message: \(message) to recipient: \(recipient)")
-        let uuid = UUID().uuidString
-
-        let messagePayload = MessagePayload(
-            message: message,
-            sender: nil,
-            recipient: recipient,
-            websocketRequestId: uuid,
-            metadata: nil,
-            userId: nil,
-            payload: nil
-        )
-
-        let eventMessage = EventMessage(
-            type: .user,
-            payload: .message(messagePayload),
-            clientId: clientId,
-            metadata: nil,
-            websocketRequestId: uuid
-        )
-
-        guard let jsonData = try? JSONEncoder().encode(eventMessage),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
-            AppLog.websocket.error("Failed to serialize message")
-            return
-        }
-
-        send(jsonString)
-    }
-
-    private func send(_ jsonString: String) {
+    private func sendRawMessage(_ message: String) {
         guard connectionState == .connected else {
-            AppLog.websocket.error("Attempting to send message while not connected. State: \(self.connectionState.description)")
+            AppLog.websocket.error("Attempting to send message while not connected: \(self.connectionState.description)")
             handleError(.connectionFailed("Socket not connected"))
             return
         }
 
-        let message = URLSessionWebSocketTask.Message.string(jsonString)
+        let message = URLSessionWebSocketTask.Message.string(message)
         webSocketTask?.send(message) { [weak self] error in
             Task { @MainActor [weak self] in
                 if let error = error {
                     self?.handleError(.connectionFailed(error.localizedDescription))
                     AppLog.websocket.error("WebSocket sending error: \(error)")
-                } else {
-                    AppLog.websocket.debug("Message sent: \(jsonString)")
                 }
             }
         }
@@ -305,7 +264,6 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
             return
         }
 
-        // Check reconnection conditions
         guard reconnectAttempts < maxReconnectAttempts else {
             AppLog.websocket.error("Max reconnection attempts reached. Giving up.")
             isReconnecting = false
@@ -313,7 +271,7 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
         }
 
         isReconnecting = true
-        
+
         // Calculate exponential backoff delay
         let delay = min(baseReconnectDelay * pow(2.0, Double(reconnectAttempts)), 32.0) // Cap at 32 seconds
         reconnectAttempts += 1
@@ -330,7 +288,6 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
                 return
             }
 
-            // If we haven't reached max attempts, try again
             if reconnectAttempts < maxReconnectAttempts {
                 await reconnect()
             } else {
@@ -342,65 +299,16 @@ public final class WebSocketManager: NSObject, URLSessionWebSocketDelegate, @unc
 }
 
 extension WebSocketManager {
-    // MARK: - Process Event Message
-
-    func processEventMessage(_ eventMessage: EventMessage) async {
-        switch eventMessage.type {
-        case .ping:
-            break
-        case .pong:
-            break
-        case .clientConnect, .clientDisconnect, .clientStatus:
-            if case .clientEvent(let payload) = eventMessage.payload {
-                await handleClientEvent(eventMessage, payload)
-            }
-        case .assistant, .user:
-            if case .message(let messagePayload) = eventMessage.payload {
-                await MainActor.run {
-                    messageSubject.send(messagePayload)
-                }
-            }
-        case .generic, .error:
-            if case .genericMessage(let genericPayload) = eventMessage.payload {
-                AppLog.websocket.debug("Received generic message: \(genericPayload.message ?? "")")
-            }
+    func send(event: ClientEvent) {
+        guard let jsonData = try? encoder.encode(event),
+              let messageData = String(data: jsonData, encoding: .utf8) else {
+            AppLog.websocket.error("Failed to serialize message")
+            return
         }
+
+        sendRawMessage(messageData)
     }
 
-    private func handleClientEvent(_ event: EventMessage, _ payload: ClientEventPayload) async {
-        guard clientId != payload.clientId else { return }
-
-        switch event.type {
-        case .clientConnect, .clientStatus:
-            if let jsonPayload = payload.payload,
-               case .dictionary(let dict) = jsonPayload {
-                let clientStatus = ClientStatus(
-                    clientId: payload.clientId,
-                    assistantId: dict["assistant_id"]?.asString,
-                    runnerId: dict["runner_id"]?.asString,
-                    isOnline: true
-                )
-                await MainActor.run {
-                    clientStatusSubject.send(clientStatus)
-                }
-            }
-        case .clientDisconnect:
-            let clientStatus = ClientStatus(
-                clientId: payload.clientId,
-                assistantId: nil,
-                runnerId: nil,
-                isOnline: false
-            )
-            await MainActor.run {
-                clientStatusSubject.send(clientStatus)
-            }
-        default:
-            break
-        }
-    }
-}
-
-extension WebSocketManager {
     private func buildWebSocketURLRequest(_ accessToken: String) -> URLRequest? {
         guard var components = URLComponents(string: EnvironmentConfig.shared.baseWebSocketURL) else {
             return nil

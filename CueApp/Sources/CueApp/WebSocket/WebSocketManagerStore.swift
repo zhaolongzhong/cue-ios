@@ -71,15 +71,6 @@ public final class WebSocketManagerStore: ObservableObject, @unchecked Sendable 
         connectionState = .disconnected
     }
 
-    public func send(message: String, recipient: String) {
-        webSocketManager.send(message: message, recipient: recipient)
-    }
-
-    public func getClientStatus(for assistantId: String?) -> ClientStatus? {
-        guard let assistantId = assistantId else { return nil }
-        return clientStatusService.clientStatuses.first { $0.assistantId == assistantId }
-    }
-
     deinit {
         cancellables.forEach { $0.cancel() }
     }

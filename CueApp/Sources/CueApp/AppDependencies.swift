@@ -50,8 +50,7 @@ public class ViewModelFactory {
         }
 
         self.assistantsViewModel = AssistantsViewModel(
-            assistantService: assistantService,
-            webSocketManagerStore: webSocketManagerStore)
+            assistantService: assistantService)
         return self.assistantsViewModel!
     }
 
@@ -59,7 +58,7 @@ public class ViewModelFactory {
         if let existing = chatViewModels[assistant.id] {
             return existing
         } else {
-            let newViewModel = ChatViewModel(assistant: assistant, webSocketManagerStore: webSocketManagerStore)
+            let newViewModel = ChatViewModel(assistant: assistant)
             chatViewModels[assistant.id] = newViewModel
             return newViewModel
         }

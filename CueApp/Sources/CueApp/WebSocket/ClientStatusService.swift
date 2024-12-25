@@ -1,7 +1,3 @@
-//
-//  ClientStatusService.swift
-//
-
 import Foundation
 import Combine
 import Dependencies
@@ -19,39 +15,47 @@ extension DependencyValues {
 
 public final class ClientStatusService: ObservableObject, @unchecked Sendable {
     @Dependency(\.webSocketManager) public var webSocketManager
-    @Published private(set) var clientStatuses: [ClientStatus] = []
+    @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
+    private var messageHandlerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     init() {
-        setupScribscription()
+        setupMessageHandler()
     }
 
-    private func setupScribscription() {
-        webSocketManager.clientStatusPublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] clientStatus in
-                self?.updateClientStatus(clientStatus)
+    deinit {
+        messageHandlerTask?.cancel()
+        messageHandlerTask = nil
+    }
+
+    private func setupMessageHandler() {
+        messageHandlerTask = Task { [weak self] in
+            guard let self else { return }
+
+            for await message in webSocketManager.webSocketMessageStream {
+                if case .clientStatus(let status) = message {
+                    self.updateClientStatus(status)
+                }
             }
-            .store(in: &cancellables)
+        }
     }
 
     private func updateClientStatus(_ status: ClientStatus) {
-        if let existingIndex = clientStatuses.firstIndex(where: { $0.id == status.id }) {
-            clientStatuses[existingIndex] = status
-        } else {
-            clientStatuses.append(status)
-        }
+        clientStatuses[status.id] = status
     }
 
     func markClientOffline(_ clientId: String) {
-        if let existingIndex = clientStatuses.firstIndex(where: { $0.id == clientId }) {
-            let offlineStatus = ClientStatus(
-                clientId: clientId,
-                assistantId: nil,
-                runnerId: nil,
-                isOnline: false
-            )
-            clientStatuses[existingIndex] = offlineStatus
-        }
+        let offlineStatus = ClientStatus(
+            clientId: clientId,
+            assistantId: nil,
+            runnerId: nil,
+            isOnline: false
+        )
+        clientStatuses[clientId] = offlineStatus
+    }
+
+    public func getClientStatus(for assistantId: String?) -> ClientStatus? {
+        guard let assistantId = assistantId else { return nil }
+        return clientStatuses.values.first { $0.assistantId == assistantId }
     }
 }

@@ -1,8 +1,12 @@
 import SwiftUI
 import Combine
+import Dependencies
 
 @MainActor
 final class AssistantsViewModel: ObservableObject {
+    @Dependency(\.clientStatusService) public var clientStatusService
+    @Dependency(\.webSocketManager) public var webSocketManager
+
     @Published private(set) var assistants: [Assistant] = []
     @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
     @Published private(set) var isLoading = false
@@ -11,13 +15,10 @@ final class AssistantsViewModel: ObservableObject {
     @Published var assistantToDelete: Assistant?
 
     private let assistantService: AssistantService
-    let webSocketManagerStore: WebSocketManagerStore
     private var cancellables = Set<AnyCancellable>()
 
-    init(assistantService: AssistantService,
-         webSocketManagerStore: WebSocketManagerStore) {
+    init(assistantService: AssistantService) {
         self.assistantService = assistantService
-        self.webSocketManagerStore = webSocketManagerStore
         setupClientStatusSubscriptions()
         setupPrimaryAssistantSubscription()
     }
@@ -39,21 +40,28 @@ final class AssistantsViewModel: ObservableObject {
 
     private func setupClientStatusSubscriptions() {
         // Subscribe to WebSocket status updates
-        webSocketManagerStore.clientStatusService.$clientStatuses
+        clientStatusService.$clientStatuses
             .receive(on: DispatchQueue.main)
             .sink { [weak self] clientStatuses in
                 guard let self = self else { return }
                 Task {
                     AppLog.log.debug("clientStatuses updated, updating view model")
-                    // Update the internal dictionary of statuses
-                    let statusDict = [String: ClientStatus](
-                        uniqueKeysWithValues: clientStatuses.compactMap { status in
+                    
+                    // Convert from client ID based dictionary to assistant ID based dictionary
+                    let statusDict = Dictionary(uniqueKeysWithValues:
+                        clientStatuses.values.compactMap { status -> (String, ClientStatus)? in
                             guard let assistantId = status.assistantId else {
                                 return nil
                             }
                             return (assistantId, status)
                         }
                     )
+                    .reduce(into: [String: ClientStatus]()) { result, entry in
+                        if let assistantId = entry.value.assistantId {
+                            result[assistantId] = entry.value
+                        }
+                    }
+
                     self.clientStatuses = statusDict
                     await self.findUnmatchedAssistants()
 
@@ -96,7 +104,7 @@ final class AssistantsViewModel: ObservableObject {
     }
 
     func getClientStatus(for assistant: Assistant) -> ClientStatus? {
-        return webSocketManagerStore.getClientStatus(for: assistant.id)
+        return clientStatusService.getClientStatus(for: assistant.id)
     }
 
     // MARK: - Assistant Management

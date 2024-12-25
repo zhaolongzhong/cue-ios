@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import Dependencies
 
 // MARK: - Message Record for SQLite
 struct MessageModelRecord: Codable, FetchableRecord, PersistableRecord {
@@ -42,8 +43,19 @@ struct MessageModelRecord: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+extension MessageModelStore: DependencyKey {
+    public static let liveValue = try! MessageModelStore()
+}
+
+extension DependencyValues {
+    var messageModelStore: MessageModelStore {
+        get { self[MessageModelStore.self] }
+        set { self[MessageModelStore.self] = newValue }
+    }
+}
+
 // MARK: - MessageModel Store
-class MessageModelStore {
+actor MessageModelStore {
     private let dbPool: DatabasePool
     private let databaseFileName = "message_models.sqlite"
 
@@ -57,7 +69,7 @@ class MessageModelStore {
         dbPool = try DatabasePool(path: dbPath)
 
         try dbPool.write { db in
-            try setupTable(database: db)
+            try MessageModelStore.setupTable(database: db)
         }
     }
 
@@ -125,7 +137,7 @@ class MessageModelStore {
         }
     }
 
-    private func setupTable(database: Database) throws {
+    static func setupTable(database: Database) throws {
         try database.create(table: MessageModelRecord.databaseTableName, ifNotExists: true) { table in
             table.column("id", .text).primaryKey()
             table.column("conversationId", .text)

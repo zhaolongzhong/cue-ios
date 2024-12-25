@@ -34,14 +34,6 @@ struct MessagePayloadBase: Codable {
     var recipient: String?
     var websocketRequestId: String?
     var metadata: Metadata?
-
-    enum CodingKeys: String, CodingKey {
-        case message
-        case sender
-        case recipient
-        case websocketRequestId = "websocket_request_id"
-        case metadata
-    }
 }
 
 // MARK: - GenericMessagePayload
@@ -54,16 +46,6 @@ struct GenericMessagePayload: Codable {
     var metadata: [String: String]?
     var userId: String?
     var msgId: String?
-
-    enum CodingKeys: String, CodingKey {
-        case message
-        case sender
-        case recipient
-        case websocketRequestId = "websocket_request_id"
-        case metadata
-        case userId = "user_id"
-        case msgId = "msg_id"
-    }
 }
 
 // MARK: - MessagePayload
@@ -77,17 +59,6 @@ public struct MessagePayload: Codable, Sendable {
     var userId: String?
     var msgId: String?
     var payload: JSONValue?
-
-    enum CodingKeys: String, CodingKey {
-        case message
-        case sender
-        case recipient
-        case websocketRequestId = "websocket_request_id"
-        case metadata
-        case userId = "user_id"
-        case msgId = "msg_id"
-        case payload
-    }
 }
 
 // MARK: - ClientEventPayload
@@ -102,18 +73,6 @@ struct ClientEventPayload: Codable {
     var userId: String?
     var msgId: String?
     var payload: JSONValue?
-
-    enum CodingKeys: String, CodingKey {
-        case message
-        case sender
-        case recipient
-        case websocketRequestId = "websocket_request_id"
-        case metadata
-        case clientId = "client_id"
-        case userId = "user_id"
-        case msgId = "msg_id"
-        case payload
-    }
 }
 
 // MARK: - PingPongEventPayload
@@ -125,15 +84,6 @@ struct PingPongEventPayload: Codable {
     var websocketRequestId: String?
     var metadata: Metadata?
     var type: String
-
-    enum CodingKeys: String, CodingKey {
-        case message
-        case sender
-        case recipient
-        case websocketRequestId = "websocket_request_id"
-        case metadata
-        case type
-    }
 }
 
 // MARK: - EventPayload
@@ -168,7 +118,9 @@ enum EventPayload: Codable, Sendable {
 
 // MARK: - EventMessage
 
-struct EventMessage: Codable {
+typealias ClientEvent = EventMessage
+
+public struct EventMessage: Codable, Sendable {
     var type: EventMessageType
     var payload: EventPayload
     var clientId: String?
@@ -199,7 +151,7 @@ struct EventMessage: Codable {
     }
 
     // Custom Decoder
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         type = try container.decode(EventMessageType.self, forKey: .type)
 
@@ -220,7 +172,7 @@ struct EventMessage: Codable {
     }
 
     // Custom Encoder
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(type, forKey: .type)
 
