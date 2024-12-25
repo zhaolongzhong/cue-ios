@@ -48,75 +48,155 @@ private struct iOSLoginContent: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @ObservedObject var viewModel: LoginViewModel
     @Binding var showSignUp: Bool
+    @Environment(\.colorScheme) var colorScheme
 
+    private let gradientColors: [Color] = [.blue, .purple]
+    
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 100, height: 100)
-                .foregroundColor(.blue)
-                .padding(.top, 40)
+        ZStack {
+            // Background gradient
+            LinearGradient(gradient: Gradient(colors: gradientColors.map { $0.opacity(colorScheme == .dark ? 0.1 : 0.05) }), 
+                          startPoint: .topLeading, 
+                          endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 32) {
+                    // Logo and welcome section
+                    VStack(spacing: 16) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 60, height: 60)
+                            .foregroundStyle(.linearGradient(colors: gradientColors, 
+                                                           startPoint: .topLeading, 
+                                                           endPoint: .bottomTrailing))
+                            .padding(.top, 40)
 
-            Text("Welcome Back!")
-                .font(.title)
-                .fontWeight(.bold)
+                        Text("Welcome Back")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
+                    }
 
-            VStack(spacing: 16) {
-                TextField("Email", text: $viewModel.email)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                    .keyboardType(.emailAddress)
+                    // Input fields
+                    VStack(spacing: 20) {
+                        // Email field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Email")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack {
+                                Image(systemName: "envelope")
+                                    .foregroundStyle(.secondary)
+                                TextField("you@example.com", text: $viewModel.email)
+                                    .textContentType(.emailAddress)
+                                    .autocapitalization(.none)
+                                    .keyboardType(.emailAddress)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                            )
+                        }
 
-                SecureField("Password", text: $viewModel.password)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.password)
-            }
-            .padding(.horizontal, 32)
+                        // Password field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Password")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack {
+                                Image(systemName: "lock")
+                                    .foregroundStyle(.secondary)
+                                SecureField("••••••••", text: $viewModel.password)
+                                    .textContentType(.password)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 24)
 
-            if let error = viewModel.error {
-                Text(error)
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
+                    // Error message
+                    if let error = viewModel.error {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                            Text(error)
+                                .font(.callout)
+                                .foregroundStyle(.red)
+                        }
+                        .padding(.horizontal, 24)
+                    }
 
-            Button(action: {
-                Task {
-                    await viewModel.login()
+                    // Sign in button
+                    VStack(spacing: 16) {
+                        Button(action: {
+                            Task {
+                                await viewModel.login()
+                            }
+                        }) {
+                            HStack {
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Text("Sign In")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                LinearGradient(gradient: Gradient(colors: gradientColors), 
+                                             startPoint: .leading, 
+                                             endPoint: .trailing)
+                            )
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .disabled(viewModel.isLoading)
+                        .padding(.horizontal, 24)
+
+                        Button("Forgot Password?") {
+                            // Handle forgot password
+                        }
+                        .font(.callout)
+                        .tint(gradientColors[0])
+                    }
+
+                    Spacer(minLength: 30)
+
+                    // Sign up section
+                    VStack(spacing: 16) {
+                        Divider()
+                            .padding(.horizontal, 24)
+                        
+                        HStack(spacing: 4) {
+                            Text("Don't have an account?")
+                                .foregroundStyle(.secondary)
+                            Button("Create Account") {
+                                showSignUp = true
+                            }
+                            .fontWeight(.medium)
+                            .tint(gradientColors[0])
+                        }
+                        .font(.callout)
+                        .padding(.bottom, 20)
+                    }
                 }
-            }) {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Sign In")
-                        .fontWeight(.semibold)
-                }
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
-            .padding(.horizontal, 32)
-            .disabled(viewModel.isLoading)
-
-            Button("Forgot Password?", action: {
-                // Handle forgot password
-            })
-            .foregroundColor(.blue)
-
-            Spacer()
-
-            HStack(spacing: 4) {
-                Text("Don't have an account?")
-                Button("Sign Up") {
-                    showSignUp = true
-                }
-                .foregroundColor(.blue)
-            }
-            .padding(.bottom, 20)
+            .scrollDismissesKeyboard(.immediately)
         }
         .sheet(isPresented: $showSignUp) {
             SignUpView(signUpiewModelFactory: dependencies.viewModelFactory.makeSignUpViewModel)
@@ -131,75 +211,138 @@ private struct macOSLoginContent: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @ObservedObject var viewModel: LoginViewModel
     @Binding var showSignUp: Bool
+    @Environment(\.colorScheme) var colorScheme
+    
+    private let gradientColors: [Color] = [.blue, .purple]
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
-                .foregroundColor(.blue)
-                .padding(.bottom, 10)
+        ZStack {
+            // Background gradient
+            LinearGradient(gradient: Gradient(colors: gradientColors.map { $0.opacity(colorScheme == .dark ? 0.1 : 0.05) }), 
+                          startPoint: .topLeading, 
+                          endPoint: .bottomTrailing)
+                .ignoresSafeArea()
 
-            Text("Welcome Back!")
-                .font(.title2)
-                .fontWeight(.semibold)
+            VStack(spacing: 20) {
+                // Logo and welcome section
+                VStack(spacing: 12) {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 50, height: 50)
+                        .foregroundStyle(.linearGradient(colors: gradientColors, 
+                                                       startPoint: .topLeading, 
+                                                       endPoint: .bottomTrailing))
+                        .padding(.top, 20)
 
-            VStack(spacing: 12) {
-                TextField("Email", text: $viewModel.email)
-                    .textFieldStyle(.roundedBorder)
+                    Text("Welcome Back")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                }
+
+                // Input fields
+                VStack(spacing: 16) {
+                    // Email field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Email")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        HStack {
+                            Image(systemName: "envelope")
+                                .foregroundStyle(.secondary)
+                            TextField("you@example.com", text: $viewModel.email)
+                        }
+                        .textFieldStyle(.plain)
+                        .padding(8)
+                        .background(Color(.textBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
                     .frame(width: 280)
 
-                SecureField("Password", text: $viewModel.password)
-                    .textFieldStyle(.roundedBorder)
+                    // Password field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Password")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        HStack {
+                            Image(systemName: "lock")
+                                .foregroundStyle(.secondary)
+                            SecureField("••••••••", text: $viewModel.password)
+                        }
+                        .textFieldStyle(.plain)
+                        .padding(8)
+                        .background(Color(.textBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
                     .frame(width: 280)
-            }
+                }
 
-            if let error = viewModel.error {
-                Text(error)
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
-
-            HStack(spacing: 12) {
-                Button("Sign In") {
-                    Task {
-                        await viewModel.login()
+                // Error message
+                if let error = viewModel.error {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isLoading)
-                .frame(width: 80)
 
-                if viewModel.isLoading {
-                    ProgressView()
+                // Sign in button
+                VStack(spacing: 12) {
+                    Button(action: {
+                        Task {
+                            await viewModel.login()
+                        }
+                    }) {
+                        HStack {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .controlSize(.small)
+                            } else {
+                                Text("Sign In")
+                                    .fontWeight(.medium)
+                            }
+                        }
+                        .frame(width: 100)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isLoading)
+
+                    Button("Forgot Password?") {
+                        // Handle forgot password
+                    }
+                    .buttonStyle(.link)
+                    .controlSize(.small)
+                }
+
+                Spacer()
+
+                // Sign up section
+                VStack(spacing: 12) {
+                    Divider()
+                    
+                    HStack(spacing: 4) {
+                        Text("Don't have an account?")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Create Account") {
+                            showSignUp = true
+                        }
+                        .buttonStyle(.link)
+                        .controlSize(.small)
+                    }
                 }
             }
-            .padding(.top, 8)
-
-            Button("Forgot Password?") {
-                // Handle forgot password
-            }
-            .buttonStyle(.link)
-            .controlSize(.small)
-
-            Spacer()
-
-            HStack(spacing: 4) {
-                Text("Don't have an account?")
-                    .font(.caption)
-                Button("Sign Up") {
-                    showSignUp = true
-                }
-                .buttonStyle(.link)
-                .controlSize(.small)
-            }
+            .padding(24)
         }
-        .padding(24)
         .sheet(isPresented: $showSignUp) {
             SignUpView(signUpiewModelFactory: dependencies.viewModelFactory.makeSignUpViewModel)
         }
-        .frame(minWidth: 340, minHeight: 480)
+        .frame(width: 340, height: 480)
         .onAppear {
             setWindowSize(width: 340, height: 480)
         }
