@@ -153,13 +153,13 @@ final class ChatViewModel: ObservableObject {
     }
 
     func loadMoreMessages() async {
-        loadMoreTask?.cancel()
         guard !isLoadingMore,
               !messageModels.isEmpty,
               let conversationId = primaryConversation?.id else {
             return
         }
 
+        loadMoreTask?.cancel()
         loadMoreTask = Task { @MainActor in
             isLoadingMore = true
             defer {
@@ -167,7 +167,9 @@ final class ChatViewModel: ObservableObject {
                 loadMoreTask = nil
             }
 
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                return
+            }
 
             let result = await messageRepository.listMessages(
                 conversationId: conversationId,
@@ -175,7 +177,9 @@ final class ChatViewModel: ObservableObject {
                 limit: 20
             )
 
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                return
+            }
 
             switch result {
             case .success(let newMessages):

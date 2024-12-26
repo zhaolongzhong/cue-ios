@@ -83,7 +83,7 @@ final class AssistantsViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        switch await assistantRepository.listAssistants(skip: 0, limit: 5) {
+        switch await assistantRepository.listAssistants(skip: 0, limit: 8) {
         case .success(let fetchedAssistants):
             self.assistants = fetchedAssistants
 
@@ -227,24 +227,42 @@ final class AssistantsViewModel: ObservableObject {
 
         guard !missingIds.isEmpty else { return }
 
-        await withTaskGroup(of: Void.self) { group in
+        var newAssistants: [Assistant] = []
+        var errors: [(AssistantRepositoryError, String)] = []
+
+        await withTaskGroup(of: Result<Assistant, AssistantRepositoryError>.self) { group in
             for assistantId in missingIds {
                 group.addTask { [weak self] in
-                    guard let self else { return }
-
-                    switch await self.assistantRepository.getAssistant(id: assistantId) {
-                    case .success(let assistant):
-                        await MainActor.run {
-                            self.assistants.append(assistant)
-                            AppLog.log.debug("Added unmatched assistant: \(assistantId)")
-                        }
-
-                    case .failure(let error):
-                        await MainActor.run {
-                            handleError(error, context: "Fetching unmatched assistant failed")
-                        }
+                    guard let self else {
+                        return .failure(.deallocated)
                     }
+
+                    return await self.assistantRepository.getAssistant(id: assistantId)
                 }
+            }
+
+            for await result in group {
+                switch result {
+                case .success(let assistant):
+                    newAssistants.append(assistant)
+                case .failure(let error):
+                    errors.append((error, "Fetching unmatched assistant failed"))
+                }
+            }
+        }
+
+        await MainActor.run {
+            let uniqueNewAssistants = newAssistants.filter { newAssistant in
+                !self.assistants.contains { $0.id == newAssistant.id }
+            }
+            self.assistants.append(contentsOf: uniqueNewAssistants)
+
+            for assistant in uniqueNewAssistants {
+                AppLog.log.debug("Added unmatched assistant: \(assistant.id)")
+            }
+
+            for (error, context) in errors {
+                handleError(error, context: context)
             }
         }
     }

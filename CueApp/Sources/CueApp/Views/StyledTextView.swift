@@ -3,6 +3,9 @@ import SwiftUI
 struct StyledTextView: View {
     let content: String
     let colorScheme: ColorScheme
+    let maxCharacters: Int
+    let isExpanded: Bool
+    let onShowMore: () -> Void
 
     var codeBackgroundColor: Color {
         colorScheme == .light ?
@@ -11,7 +14,29 @@ struct StyledTextView: View {
     }
 
     var body: some View {
-        styledText(content)
+        VStack(alignment: .leading, spacing: 4) {
+            styledText(truncatedContent)
+            if isTruncated {
+                Button(action: onShowMore) {
+                    Text("Show More")
+                        .font(.system(.callout))
+                        .foregroundColor(.gray)
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var isTruncated: Bool {
+        content.count > maxCharacters && !isExpanded
+    }
+
+    private var truncatedContent: String {
+        if isTruncated {
+            let index = content.index(content.startIndex, offsetBy: maxCharacters, limitedBy: content.endIndex) ?? content.endIndex
+            return String(content[..<index])
+        } else {
+            return content
+        }
     }
 
     private func styledText(_ content: String) -> some View {
@@ -59,9 +84,8 @@ struct StyledTextView: View {
         let matches = regex.matches(in: text, range: range)
 
         for match in matches {
-            if let textRange = Range(NSRange(location: NSRange(currentIndex..., in: text).location,
-                                           length: match.range.location - NSRange(currentIndex..., in: text).location), in: text) {
-                let textContent = String(text[textRange])
+            if let plainRange = Range(NSRange(location: currentIndex.utf16Offset(in: text), length: match.range.location - currentIndex.utf16Offset(in: text)), in: text) {
+                let textContent = String(text[plainRange])
                 if !textContent.isEmpty {
                     segments.append(.plain(textContent))
                 }

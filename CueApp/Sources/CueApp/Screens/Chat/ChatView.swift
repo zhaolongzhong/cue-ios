@@ -7,6 +7,7 @@ struct ChatView: View {
     @SceneStorage("chatScrollPosition") private var scrollPosition: String?
     @FocusState private var isFocused: Bool
     @State private var scrollProxy: ScrollViewProxy?
+    @State private var selectedMessage: MessageModel?
 
     init(assistant: Assistant,
          chatViewModel: ChatViewModel,
@@ -31,7 +32,10 @@ struct ChatView: View {
                 onScrollProxyReady: { proxy in
                     scrollProxy = proxy
                 },
-                onLoadMore: viewModel.loadMoreMessages
+                onLoadMore: viewModel.loadMoreMessages,
+                onShowMore: { message in
+                    selectedMessage = message
+                }
             )
             .padding(.horizontal, 10)
             .background(Color.clear)
@@ -94,6 +98,9 @@ struct ChatView: View {
             .presentationCompactAdaptation(.popover)
         }
         #endif
+        .sheet(item: $selectedMessage) { message in
+            FullMessageView(message: message)
+        }
         .onAppear {
             Task {
                 await viewModel.setupChat()

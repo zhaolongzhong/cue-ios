@@ -5,6 +5,7 @@ struct MessagesListView: View {
     let shouldAutoScroll: Bool
     let onScrollProxyReady: (ScrollViewProxy) -> Void
     let onLoadMore: () async -> Void
+    let onShowMore: (MessageModel?) -> Void
 
     @State private var scrollProxy: ScrollViewProxy?
     @State private var hasInitialized = false
@@ -20,7 +21,9 @@ struct MessagesListView: View {
                 shouldAutoScroll: shouldAutoScroll,
                 onScrollProxyReady: onScrollProxyReady,
                 hasInitialized: $hasInitialized,
-                previousMessageCount: $previousMessageCount
+                previousMessageCount: $previousMessageCount,
+                onLoadMore: onLoadMore,
+                onShowMore: onShowMore
             )
             .refreshable {
                 await onLoadMore()
@@ -54,20 +57,36 @@ struct MessagesList: View {
     let onScrollProxyReady: (ScrollViewProxy) -> Void
     @Binding var hasInitialized: Bool
     @Binding var previousMessageCount: Int
+    let onLoadMore: () async -> Void
+    let onShowMore: (MessageModel?) -> Void
+    @State var previousFirstVisibleIndex: Double = 0
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                        MessageBubble(role: message.author.role, content: message.getText())
-                            .id(message.id)
-                            .background(MessageVisibilityTracker(index: index))
+                        MessageBubble(
+                            message: message,
+                            role: message.author.role,
+                            content: message.getText(),
+                            onShowMore: onShowMore
+                        )
+                        .id(message.id)
+                        .background(MessageVisibilityTracker(index: index))
                     }
                 }
                 .padding(.vertical, 8)
             }
             .onPreferenceChange(ViewVisibilityKey.self) { visibility in
+                if let firstVisibleIndex = visibility.first?.index {
+                    #if os(macOS)
+                    Task { @MainActor in
+                        loadMoreMessages(firstVisibleIndex)
+                    }
+                    #endif
+                }
+
                 if let lastVisibleIndex = visibility.last?.index {
                     Task { @MainActor in
                         showScrollButton = lastVisibleIndex < Double(messages.count - 3)
@@ -100,6 +119,17 @@ struct MessagesList: View {
             proxy.scrollTo(lastMessage.id, anchor: .bottom)
         }
         hasInitialized = true
+    }
+
+    private func loadMoreMessages(_ firstVisibleIndex: Double) {
+        if firstVisibleIndex < previousFirstVisibleIndex,
+           firstVisibleIndex <= 10,
+           hasInitialized {
+            Task { @MainActor in
+                await onLoadMore()
+            }
+        }
+        previousFirstVisibleIndex = firstVisibleIndex
     }
 }
 

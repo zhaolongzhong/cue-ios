@@ -8,6 +8,7 @@ enum AssistantRepositoryError: Error {
     case invalidAssistantId
     case invalidConversationId
     case conversationCreationFailed(underlying: Error)
+    case deallocated
 }
 
 typealias AssistantResult<T> = Result<T, AssistantRepositoryError>

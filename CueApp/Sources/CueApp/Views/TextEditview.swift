@@ -66,6 +66,9 @@ extension View {
                     onSave(newValue)
                 }
             )
+            #if os(macOS)
+            .defaultWindowSize()
+            #endif
         }
     }
 }

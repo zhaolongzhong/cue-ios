@@ -95,6 +95,7 @@ struct AssistantDetailView: View {
         #if os(iOS)
         .listStyle(.insetGrouped)
         #else
+        .defaultWindowSize()
         .listStyle(.automatic)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
