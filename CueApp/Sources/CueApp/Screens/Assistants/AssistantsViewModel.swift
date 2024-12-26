@@ -171,6 +171,7 @@ final class AssistantsViewModel: ObservableObject {
         description: String? = nil,
         maxTurns: Int? = nil,
         context: JSONValue? = nil,
+        system: JSONValue? = nil,
         tools: [String]? = nil
     ) async -> Assistant? {
         let metadata = AssistantMetadataUpdate(
@@ -180,6 +181,7 @@ final class AssistantsViewModel: ObservableObject {
             description: description,
             maxTurns: maxTurns,
             context: context,
+            system: system,
             tools: tools
         )
 

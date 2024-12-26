@@ -78,6 +78,28 @@ struct AssistantDetailView: View {
                 )
             }
             .buttonStyle(.plain)
+            
+            Button {
+                viewModel.showingContextEdit = true
+            } label: {
+                SettingsRow(
+                    systemName: "curlybraces",
+                    title: "Context",
+                    showChevron: true
+                )
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                viewModel.showingSystemEdit = true
+            } label: {
+                SettingsRow(
+                    systemName: "gear",
+                    title: "System",
+                    showChevron: true
+                )
+            }
+            .buttonStyle(.plain)
 
             Button {
                 viewModel.prepareMaxTurnsEdit()
@@ -141,6 +163,36 @@ struct AssistantDetailView: View {
         ) { newValue in
             Task {
                 await viewModel.updateMetadata(description: newValue)
+            }
+        }
+        .textFieldEditor(
+            title: "Edit Context",
+            text: $viewModel.context,
+            isPresented: $viewModel.showingContextEdit
+        ) { newValue in
+            Task {
+                // Try to parse as JSON if possible
+                if let jsonData = newValue.data(using: .utf8),
+                   let _ = try? JSONSerialization.jsonObject(with: jsonData) {
+                    await viewModel.updateMetadata(context: JSONValue(stringLiteral: newValue))
+                } else {
+                    await viewModel.updateMetadata(context: JSONValue.string(newValue))
+                }
+            }
+        }
+        .textFieldEditor(
+            title: "Edit System",
+            text: $viewModel.system,
+            isPresented: $viewModel.showingSystemEdit
+        ) { newValue in
+            Task {
+                // Try to parse as JSON if possible
+                if let jsonData = newValue.data(using: .utf8),
+                   let _ = try? JSONSerialization.jsonObject(with: jsonData) {
+                    await viewModel.updateMetadata(system: JSONValue(stringLiteral: newValue))
+                } else {
+                    await viewModel.updateMetadata(system: JSONValue.string(newValue))
+                }
             }
         }
     }

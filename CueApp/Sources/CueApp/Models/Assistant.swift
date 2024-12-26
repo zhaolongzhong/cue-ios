@@ -11,6 +11,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
     let description: String?
     let maxTurns: Int?
     let context: JSONValue?
+    let system: JSONValue?
     let tools: [String]?
 
     enum CodingKeys: String, CodingKey {
@@ -20,6 +21,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
         case description
         case maxTurns = "max_turns"
         case context
+        case system
         case tools
     }
 }
@@ -31,6 +33,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
     let description: String?
     let maxTurns: Int?
     let context: JSONValue?
+    let system: JSONValue?
     let tools: [String]?
 
     enum CodingKeys: String, CodingKey {
@@ -40,6 +43,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         case description
         case maxTurns = "max_turns"
         case context
+        case system
         case tools
     }
 
@@ -51,6 +55,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         description: String? = nil,
         maxTurns: Int? = nil,
         context: JSONValue? = nil,
+        system: JSONValue? = nil,
         tools: [String]? = nil
     ) {
         self.isPrimary = isPrimary
@@ -59,6 +64,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         self.description = description
         self.maxTurns = maxTurns
         self.context = context
+        self.system = system
         self.tools = tools
     }
 }

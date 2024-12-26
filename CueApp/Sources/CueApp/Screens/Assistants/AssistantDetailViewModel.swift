@@ -10,6 +10,8 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var showingNameEdit = false
     @Published var showingInstructionEdit = false
     @Published var showingDescriptionEdit = false
+    @Published var showingContextEdit = false
+    @Published var showingSystemEdit = false
     @Published var showingMaxTurnsEdit = false
     @Published var showCopiedAlert = false
 
@@ -17,6 +19,8 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var selectedModel = ""
     @Published var instruction = ""
     @Published var description = ""
+    @Published var context = ""
+    @Published var system = ""
     @Published var maxTurns = ""
     @Published var tempMaxTurns = ""
 
@@ -41,6 +45,14 @@ final class AssistantDetailViewModel: ObservableObject {
         self.instruction = assistant.metadata?.instruction ?? ""
         self.description = assistant.metadata?.description ?? ""
         self.maxTurns = String(assistant.metadata?.maxTurns ?? 0)
+        
+        // Convert JSONValue to string if exists
+        if let contextValue = assistant.metadata?.context {
+            self.context = String(describing: contextValue)
+        }
+        if let systemValue = assistant.metadata?.system {
+            self.system = String(describing: systemValue)
+        }
     }
 
     func updateName() async {
@@ -59,6 +71,8 @@ final class AssistantDetailViewModel: ObservableObject {
         model: String? = nil,
         instruction: String? = nil,
         description: String? = nil,
+        context: JSONValue? = nil,
+        system: JSONValue? = nil,
         maxTurns: Int? = nil
     ) async {
         guard let updatedAssistant = await assistantsViewModel.updateMetadata(
@@ -66,6 +80,8 @@ final class AssistantDetailViewModel: ObservableObject {
             model: model,
             instruction: instruction,
             description: description,
+            context: context,
+            system: system,
             maxTurns: maxTurns
         ) else {
             AppLog.log.error("Error when updating assistant metadata.")
