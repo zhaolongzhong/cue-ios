@@ -8,6 +8,9 @@ struct ChatView: View {
     @FocusState private var isFocused: Bool
     @State private var scrollProxy: ScrollViewProxy?
 
+    // New State variable to track the selected message
+    @State private var selectedMessage: MessageModel?
+
     init(assistant: Assistant,
          chatViewModel: ChatViewModel,
          assistantsViewModel: AssistantsViewModel,
@@ -31,7 +34,11 @@ struct ChatView: View {
                 onScrollProxyReady: { proxy in
                     scrollProxy = proxy
                 },
-                onLoadMore: viewModel.loadMoreMessages
+                onLoadMore: viewModel.loadMoreMessages,
+                onShowMore: { message in
+                    // Set the selected message to present the sheet
+                    selectedMessage = message
+                }
             )
             .padding(.horizontal, 10)
             .background(Color.clear)
@@ -94,6 +101,10 @@ struct ChatView: View {
             .presentationCompactAdaptation(.popover)
         }
         #endif
+        // Add the sheet modifier for full message display
+        .sheet(item: $selectedMessage) { message in
+            FullMessageView(message: message)
+        }
         .onAppear {
             Task {
                 await viewModel.setupChat()

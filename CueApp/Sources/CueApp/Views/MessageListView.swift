@@ -5,6 +5,7 @@ struct MessagesListView: View {
     let shouldAutoScroll: Bool
     let onScrollProxyReady: (ScrollViewProxy) -> Void
     let onLoadMore: () async -> Void
+    let onShowMore: (MessageModel) -> Void
 
     @State private var scrollProxy: ScrollViewProxy?
     @State private var hasInitialized = false
@@ -20,7 +21,8 @@ struct MessagesListView: View {
                 shouldAutoScroll: shouldAutoScroll,
                 onScrollProxyReady: onScrollProxyReady,
                 hasInitialized: $hasInitialized,
-                previousMessageCount: $previousMessageCount
+                previousMessageCount: $previousMessageCount,
+                onShowMore: onShowMore
             )
             .refreshable {
                 await onLoadMore()
@@ -54,15 +56,22 @@ struct MessagesList: View {
     let onScrollProxyReady: (ScrollViewProxy) -> Void
     @Binding var hasInitialized: Bool
     @Binding var previousMessageCount: Int
+    let onShowMore: (MessageModel) -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                        MessageBubble(role: message.author.role, content: message.getText())
-                            .id(message.id)
-                            .background(MessageVisibilityTracker(index: index))
+                        MessageBubble(
+                            role: message.author.role,
+                            content: message.getText(),
+                            onShowMore: {
+                                onShowMore(message)
+                            }
+                        )
+                        .id(message.id)
+                        .background(MessageVisibilityTracker(index: index))
                     }
                 }
                 .padding(.vertical, 8)

@@ -43,7 +43,10 @@ public struct OpenAIChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(viewModel.messages) { message in
-                        MessageBubble(role: message.role, content: message.content)
+                        MessageBubble(
+                            role: message.role,
+                            content: message.content
+                        )
                     }
                     // Invisible marker view at bottom
                     Color.clear
