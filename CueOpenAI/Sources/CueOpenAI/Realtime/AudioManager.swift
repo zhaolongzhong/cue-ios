@@ -93,10 +93,31 @@ public class AudioManager: NSObject, @unchecked Sendable {
         delegate = nil
     }
     
+    private func checkMicrophonePermission() async throws {
+        #if os(macOS)
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        switch status {
+        case .notDetermined:
+            let granted = await AVCaptureDevice.requestAccess(for: .audio)
+            if !granted {
+                throw AudioManagerError.audioSessionError("Microphone permission denied")
+            }
+        case .restricted, .denied:
+            throw AudioManagerError.audioSessionError("Microphone access is restricted or denied")
+        case .authorized:
+            break
+        @unknown default:
+            throw AudioManagerError.audioSessionError("Unknown microphone permission status")
+        }
+        #endif
+    }
+    
     // MARK: - Setup Audio Engine
     
     @MainActor func setupAudioEngine() async throws {
         guard !isAudioEngineSetup else { return }
+        
+        try await checkMicrophonePermission()
         
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()

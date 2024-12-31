@@ -35,16 +35,13 @@ actor NetworkClient {
         do {
             return try await performRequest(endpoint)
         } catch NetworkError.forbidden(let message) where message == "Token expired" {
-            // Try to refresh the token and retry the request
             let newTokens = try await refreshTokens()
-            print("inx refreshed tokens: \(newTokens)")
             await TokenManager.shared.saveTokens(
                 accessToken: newTokens.accessToken,
                 refreshToken: newTokens.refreshToken
             )
             return try await performRequest(endpoint)
         } catch {
-            print("inx error: \(error)")
             throw error
         }
     }

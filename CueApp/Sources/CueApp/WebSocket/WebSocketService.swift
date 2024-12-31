@@ -86,7 +86,7 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
         connectionState = .connecting
 
         do {
-            try establishConnection()
+            try await establishConnection()
         } catch let error as WebSocketError {
             handleError(error)
         } catch {
@@ -98,8 +98,8 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
         self.lastPongReceived = Date()
     }
 
-    private func establishConnection() throws {
-        guard let accessToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY") else {
+    private func establishConnection() async throws {
+        guard let accessToken = await TokenManager.shared.accessToken else {
             throw WebSocketError.unauthorized
         }
 

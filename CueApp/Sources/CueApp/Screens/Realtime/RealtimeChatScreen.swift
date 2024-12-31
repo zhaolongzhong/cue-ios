@@ -4,6 +4,7 @@ import CueOpenAI
 public struct RealtimeChatScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var voiceChatViewModel: RealtimeChatViewModel
 
     public init(viewModelFactory: @escaping (String) -> RealtimeChatViewModel, apiKey: String) {
@@ -32,6 +33,12 @@ public struct RealtimeChatScreen: View {
                 .padding(.vertical)
             }
         }
+        .onChange(of: voiceChatViewModel.chatError) { _, error in
+            if let error = error {
+                coordinator.showError(error.message)
+                voiceChatViewModel.clearError()
+            }
+        }
     }
 
     private var messageInputView: some View {
@@ -40,7 +47,7 @@ public struct RealtimeChatScreen: View {
             RoundedTextField(
                 placeholder: "Type a message...",
                 text: $voiceChatViewModel.newMessage,
-                isDisabled: !voiceChatViewModel.state.isConnected || voiceChatViewModel.newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                isDisabled: !voiceChatViewModel.state.isConnected
             ) {
                 voiceChatViewModel.sendMessage()
             }

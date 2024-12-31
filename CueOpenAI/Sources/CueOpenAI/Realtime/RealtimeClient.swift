@@ -146,27 +146,19 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
     // MARK: - Session Management
     
     @MainActor
-    public func startSession(apiKey: String, model: String, sessionCreate: RealtimeSession? = nil) async {
+    public func startSession(apiKey: String, model: String, sessionCreate: RealtimeSession? = nil) async throws {
         guard case .idle = state else {
             logger.warning("Cannot start session in current state: \(self.state.description)")
             return
         }
         
         state = .connecting
-        
-        do {
-            let config = RealtimeConfig(apiKey: apiKey, model: model)
-            self.connection = try await realtimeAPI.createConnection(config: config, sessionCreate: sessionCreate)
-            setupConnectionSbuscription()
-            try await setEventsSubscription()
-            if self.transport == .webSocket {
-                try await setupAudioManager()
-            }
-            logger.info("Session started")
-        } catch {
-            state = .error("Failed to start session: \(error.localizedDescription)")
-            logger.error("Session start failed: \(error.localizedDescription)")
-        }
+        let config = RealtimeConfig(apiKey: apiKey, model: model)
+        self.connection = try await realtimeAPI.createConnection(config: config, sessionCreate: sessionCreate)
+        setupConnectionSbuscription()
+        try await setEventsSubscription()
+        try await setupAudioManager()
+        logger.info("Session started")
     }
     
     @MainActor public func endSession() {
