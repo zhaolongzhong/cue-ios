@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct FullMessageView: View {
+    @Environment(\.dismiss) var dismiss
     let message: MessageModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Spacer()
-                DismissButton()
+                DismissButton(action: { dismiss() })
             }
             .padding([.top, .horizontal])
 

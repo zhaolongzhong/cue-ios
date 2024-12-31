@@ -24,9 +24,9 @@ import Foundation
 
 // MARK: - Server Manager
 @MainActor @Observable class MCPServerManager {
-    public var servers: [String: ServerContext] = [:]
     public var serverTools: [String: [MCPTool]] = [:]
-    var serverStatuses: [String: Bool] = [:]
+    public private(set) var servers: [String: ServerContext] = [:]
+    public private(set) var serverStatuses: [String: Bool] = [:]
     private var isInitialized = false
     private let configManager: ConfigManager
 

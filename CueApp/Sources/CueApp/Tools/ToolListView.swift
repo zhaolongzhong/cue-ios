@@ -7,19 +7,21 @@ struct ToolsListView: View {
 
     var body: some View {
         #if os(macOS)
-        VStack {
-            content
-            HStack {
-                Spacer()
-                Button("Done") {
-                    dismiss()
+        NavigationStack {
+            VStack {
+                HStack {
+                    Text("Available Tools")
+                        .font(.headline)
+                    Spacer()
+                    DismissButton(action: { dismiss() })
                 }
-                .keyboardShortcut(.escape, modifiers: [])
-                .padding(.trailing)
+                .padding()
+                content
             }
-            .padding(.bottom)
         }
-        .frame(minWidth: 300, minHeight: 400)
+        .frame(minWidth: 400, minHeight: 300)
+        .frame(idealWidth: 800, idealHeight: 600)
+        .resizableSheet()
         #else
         NavigationView {
             content
@@ -39,16 +41,12 @@ struct ToolsListView: View {
             }
             .padding(.vertical, 4)
         }
-        .padding(.top)
-        #if os(macOS)
+        #if os(iOS)
         .navigationTitle("Available Tools")
-        #else
-        .navigationTitle("Available Tools")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
-                    dismiss()
-                }
+                DismissButton(action: { dismiss() })
             }
         }
         #endif

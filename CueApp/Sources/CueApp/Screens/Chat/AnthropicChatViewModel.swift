@@ -7,6 +7,7 @@ final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
     private let toolManager: ToolManager
     private let model: String = "claude-3-5-haiku-20241022"
+    private var cancellables = Set<AnyCancellable>()
 
     @Published var messages: [Anthropic.ChatMessage] = []
     @Published var newMessage: String = ""
@@ -18,11 +19,21 @@ final class AnthropicChatViewModel: ObservableObject {
         self.anthropic = Anthropic(apiKey: apiKey)
         self.toolManager = ToolManager()
         self.availableTools = toolManager.getTools()
+        setupToolsSubscription()
+    }
+
+    private func setupToolsSubscription() {
+        toolManager.mcptoolsPublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.availableTools = self.toolManager.getTools()
+            }
+            .store(in: &cancellables)
     }
 
     func startServer() async {
         await self.toolManager.startMcpServer()
-        self.availableTools = toolManager.getTools()
     }
 
     func sendMessage() async {

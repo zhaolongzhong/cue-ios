@@ -1,5 +1,6 @@
 import Foundation
 import CueOpenAI
+import Combine
 
 @MainActor
 class ToolManager {
@@ -7,6 +8,10 @@ class ToolManager {
     #if os(macOS)
     private let mcpManager: MCPServerManager?
     #endif
+    private let mcpToolsSubject = CurrentValueSubject<[MCPTool], Never>([])
+    var mcptoolsPublisher: AnyPublisher<[MCPTool], Never> {
+        mcpToolsSubject.eraseToAnyPublisher()
+    }
 
     init() {
         self.localTools = [
@@ -17,7 +22,6 @@ class ToolManager {
         self.mcpManager = MCPServerManager()
         #endif
     }
-
     func startMcpServer() async {
         #if os(macOS)
         guard let mcpManager = self.mcpManager else {
@@ -26,11 +30,26 @@ class ToolManager {
         do {
             AppLog.log.debug("📱 Starting MCP servers...")
             try await mcpManager.startAll()
+            notifyToolsUpdate()
         } catch {
             AppLog.log.error("❌ Failed to start MCP servers: \(error)")
         }
         #endif
     }
+
+    #if os(macOS)
+    private func notifyToolsUpdate() {
+        var allTools: [MCPTool] = []
+        if let mcpManager = mcpManager {
+            for (serverName, tools) in mcpManager.serverTools {
+                AppLog.log.debug("Add tools for server: \(serverName)")
+                allTools.append(contentsOf: tools)
+            }
+        }
+        mcpToolsSubject.send(allTools)
+        AppLog.log.debug("Total mcp tools: \(allTools.count)")
+    }
+    #endif
 
     func getMCPTools() -> [MCPTool] {
         var tools: [MCPTool] = localTools.map { tool in

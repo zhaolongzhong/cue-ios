@@ -21,7 +21,7 @@ public struct RealtimeChatScreen: View {
                     #if os(iOS)
                     HStack {
                         Spacer()
-                        DismissButton()
+                        DismissButton(action: { dismiss() })
                             .padding(.horizontal)
                     }
                     #endif

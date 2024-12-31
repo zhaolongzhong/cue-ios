@@ -7,6 +7,7 @@ final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
     private let toolManager: ToolManager
     private let model: String = "gpt-4o-mini"
+    private var cancellables = Set<AnyCancellable>()
 
     @Published var messages: [OpenAI.ChatMessage] = []
     @Published var newMessage: String = ""
@@ -18,11 +19,21 @@ final class OpenAIChatViewModel: ObservableObject {
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
         self.availableTools = toolManager.getTools()
+        setupToolsSubscription()
+    }
+
+    private func setupToolsSubscription() {
+        toolManager.mcptoolsPublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.availableTools = self.toolManager.getTools()
+            }
+            .store(in: &cancellables)
     }
 
     func startServer() async {
         await self.toolManager.startMcpServer()
-        self.availableTools = toolManager.getTools()
     }
 
     func sendMessage() async {
