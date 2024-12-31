@@ -74,11 +74,12 @@ public final class AssistantService: Sendable {
         }
     }
 
-    func deleteAssistant(id: String) async throws {
+    func deleteAssistant(id: String) async throws -> StatusResponse {
         do {
-            try await NetworkClient.shared.requestWithEmptyResponse(
+            let status: StatusResponse = try await NetworkClient.shared.request(
                 AssistantEndpoint.delete(id: id)
             )
+            return status
         } catch NetworkError.httpError(let code, _) where code == 404 {
             throw AssistantError.notFound
         } catch {

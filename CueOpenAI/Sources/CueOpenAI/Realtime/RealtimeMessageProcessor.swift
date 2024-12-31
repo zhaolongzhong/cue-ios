@@ -28,16 +28,6 @@ public final class RealtimeMessageProcessor: MessageProcessorProtocol, Sendable 
         return jsonString
     }
     
-//    func processData(_ data: Data) throws -> ServerEvent {
-//        do {
-//            let serverEvent = try decoder.decode(ServerEvent.self, from: data)
-//            return serverEvent
-//        } catch let decodingError as DecodingError {
-//            logDecodingError(decodingError, data: data)
-//            throw RealtimeServiceError.decodingError
-//        }
-//    }
-    
     public func decodeEvent<T>(_ data: Data) throws -> T where T : Decodable {
         do {
             let serverEvent = try decoder.decode(ServerEvent.self, from: data)

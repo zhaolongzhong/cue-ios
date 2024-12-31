@@ -1,3 +1,4 @@
+import Foundation
 import Dependencies
 
 enum AssistantRepositoryError: Error {
@@ -9,6 +10,14 @@ enum AssistantRepositoryError: Error {
     case invalidConversationId
     case conversationCreationFailed(underlying: Error)
     case deallocated
+}
+
+struct CustomError: Error, LocalizedError {
+    let message: String
+
+    var errorDescription: String? {
+        return message
+    }
 }
 
 typealias AssistantResult<T> = Result<T, AssistantRepositoryError>
@@ -80,8 +89,13 @@ actor AssistantRepository: AssistantRepositoryProtocol, Cleanable {
         }
 
         do {
-            try await assistantService.deleteAssistant(id: id)
-            return .success(())
+            let status = try await assistantService.deleteAssistant(id: id)
+            if status.success {
+                return .success(())
+            } else {
+                let customError = CustomError(message: "Delete failed due to unknown reasons.")
+                return .failure(.deleteFailed(underlying: customError))
+            }
         } catch {
             return .failure(.deleteFailed(underlying: error))
         }

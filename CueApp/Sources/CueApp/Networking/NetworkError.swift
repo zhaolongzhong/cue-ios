@@ -5,6 +5,7 @@ enum NetworkError: LocalizedError {
     case invalidResponse
     case httpError(Int, Data?)
     case decodingError(Error)
+    case forbidden(message: String)
     case unauthorized
     case serverError
     case networkError(Error)
@@ -21,6 +22,8 @@ enum NetworkError: LocalizedError {
             return "HTTP Error: \(statusCode)"
         case .decodingError:
             return "Failed to decode response"
+        case .forbidden(let message):
+            return "Forbidden: \(message)"
         case .unauthorized:
             return "Unauthorized access"
         case .serverError:

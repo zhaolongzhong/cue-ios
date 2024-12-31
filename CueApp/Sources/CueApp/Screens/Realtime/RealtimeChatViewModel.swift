@@ -17,10 +17,16 @@ public final class RealtimeChatViewModel: ObservableObject {
     @Published var messages: [OpenAI.ChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
-    @Published var error: ChatError?
+    @Published var chatError: ChatError?
     @Published public var state: VoiceChatState = .idle {
         didSet {
             logger.debug("OpenAIVoiceChatViewModel Voice state change to \(self.state.description)")
+            switch state {
+            case .error(let message):
+                chatError = .sessionError(message)
+            default:
+                break
+            }
         }
     }
     private var handledEventIds: Set<String> = []
@@ -81,13 +87,15 @@ public final class RealtimeChatViewModel: ObservableObject {
     }
 
     public func startSession() async {
-        Task {
-            await realtimeClient.startSession(apiKey: self.apiKey, model: self.model)
-            await updateSession()
+        do {
+            try await realtimeClient.startSession(apiKey: self.apiKey, model: self.model)
+            try await updateSession()
+        } catch {
+            chatError = .sessionError(String(describing: error))
         }
     }
 
-    private func updateSession() async {
+    private func updateSession() async throws {
         var builder = SessionUpdateBuilder()
         builder.tools = self.toolManager.getTools().map { $0.asDefinition() }
         builder.toolChoice = .auto
@@ -98,6 +106,7 @@ public final class RealtimeChatViewModel: ObservableObject {
             try await realtimeClient.send(event: event)
         } catch {
             self.logger.error("Update session error: \(error)")
+            throw error
         }
     }
 
@@ -209,5 +218,9 @@ public final class RealtimeChatViewModel: ObservableObject {
         }
 
         return results
+    }
+
+    func clearError() {
+        chatError = nil
     }
 }
