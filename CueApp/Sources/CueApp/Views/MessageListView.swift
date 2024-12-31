@@ -11,6 +11,8 @@ struct MessagesListView: View {
     @State private var hasInitialized = false
     @State private var showScrollButton = false
     @State private var previousMessageCount = 0
+    @State private var hasScrolledToBottom = false
+    @State private var forceScrollID = UUID()
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -22,6 +24,8 @@ struct MessagesListView: View {
                 onScrollProxyReady: onScrollProxyReady,
                 hasInitialized: $hasInitialized,
                 previousMessageCount: $previousMessageCount,
+                hasScrolledToBottom: $hasScrolledToBottom,
+                forceScrollID: forceScrollID,
                 onLoadMore: onLoadMore,
                 onShowMore: onShowMore
             )
@@ -32,7 +36,7 @@ struct MessagesListView: View {
 
             if showScrollButton {
                 ScrollButton(isVisible: showScrollButton) {
-                    scrollToBottom()
+                    scrollToBottomImmediately()
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(0)
@@ -47,6 +51,10 @@ struct MessagesListView: View {
             scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
         }
     }
+
+    private func scrollToBottomImmediately() {
+        forceScrollID = UUID()
+    }
 }
 
 struct MessagesList: View {
@@ -57,6 +65,8 @@ struct MessagesList: View {
     let onScrollProxyReady: (ScrollViewProxy) -> Void
     @Binding var hasInitialized: Bool
     @Binding var previousMessageCount: Int
+    @Binding var hasScrolledToBottom: Bool
+    let forceScrollID: UUID
     let onLoadMore: () async -> Void
     let onShowMore: (MessageModel?) -> Void
     @State var previousFirstVisibleIndex: Double = 0
@@ -96,18 +106,29 @@ struct MessagesList: View {
             .onAppear {
                 scrollProxy = proxy
                 onScrollProxyReady(proxy)
-                if shouldAutoScroll {
-                    scrollToLastMessage(proxy)
-                }
                 previousMessageCount = messages.count
             }
             .onChange(of: messages) { _, newMessages in
-                if shouldAutoScroll && newMessages.count > previousMessageCount {
+                if !hasScrolledToBottom && shouldAutoScroll && !newMessages.isEmpty {
+                    if let lastMessage = newMessages.last {
+                        // Scroll without animation for initial load
+                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        hasScrolledToBottom = true
+                    }
+                } else if shouldAutoScroll && newMessages.count > previousMessageCount {
                     if !showScrollButton {
                         scrollToLastMessage(proxy)
                     }
                 }
                 previousMessageCount = newMessages.count
+            }
+            .onChange(of: forceScrollID) {
+                guard let lastMessage = messages.last else { return }
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                }
             }
         }
         .background(Color.clear)
@@ -141,43 +162,19 @@ struct ScrollButton: View {
         if isVisible {
             Button(action: action) {
                 Circle()
-                    .fill(AppTheme.Colors.tertiaryBackground)
-                    .frame(width: buttonSize, height: buttonSize)
+                    .fill(AppTheme.Colors.alternateInputBackground)
+                    .frame(width: 32, height: 32)
                     .overlay(
                         Image(systemName: "arrow.down")
-                            .font(.system(size: iconSize, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundColor(AppTheme.Colors.primaryText)
                     )
                     .shadow(radius: 2)
             }
             .buttonStyle(.plain)
-            .padding(buttonPadding)
+            .padding(16)
             .transition(.opacity)
         }
-    }
-
-    private var buttonSize: CGFloat {
-        #if os(iOS)
-        44
-        #else
-        32
-        #endif
-    }
-
-    private var iconSize: CGFloat {
-        #if os(iOS)
-        16
-        #else
-        12
-        #endif
-    }
-
-    private var buttonPadding: CGFloat {
-        #if os(iOS)
-        16
-        #else
-        8
-        #endif
     }
 }
 

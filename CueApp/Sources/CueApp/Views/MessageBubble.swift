@@ -118,12 +118,12 @@ struct MessageBubble: View {
     private var avatar: some View {
         Text("~")
             .font(.system(size: 20, weight: .light, design: .monospaced))
-            .foregroundColor(isUser ? .blue : .gray)
-            .frame(width: 22, height: 22)
+            .foregroundColor( .primary)
+            .frame(width: 20, height: 20)
             .background(
                 Circle()
                     .stroke(lineWidth: 1)
-                    .opacity(0.5)
+                    .opacity(0.3)
             )
     }
 }

@@ -62,6 +62,16 @@ struct ChatView: View {
         }
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    if isFocused {
+                        isFocused = false
+                    }
+                }
+        )
+        #endif
         .navigationTitle(viewModel.assistant.name)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

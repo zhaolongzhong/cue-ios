@@ -7,6 +7,11 @@ struct DetailContent: View {
 
     var body: some View {
         ZStack {
+            #if os(macOS)
+            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                .opacity(0.3)
+                .ignoresSafeArea()
+            #endif
             if let assistant = selectedAssistant {
                 ChatView(
                     assistant: assistant,
