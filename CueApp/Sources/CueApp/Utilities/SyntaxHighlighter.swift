@@ -11,7 +11,8 @@ public struct SyntaxHighlighter {
                 "number": Color.black,
                 "type": Color.black,
                 "function": Color.black,
-                "property": Color.black
+                "property": Color.black,
+                "binding": Color.black
             ]
         } else {
             return [
@@ -19,10 +20,11 @@ public struct SyntaxHighlighter {
                 "keyword": Color(red: 0.776, green: 0.472, blue: 0.768),
                 "string": Color(red: 0.56, green: 0.93, blue: 0.56), // Light Green
                 "comment": Color(red: 0.6, green: 0.6, blue: 0.6),
-                "number": Color(red: 0.85, green: 0.85, blue: 0.85),
-                "type": Color(red: 0.85, green: 0.85, blue: 0.85),
-                "function": Color(red: 0.85, green: 0.85, blue: 0.85),
-                "property": Color(red: 0.85, green: 0.85, blue: 0.85)
+                "number": Color(hex: "#D19A66"),
+                "type": Color(hex: "#D19A66"),
+                "function": Color(hex: "#61AFEF"),
+                "property": Color(hex: "#D19A66"),
+                "binding": Color(hex: "#D19A66"),
             ]
         }
     }
@@ -87,9 +89,29 @@ public struct SyntaxHighlighter {
             highlight(pattern: languageDef.stringPattern, in: attributedString, with: syntaxColors["string"]!)
         }
 
+        // Type names
+        if !languageDef.typePattern.isEmpty {
+            highlight(pattern: languageDef.typePattern, in: attributedString, with: syntaxColors["type"]!)
+        }
+
+        // Number literals
+        if !languageDef.numberPattern.isEmpty {
+            highlight(pattern: languageDef.numberPattern, in: attributedString, with: syntaxColors["number"]!)
+        }
+
         // Function names
         if !languageDef.functionPattern.isEmpty {
             highlight(pattern: languageDef.functionPattern, in: attributedString, with: syntaxColors["function"]!)
+        }
+
+        // Property wrappers
+        if !languageDef.propertyPattern.isEmpty {
+            highlight(pattern: languageDef.propertyPattern, in: attributedString, with: syntaxColors["property"]!)
+        }
+        
+        // Bindings
+        if !languageDef.bindingPattern.isEmpty {
+            highlight(pattern: languageDef.bindingPattern, in: attributedString, with: syntaxColors["binding"]!)
         }
 
         return attributedString
@@ -101,5 +123,31 @@ public struct SyntaxHighlighter {
         #else
         return UIColor(color)
         #endif
+    }
+}
+
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }

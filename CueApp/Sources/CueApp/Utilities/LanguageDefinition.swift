@@ -4,16 +4,23 @@ public struct LanguageDefinition: Sendable {
     public let keywords: [String]
     public let commentPattern: String
     public let stringPattern: String
+    public let typePattern: String
+    public let numberPattern: String
     public let functionPattern: String
+    public let propertyPattern: String
+    public let bindingPattern: String
 
-    public init(keywords: [String], commentPattern: String, stringPattern: String, functionPattern: String = "") {
+    public init(keywords: [String], commentPattern: String, stringPattern: String, typePattern: String, numberPattern: String, functionPattern: String = "", propertyPattern: String = "", bindingPattern: String = "") {
         self.keywords = keywords
         self.commentPattern = commentPattern
         self.stringPattern = stringPattern
+        self.typePattern = typePattern
+        self.numberPattern = numberPattern
         self.functionPattern = functionPattern
+        self.propertyPattern = propertyPattern
+        self.bindingPattern = bindingPattern
     }
 }
-
 public struct LanguageDefinitions {
     public static let definitions: [String: LanguageDefinition] = [
         "python": LanguageDefinition(
@@ -23,6 +30,8 @@ public struct LanguageDefinitions {
                       "return", "try", "while", "with", "yield"],
             commentPattern: "#.*?$",
             stringPattern: "(\"|'){1,3}[^\"']*?\\1{1,3}|(\"|'){1,3}.*?[^\\\\]\\2{1,3}",
+            typePattern: "\\b(int|float|bool|str|list|dict|set|tuple|None|object|bytes|complex|range|frozenset|type|slice)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\bdef\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
@@ -36,7 +45,11 @@ public struct LanguageDefinitions {
                       "for", "in", "repeat", "defer", "import", "typealias", "associatedtype", "extension"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"|\".*?\\\\\\(.*?\\).*?\"",
-            functionPattern: "\\bfunc\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+            typePattern: "\\b([A-Z][A-Za-z0-9_]*)\\b(?=\\s*[\\{\\(])|\\b([A-Z][A-Za-z0-9_]*)<[^>]+>\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
+            functionPattern: "\\bfunc\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            propertyPattern: "@[A-Za-z_][A-Za-z0-9_]*",
+            bindingPattern: "\\$[A-Za-z_][A-Za-z0-9_]*"
         ),
 
         "kotlin": LanguageDefinition(
@@ -51,6 +64,8 @@ public struct LanguageDefinitions {
                       "vararg", "field", "it"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"\"\"[\\s\\S]*?\"\"\"|\"[^\"\\n]*\"|'[^'\\n]*'",
+            typePattern: "\\b(Int|Double|Float|Boolean|String|Char|Long|Short|Byte|Any|Unit|List|Map|Set|Array|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\bfun\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
@@ -66,7 +81,9 @@ public struct LanguageDefinitions {
                       "bitor", "compl", "not", "not_eq", "or", "or_eq", "xor", "xor_eq"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"|'[^'\\n]*'",
-            functionPattern: "\\b[A-Za-z0-9_]+\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
+            typePattern: "\\b(int|float|double|char|bool|long|short|unsigned|signed|void|wchar_t|size_t|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
+            functionPattern: "\\b[A-Za-z0-9_<>]+\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
         ),
 
         "go": LanguageDefinition(
@@ -80,6 +97,8 @@ public struct LanguageDefinitions {
                       "delete", "complex", "real", "imag", "panic", "recover"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "`[^`]*`|\"[^\"\\n]*\"|'[^'\\n]*'",
+            typePattern: "\\b(int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex64|complex128|bool|string|byte|rune|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\bfunc\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
@@ -91,6 +110,8 @@ public struct LanguageDefinitions {
                       "await", "async", "null", "undefined", "true", "false"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"|'[^'\\n]*'|`[^`]*`",
+            typePattern: "\\b(Number|String|Boolean|Object|Array|Function|Symbol|BigInt|Date|RegExp|Map|Set|WeakMap|WeakSet|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\bfunction\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
@@ -106,6 +127,8 @@ public struct LanguageDefinitions {
                       "protected", "override", "satisfies", "asserts", "out", "in"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"|'[^'\\n]*'|`[^`]*`",
+            typePattern: "\\b(Number|String|Boolean|Object|Array|Function|Symbol|BigInt|Date|RegExp|Map|Set|WeakMap|WeakSet|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\bfunction\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
@@ -119,6 +142,8 @@ public struct LanguageDefinitions {
                       "null"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"",
+            typePattern: "\\b(Integer|Double|Float|Boolean|String|Character|Long|Short|Byte|Object|Void|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\b[A-Za-z0-9_<>]+\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
         ),
 
@@ -131,6 +156,8 @@ public struct LanguageDefinitions {
                       "typeof", "unsized", "virtual", "yield"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "\"[^\"\\n]*\"|'[^'\\n]*'",
+            typePattern: "\\b(String|i32|u32|f64|bool|char|Vec|Option|Result|HashMap|HashSet|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\bfn\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
@@ -151,13 +178,18 @@ public struct LanguageDefinitions {
                       "yield"],
             commentPattern: "\\/\\/.*?$|\\/\\*[\\s\\S]*?\\*\\/",
             stringPattern: "@\"[^\"]*\"|\"[^\"\\n]*\"|'[^'\\n]*'",
+            typePattern: "\\b(Int32|Double|Float|Boolean|String|Char|Long|Short|Byte|Object|Void|CustomType)\\b",
+            numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
             functionPattern: "\\b[A-Za-z0-9_<>]+\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
         ),
 
         "plaintext": LanguageDefinition(
             keywords: [],
             commentPattern: "",
-            stringPattern: ""
+            stringPattern: "",
+            typePattern: "",
+            numberPattern: "",
+            functionPattern: ""
         )
     ]
 
