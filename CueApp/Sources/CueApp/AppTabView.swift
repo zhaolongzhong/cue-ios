@@ -50,8 +50,8 @@ public struct AppTabView: View {
         .navigationTitle(selectedTab.rawValue)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        .tint(Color(uiColor: .systemGray))
         #endif
-        .accentColor(Color(.darkGray))
         .onChange(of: selectedTab) { _, _ in
             #if os(iOS)
             HapticManager.shared.impact(style: .light)

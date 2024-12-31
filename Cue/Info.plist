@@ -23,5 +23,9 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Enable microphone access to voice chat</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Allow camera access to take photos</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow access to photo library to select photos</string>
 </dict>
 </plist>

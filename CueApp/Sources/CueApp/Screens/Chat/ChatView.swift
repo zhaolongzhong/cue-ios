@@ -54,9 +54,7 @@ struct ChatView: View {
                     scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
                 }
             }, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
-            #if os(macOS)
             .padding(.all, 8)
-            #endif
         }
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

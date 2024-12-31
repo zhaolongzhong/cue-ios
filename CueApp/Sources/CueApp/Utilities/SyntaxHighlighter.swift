@@ -108,7 +108,7 @@ public struct SyntaxHighlighter {
         if !languageDef.propertyPattern.isEmpty {
             highlight(pattern: languageDef.propertyPattern, in: attributedString, with: syntaxColors["property"]!)
         }
-        
+
         // Bindings
         if !languageDef.bindingPattern.isEmpty {
             highlight(pattern: languageDef.bindingPattern, in: attributedString, with: syntaxColors["binding"]!)

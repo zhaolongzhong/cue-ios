@@ -124,8 +124,12 @@ struct RichTextField: View {
         .background(AppTheme.Colors.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(AppTheme.Colors.separator, lineWidth: 1)
+            Group {
+                if colorScheme == .dark {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(AppTheme.Colors.separator, lineWidth: 1)
+                }
+            }
         )
         .padding(.vertical, 8)
         .onChange(of: isFocused) { _, newValue in
