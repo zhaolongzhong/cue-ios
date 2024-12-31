@@ -72,7 +72,6 @@ protocol AuthRepositoryProtocol: Sendable {
 
 actor AuthRepository: AuthRepositoryProtocol {
     @Dependency(\.authService) private var authService
-    private let userDefaults: UserDefaults
 
     @MainActor private let currentUserSubject = CurrentValueSubject<User?, Never>(nil)
     @MainActor private let isAuthenticatedSubject = CurrentValueSubject<Bool, Never>(false)
@@ -98,10 +97,8 @@ actor AuthRepository: AuthRepositoryProtocol {
         }
     }
 
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init() {
         let hasToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")?.isEmpty == false
-
         Task { @MainActor in
             isAuthenticatedSubject.send(hasToken)
         }
@@ -126,7 +123,6 @@ actor AuthRepository: AuthRepositoryProtocol {
     func login(email: String, password: String) async -> AuthResult<Void> {
         do {
             let response = try await authService.login(email: email, password: password)
-            print("inx response: \(response)")
             await TokenManager.shared.saveTokens(
                 accessToken: response.accessToken,
                 refreshToken: response.refreshToken
@@ -175,9 +171,10 @@ actor AuthRepository: AuthRepositoryProtocol {
         } catch {
             AppLog.log.error("Log out error: \(error.localizedDescription)")
         }
+
+        await TokenManager.shared.clearTokens()
         await updateAuthState(false)
         await updateUser(nil)
-        userDefaults.removeObject(forKey: "ACCESS_TOKEN_KEY")
     }
 
     func fetchUserProfile() async -> AuthResult<User> {
