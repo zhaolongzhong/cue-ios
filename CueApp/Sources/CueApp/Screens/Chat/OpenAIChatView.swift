@@ -34,9 +34,7 @@ public struct OpenAIChatView: View {
                     await viewModel.sendMessage()
                 }
             }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
-            #if os(macOS)
             .padding(.all, 8)
-            #endif
         }
         #if os(iOS)
         .simultaneousGesture(

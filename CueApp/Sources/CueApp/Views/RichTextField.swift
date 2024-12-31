@@ -81,7 +81,7 @@ struct RichTextField: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 Text("Type a message ...")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.secondary.opacity(0.6))
                     .opacity(isTextFieldVisible ? 0 : 1)
                 Spacer()
                 if toolCount != 0 {
@@ -123,7 +123,10 @@ struct RichTextField: View {
         .padding(.all, 8)
         .background(AppTheme.Colors.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(AppTheme.Colors.separator, lineWidth: 1)
+        )
         .padding(.vertical, 8)
         .onChange(of: isFocused) { _, newValue in
             if !newValue {

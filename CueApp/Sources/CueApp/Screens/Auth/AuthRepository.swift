@@ -18,25 +18,25 @@ enum AuthError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidCredentials:
-            return "Invalid email or password"
+            return "Incorrect email address or password."
         case .emailAlreadyExists:
-            return "Email already exists"
+            return "Email already exists."
         case .networkError:
-            return "Network error occurred"
+            return "Network error occurred."
         case .refreshTokenExpired:
-            return "Refresh token expired"
+            return "Refresh token expired."
         case .refreshTokenMissing:
-            return "Refresh token missing"
+            return "Refresh token missing."
         case .invalidResponse:
-            return "Invalid response from server"
+            return "Invalid response from server."
         case .forbidden(let message):
             return "Forbidden: \(message)"
         case .unauthorized:
-            return "Unauthorized access"
+            return "Unauthorized access."
         case .tokenGenerationFailed:
-            return "Failed to generate access token"
+            return "Failed to generate access token."
         case .unknown:
-            return "An unknown error occurred"
+            return "An unknown error occurred."
         }
     }
 }

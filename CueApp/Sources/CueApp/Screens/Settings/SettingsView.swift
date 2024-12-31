@@ -51,8 +51,7 @@ private struct SettingsContentView: View {
             isShowingAPIKeys: $isShowingAPIKeys,
             dismiss: dismiss
         )
-        .background(Color.clear)
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $isShowingAPIKeys) {
             APIKeysManagementView(viewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
         }
@@ -168,7 +167,7 @@ private struct SettingsList: View {
         }
         #else
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 12) {
                 Section {
                     GroupBox {
                         if let user = viewModel.currentUser {

@@ -13,6 +13,7 @@ struct macOSApp: App {
             AuthenticatedView()
                 .environmentObject(dependencies)
                 .environmentObject(mainCoordinator)
+                .frame(minWidth: 600, minHeight: 220)
         }
         .windowToolbarStyle(.unified)
         .windowStyle(HiddenTitleBarWindowStyle())
@@ -52,11 +53,14 @@ struct CommonWindowGroup<Content: View>: Scene {
                     .opacity(0.3)
                     .ignoresSafeArea()
                 content()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .environmentObject(dependencies)
                     .environmentObject(openAICoordinator)
             }
         }
-        .defaultSize(width: 500, height: 400)
+        .windowToolbarStyle(.unified(showsTitle: true))
+        .windowStyle(.titleBar)
+        .defaultSize(width: 600, height: 400)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
     }
@@ -69,8 +73,9 @@ struct SettingsWindowView: View {
     var body: some View {
         SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
             .environmentObject(coordinator)
-            .frame(minWidth: 500, minHeight: 300)
             .navigationTitle("Settings")
+            .frame(minHeight: 400)
+            .frame(width: 600)
             .withCoordinatorAlert()
     }
 }

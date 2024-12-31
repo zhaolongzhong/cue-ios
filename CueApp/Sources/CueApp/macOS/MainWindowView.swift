@@ -25,6 +25,7 @@ public struct MainWindowView: View {
                 assistantsViewModel: assistantsViewModel,
                 selectedAssistant: $selectedAssistant
             )
+            .navigationSplitViewColumnWidth(min: 200, ideal: 300, max: 400)
             .id("sidebar-\(lastStatusUpdate.timeIntervalSince1970)")
         } detail: {
             NavigationStack {
@@ -34,6 +35,7 @@ public struct MainWindowView: View {
                 )
             }
         }
+        .navigationSplitViewStyle(.balanced)
         .environmentObject(apiKeysViewModel)
         .onChange(of: appStateViewModel.state) { _, state in
             if let _ = state.currentUser?.id {
