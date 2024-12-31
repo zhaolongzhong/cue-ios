@@ -44,7 +44,7 @@ struct StyledTextView: View {
         return segments.reduce(Text("")) { result, segment in
             switch segment {
             case .plain(let text):
-                return result + Text(text).font(.system(.body))
+                return result + Text(text).font(.body)
             case .bold(let text):
                 return result + Text(text).bold()
             case .inlineCode(let code):

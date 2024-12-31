@@ -9,7 +9,6 @@ struct DismissButton: View {
 
     var body: some View {
         Button(action: {
-            print("inx pressed")
             action()
         }) {
 
@@ -22,15 +21,13 @@ struct DismissButton: View {
                         .fill(Color.secondary.opacity(0.2))
                 )
                 .frame(width: 36, height: 36, alignment: .center)
-//                .contentShape(Rectangle())
                 .contentShape(Circle())
 
         }
         #if os(macOS)
         .keyboardShortcut(.escape, modifiers: [])
         #endif
-//        .buttonStyle(.plain)
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .keyboardShortcut(.cancelAction)
     }
 }

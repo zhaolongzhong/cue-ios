@@ -73,7 +73,7 @@ struct GlassmorphismParticleBackgroundView: View {
             ZStack {
                 #if os(macOS)
                 VisualEffectView(
-                    material: colorScheme == .dark ? .dark : .light,
+                    material: colorScheme == .dark ? .windowBackground : .windowBackground,
                     blendingMode: .withinWindow
                 )
                 #else
