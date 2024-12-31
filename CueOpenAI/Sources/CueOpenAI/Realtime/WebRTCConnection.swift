@@ -21,7 +21,6 @@ final class WebRTCConnection: RealtimeConnectionProtocol, Sendable {
         self.webRTCClient = WebRTCClient()
         self.messageProcessor = messageProcessor
         let _webRTCClient = webRTCClient
-        print("inx init")
         Task {
             do {
                 try await _webRTCClient.performSignaling(with: urlRequest)

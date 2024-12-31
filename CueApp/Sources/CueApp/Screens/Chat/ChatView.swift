@@ -45,20 +45,18 @@ struct ChatView: View {
             )
             .scrollDismissesKeyboard(.never)
 
-            MessageInputView(
-                inputMessage: $viewModel.inputMessage,
-                isFocused: _isFocused,
-                isEnabled: viewModel.isInputEnabled,
-                onSend: {
-                    Task {
-                        await viewModel.sendMessage()
-                    }
-                    withAnimation {
-                        scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
-                    }
+            RichTextField(isEnabled: viewModel.isInputEnabled, onShowTools: {
+            }, onSend: {
+                Task {
+                    await viewModel.sendMessage()
                 }
-            )
-            .zIndex(1)
+                withAnimation {
+                    scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
+                }
+            }, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+            #if os(macOS)
+            .padding(.all, 8)
+            #endif
         }
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

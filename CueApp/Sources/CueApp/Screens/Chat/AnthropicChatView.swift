@@ -3,7 +3,7 @@ import SwiftUI
 public struct AnthropicChatView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: AnthropicChatViewModel
-    @FocusState private var isInputFocused: Bool
+    @FocusState private var isFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
 
@@ -14,8 +14,27 @@ public struct AnthropicChatView: View {
     public var body: some View {
         VStack {
             messageList
-            inputField
+            RichTextField(onShowTools: {
+                showingToolsList = true
+            }, onSend: {
+                Task {
+                    await viewModel.sendMessage()
+                }
+            }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+            #if os(macOS)
+            .padding(.all, 8)
+            #endif
         }
+        #if os(iOS)
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    if isFocused {
+                        isFocused = false
+                    }
+                }
+        )
+        #endif
         .onAppear {
             Task {
                 await viewModel.startServer()
@@ -23,7 +42,7 @@ public struct AnthropicChatView: View {
         }
         .onChange(of: viewModel.messages.count) { _, _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isInputFocused = true
+                isFocused = true
             }
         }
         .onChange(of: viewModel.error) { _, error in
@@ -54,7 +73,7 @@ public struct AnthropicChatView: View {
             #if os(iOS)
             .simultaneousGesture(DragGesture().onChanged { _ in
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                             to: nil, from: nil, for: nil)
+                                                to: nil, from: nil, for: nil)
             })
             #endif
             .onChange(of: viewModel.messages.count) { _, _ in
@@ -66,51 +85,6 @@ public struct AnthropicChatView: View {
                 ToolsListView(tools: viewModel.availableTools)
             }
         }
-    }
-
-    private var inputField: some View {
-        HStack {
-            #if os(macOS)
-            RoundedTextField(
-                placeholder: "Type a message...",
-                text: $viewModel.newMessage,
-                isDisabled: viewModel.isLoading
-            ) {
-                await viewModel.sendMessage()
-            }
-            #else
-            TextField("Type a message...", text: $viewModel.newMessage)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .disabled(viewModel.isLoading)
-                .focused($isInputFocused)
-            #endif
-
-            if viewModel.availableTools.count > 0 {
-                Button {
-                    showingToolsList = true
-                } label: {
-                    HStack(spacing: 2) {
-                        Image(systemName: "hammer")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color.secondary)
-                            .background(Color.clear)
-                        Text("\(viewModel.availableTools.count)").foregroundColor(Color.secondary)
-                    }
-                }
-            }
-
-            Button {
-                Task {
-                    await viewModel.sendMessage()
-                }
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 24))
-            }
-            .buttonStyle(.plain)
-            .disabled(viewModel.newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
-        }
-        .padding()
     }
 }
 

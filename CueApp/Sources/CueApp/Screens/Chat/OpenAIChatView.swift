@@ -6,7 +6,7 @@ public struct OpenAIChatView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: OpenAIChatViewModel
-    @FocusState private var isInputFocused: Bool
+    @FocusState private var isFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
     @State private var showingVoiceChat = false
@@ -21,8 +21,33 @@ public struct OpenAIChatView: View {
     public var body: some View {
         VStack {
             messageList
-            inputField
+            RichTextField(showVoiceChat: true, onShowTools: {
+                showingToolsList = true
+            }, onOpenVoiceChat: {
+                #if os(macOS)
+                openWindow(id: "realtime-chat-window")
+                #else
+                showingVoiceChat = true
+                #endif
+            }, onSend: {
+                Task {
+                    await viewModel.sendMessage()
+                }
+            }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+            #if os(macOS)
+            .padding(.all, 8)
+            #endif
         }
+        #if os(iOS)
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    if isFocused {
+                        isFocused = false
+                    }
+                }
+        )
+        #endif
         .onAppear {
             Task {
                 await viewModel.startServer()
@@ -30,7 +55,7 @@ public struct OpenAIChatView: View {
         }
         .onChange(of: viewModel.messages.count) { _, _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isInputFocused = true
+                isFocused = true
             }
         }
         .onChange(of: viewModel.error) { _, error in
@@ -81,67 +106,5 @@ public struct OpenAIChatView: View {
                 }
             }
         }
-    }
-
-    private var inputField: some View {
-        HStack {
-            #if os(macOS)
-            RoundedTextField(
-                placeholder: "Type a message...",
-                text: $viewModel.newMessage,
-                isDisabled: viewModel.isLoading
-            ) {
-                await viewModel.sendMessage()
-            }
-            #else
-            TextField("Type a message...", text: $viewModel.newMessage)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .disabled(viewModel.isLoading)
-                .focused($isInputFocused)
-            #endif
-
-            Button {
-                #if os(macOS)
-                openWindow(id: "realtime-chat-window")
-                #else
-                showingVoiceChat = true
-                #endif
-            } label: {
-                HStack(spacing: 2) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color.secondary)
-                        .background(Color.clear)
-                }
-            }
-            .buttonStyle(.plain)
-
-            if viewModel.availableTools.count > 0 {
-                Button {
-                    showingToolsList = true
-                } label: {
-                    HStack(spacing: 2) {
-                        Image(systemName: "hammer")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color.secondary)
-                            .background(Color.clear)
-                        Text("\(viewModel.availableTools.count)").foregroundColor(Color.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-
-            Button {
-                Task {
-                    await viewModel.sendMessage()
-                }
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 24))
-            }
-            .buttonStyle(.plain)
-            .disabled(viewModel.newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
-        }
-        .padding()
     }
 }

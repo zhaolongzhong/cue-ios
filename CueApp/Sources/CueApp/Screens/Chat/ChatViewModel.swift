@@ -16,7 +16,7 @@ final class ChatViewModel: ObservableObject {
     @Published private(set) var currentConnectionState: ConnectionState = .disconnected
     @Published private(set) var clientStatus: ClientStatus?
     @Published var errorAlert: ErrorAlert?
-    @Published var inputMessage: String = ""
+    @Published var newMessage: String = ""
     @Published var showAssistantDetails = false
     @Published var isInputEnabled = true
     @Published var isLoadingMore = false
@@ -102,7 +102,7 @@ final class ChatViewModel: ObservableObject {
         Task {
             switch await messageRepository.saveMessage(messageModel: messageModel) {
             case .success:
-                inputMessage = ""
+                newMessage = ""
             case .failure(let error):
                 handleError(error, context: "Failed to send message")
             }
@@ -199,12 +199,12 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Message Handling
     func sendMessage() async {
-        guard !inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         if self.clientStatus == nil {
             self.clientStatus = clientStatusService.getClientStatus(for: self.assistant.id)
         }
 
-        let messageToSend = inputMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let messageToSend = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let userId = authRepository.currentUser?.id else {
             return
         }
@@ -230,7 +230,7 @@ final class ChatViewModel: ObservableObject {
 
         do {
             try webSocketService.send(event: clientEvent)
-            inputMessage = ""
+            newMessage = ""
         } catch {
             errorAlert = ErrorAlert(
                 title: "Error",
