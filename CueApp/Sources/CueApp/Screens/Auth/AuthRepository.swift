@@ -5,9 +5,12 @@ import os.log
 
 enum AuthError: LocalizedError {
     case invalidCredentials
-    case networkError
-    case invalidResponse
     case emailAlreadyExists
+    case networkError
+    case refreshTokenExpired
+    case refreshTokenMissing
+    case invalidResponse
+    case forbidden(message: String)
     case unauthorized
     case unknown
     case tokenGenerationFailed
@@ -16,12 +19,18 @@ enum AuthError: LocalizedError {
         switch self {
         case .invalidCredentials:
             return "Invalid email or password"
-        case .networkError:
-            return "Network error occurred"
-        case .invalidResponse:
-            return "Invalid response from server"
         case .emailAlreadyExists:
             return "Email already exists"
+        case .networkError:
+            return "Network error occurred"
+        case .refreshTokenExpired:
+            return "Refresh token expired"
+        case .refreshTokenMissing:
+            return "Refresh token missing"
+        case .invalidResponse:
+            return "Invalid response from server"
+        case .forbidden(let message):
+            return "Forbidden: \(message)"
         case .unauthorized:
             return "Unauthorized access"
         case .tokenGenerationFailed:
@@ -99,7 +108,7 @@ actor AuthRepository: AuthRepositoryProtocol {
     }
 
     func getCurrentAuthState() async -> Bool {
-        let hasToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")?.isEmpty == false
+        let hasToken = await TokenManager.shared.accessToken?.isEmpty == false
         await updateAuthState(hasToken)
         return hasToken
     }
@@ -116,8 +125,12 @@ actor AuthRepository: AuthRepositoryProtocol {
 
     func login(email: String, password: String) async -> AuthResult<Void> {
         do {
-            let tokenResponse = try await authService.login(email: email, password: password)
-            userDefaults.set(tokenResponse.accessToken, forKey: "ACCESS_TOKEN_KEY")
+            let response = try await authService.login(email: email, password: password)
+            print("inx response: \(response)")
+            await TokenManager.shared.saveTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
             await updateAuthState(true)
 
             switch await fetchUserProfile() {
@@ -157,6 +170,11 @@ actor AuthRepository: AuthRepositoryProtocol {
     }
 
     func logout() async {
+        do {
+            _ = try await authService.logout()
+        } catch {
+            AppLog.log.error("Log out error: \(error.localizedDescription)")
+        }
         await updateAuthState(false)
         await updateUser(nil)
         userDefaults.removeObject(forKey: "ACCESS_TOKEN_KEY")
@@ -172,9 +190,12 @@ actor AuthRepository: AuthRepositoryProtocol {
             await updateUser(user)
             return .success(user)
         } catch let error as AuthError {
-            if case .unauthorized = error {
+            switch error {
+            case .unauthorized:
                 await updateAuthState(false)
                 await updateUser(nil)
+            default:
+                break
             }
             return .failure(error)
         } catch {

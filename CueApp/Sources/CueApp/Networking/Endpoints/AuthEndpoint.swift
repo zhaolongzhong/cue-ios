@@ -3,7 +3,7 @@ import Foundation
 enum AuthEndpoint {
     case login(email: String, password: String)
     case signup(email: String, password: String, inviteCode: String?)
-    case refreshToken
+    case refreshToken(token: String)
     case logout
     case me
 }
@@ -12,15 +12,15 @@ extension AuthEndpoint: Endpoint {
     var path: String {
         switch self {
         case .login:
-            return "/login/access-token"
+            return "/accounts/login"
         case .signup:
-            return "/auth/signup"
+            return "/accounts/register"
         case .refreshToken:
-            return "/auth/refresh"
+            return "/accounts/refresh"
         case .logout:
-            return "/auth/logout"
+            return "/accounts/logout"
         case .me:
-            return "/users/me"
+            return "/accounts/me"
         }
     }
 
@@ -70,20 +70,23 @@ extension AuthEndpoint: Endpoint {
         case let .signup(email, password, inviteCode):
             var params: [String: String] = ["email": email, "password": password]
             if let inviteCode = inviteCode {
-                params["inviteCode"] = inviteCode
+                params["invite_code"] = inviteCode
             }
             return try? JSONSerialization.data(withJSONObject: params)
 
-        case .refreshToken, .logout, .me:
+        case let .refreshToken(token):
+            let params = ["refresh_token": token]
+            return try? JSONSerialization.data(withJSONObject: params)
+        case .logout, .me:
             return nil
         }
     }
 
     var requiresAuth: Bool {
         switch self {
-        case .login, .signup:
+        case .login, .signup, .refreshToken:
             return false
-        case .refreshToken, .logout, .me:
+        case .logout, .me:
             return true
         }
     }

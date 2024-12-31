@@ -51,6 +51,16 @@ final class AuthService: AuthServiceProtocol {
         }
     }
 
+    func logout() async throws -> SuccessResponse {
+        do {
+            return try await NetworkClient.shared.request(
+                AuthEndpoint.logout
+            )
+        } catch {
+            throw AuthError.networkError
+        }
+    }
+
     func generateToken() async throws -> String {
         do {
             let response: TokenResponse = try await NetworkClient.shared.request(AssistantEndpoint.generateToken)
@@ -66,6 +76,8 @@ final class AuthService: AuthServiceProtocol {
             return try await NetworkClient.shared.request(AuthEndpoint.me)
         } catch NetworkError.unauthorized {
             throw AuthError.unauthorized
+        } catch NetworkError.forbidden(let message) {
+            throw AuthError.forbidden(message: message)
         } catch {
             logger.error("Fetch user profile error: \(error.localizedDescription)")
             throw AuthError.networkError
@@ -73,12 +85,6 @@ final class AuthService: AuthServiceProtocol {
     }
 }
 
-struct TokenResponse: Codable {
-    let accessToken: String
-    let refreshToken: String?
-
-    enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case refreshToken = "refresh_token"
-    }
+struct SuccessResponse: Codable {
+    let success: Bool
 }

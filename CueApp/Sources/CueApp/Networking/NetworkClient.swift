@@ -1,11 +1,20 @@
 import Foundation
 import os.log
 
+struct APIError: Codable {
+    let message: String?
+    let detail: String?
+    let code: String?
+    let details: [String: String]?
+}
+
 actor NetworkClient {
     private let session: URLSession
     private let logger = Logger(subsystem: "NetworkClient", category: "Network")
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private var isRefreshing = false
+    private var refreshTask: Task<TokenResponse, Error>?
 
     static let shared = NetworkClient()
 
@@ -23,7 +32,26 @@ actor NetworkClient {
     }
 
     func request<T: Codable>(_ endpoint: Endpoint) async throws -> T {
-        let token = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")
+        do {
+            return try await performRequest(endpoint)
+        } catch NetworkError.forbidden(let message) where message == "Token expired" {
+            // Try to refresh the token and retry the request
+            let newTokens = try await refreshTokens()
+            print("inx refreshed tokens: \(newTokens)")
+            await TokenManager.shared.saveTokens(
+                accessToken: newTokens.accessToken,
+                refreshToken: newTokens.refreshToken
+            )
+            return try await performRequest(endpoint)
+        } catch {
+            print("inx error: \(error)")
+            throw error
+        }
+    }
+
+    private func performRequest<T: Codable>(_ endpoint: Endpoint) async throws -> T {
+        let token = await TokenManager.shared.accessToken
+
         if endpoint.requiresAuth && (token == nil || token?.isEmpty == true) {
             throw NetworkError.unauthorized
         }
@@ -59,6 +87,10 @@ actor NetworkClient {
 
         case 401:
             throw NetworkError.unauthorized
+        case 403:
+            let errorResponse = try? decoder.decode(APIError.self, from: data)
+            logger.error("Forbidden: \(String(describing: errorResponse?.detail))")
+            throw NetworkError.forbidden(message: errorResponse?.detail ?? "Token expired")
         case 400...499:
             throw NetworkError.httpError(httpResponse.statusCode, data)
         case 500...599:
@@ -131,5 +163,34 @@ actor NetworkClient {
         default:
             throw NetworkError.httpError(httpResponse.statusCode, responseData)
         }
+    }
+
+    private func refreshTokens() async throws -> TokenResponse {
+        if let existingTask = refreshTask {
+            return try await existingTask.value
+        }
+
+        guard let refreshToken = await TokenManager.shared.refreshToken else {
+            throw AuthError.refreshTokenMissing
+        }
+
+        let task = Task<TokenResponse, Error> {
+            let endpoint = AuthEndpoint.refreshToken(token: refreshToken)
+            do {
+                let response: TokenResponse = try await performRequest(endpoint)
+                return response
+            } catch {
+                if case NetworkError.forbidden = error {
+                    await TokenManager.shared.clearTokens()
+                    throw AuthError.refreshTokenExpired
+                }
+                throw error
+            }
+        }
+
+        refreshTask = task
+        defer { refreshTask = nil }
+
+        return try await task.value
     }
 }
