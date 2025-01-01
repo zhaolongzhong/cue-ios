@@ -14,10 +14,6 @@ public final class APIKeysViewModel: ObservableObject {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        loadAPIKeys()
-    }
-
-    private func loadAPIKeys() {
         openAIKey = userDefaults.string(forKey: APIKeyType.openai.rawValue) ?? ""
         anthropicKey = userDefaults.string(forKey: APIKeyType.anthropic.rawValue) ?? ""
         geminiKey = userDefaults.string(forKey: APIKeyType.gemini.rawValue) ?? ""

@@ -58,7 +58,6 @@ public class AudioManager: NSObject, @unchecked Sendable {
     private var isListening = false
     private var playbackQueue: [(data: Data, id: String)] = []
     private var currentItemID: String?
-    private var isPlaying: Bool = false
     
     private var state: AudioManagerState = .idle {
         didSet {
@@ -169,7 +168,6 @@ public class AudioManager: NSObject, @unchecked Sendable {
         
         // First update state to prevent new audio from being queued
         updateState(to: .stopped)
-        isPlaying = false
         isAudioEngineSetup = false
         
         // Clear queue immediately
@@ -238,8 +236,6 @@ public class AudioManager: NSObject, @unchecked Sendable {
             return
         }
         
-        isPlaying = false
-        
         do {
             let destinationConfig = AudioConversionConfig.pcm16(sampleRate: AudioConstants.sendSampleRate)
             let convertedBuffer = try convertBuffer(buffer, toConfig: destinationConfig)
@@ -283,7 +279,7 @@ public class AudioManager: NSObject, @unchecked Sendable {
     
     func playAudioData(_ data: Data, id: String) {
         playbackQueue.append((data: data, id: id))
-        if !isPlaying {
+        if !playerNode.isPlaying {
             processNextInQueue()
         }
     }
@@ -296,15 +292,12 @@ public class AudioManager: NSObject, @unchecked Sendable {
         
         let (data, id) = playbackQueue.removeFirst()
         currentItemID = id
-        isPlaying = true
         
         if let playerAudioBuffer = preparePlayerAudioBuffer(from: data) {
             playerNode.scheduleBuffer(playerAudioBuffer) { [weak self] in
                 guard let self = self else { return }
-                    self.isPlaying = false
                     self.currentItemID = nil
                     self.processNextInQueue()
-    
             }
             
             if !playerNode.isPlaying {
@@ -313,7 +306,6 @@ public class AudioManager: NSObject, @unchecked Sendable {
             }
         } else {
             logger.error("Failed to prepare buffer for Event ID: \(id)")
-            isPlaying = false
             currentItemID = nil
             processNextInQueue()
         }

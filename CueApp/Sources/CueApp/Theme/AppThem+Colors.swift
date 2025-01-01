@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+extension Color {
+    static var almostPrimary: Color {
+        return Color.primary.opacity(0.9)
+    }
+}
+
 extension AppTheme {
     // MARK: - Colors
     public enum Colors {

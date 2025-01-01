@@ -23,16 +23,6 @@ public struct AnthropicChatView: View {
             }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             .padding(.all, 8)
         }
-        #if os(iOS)
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    if isFocused {
-                        isFocused = false
-                    }
-                }
-        )
-        #endif
         .onAppear {
             Task {
                 await viewModel.startServer()
@@ -49,6 +39,19 @@ public struct AnthropicChatView: View {
                 viewModel.clearError()
             }
         }
+        #if os(iOS)
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    if isFocused {
+                        isFocused = false
+                    }
+                }
+        )
+        .navigationTitle("Anthropic")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        #endif
     }
 
     private var messageList: some View {

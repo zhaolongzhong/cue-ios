@@ -14,11 +14,14 @@ public final class RealtimeChatViewModel: ObservableObject {
     private let model: String = "gpt-4o-mini-realtime-preview-2024-12-17"
     private let logger = Logger(subsystem: "RealtimeVoiceChatViewModel", category: "RealtimeVoiceChatViewModel")
 
-    @Published var messages: [OpenAI.ChatMessage] = []
+    @Published private(set) var messages: [OpenAI.ChatMessage] = []
     @Published var newMessage: String = ""
-    @Published var isLoading = false
-    @Published var chatError: ChatError?
-    @Published public var state: VoiceChatState = .idle {
+
+    @Published private(set) var deltaMessage: String = ""
+    private var deltaMessageItemId: String = ""
+    @Published private(set) var isLoading = false
+    @Published private(set) var chatError: ChatError?
+    @Published private(set) var state: VoiceChatState = .idle {
         didSet {
             logger.debug("OpenAIVoiceChatViewModel Voice state change to \(self.state.description)")
             switch state {
@@ -56,8 +59,12 @@ public final class RealtimeChatViewModel: ObservableObject {
                     switch serverEvent {
                     case .error(let errorEvent):
                         self.logger.debug("Received server error: \(errorEvent.error.message)")
-                    case .responseAudioTranscriptDelta:
-                        break
+                    case .responseAudioTranscriptDelta(let event):
+                        if !self.deltaMessageItemId.isEmpty && self.deltaMessageItemId != event.itemId {
+                            self.deltaMessage = ""
+                        }
+                        self.deltaMessageItemId = event.itemId
+                        self.deltaMessage += event.delta
                     case .responseOutputItemDone(let itemDoneEvent):
                         if self.handledEventIds.contains(itemDoneEvent.eventId) {
                             return

@@ -31,8 +31,8 @@ private struct SettingsContentView: View {
     }
 
     var body: some View {
-        #if os(iOS)
-        NavigationView {
+        Group {
+            #if os(iOS)
             SettingsList(
                 viewModel: viewModel,
                 isShowingAPIKeys: $isShowingAPIKeys,
@@ -40,22 +40,24 @@ private struct SettingsContentView: View {
             )
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .sheet(isPresented: $isShowingAPIKeys) {
-                APIKeysManagementView(viewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    DismissButton(action: { dismiss() })
+                }
             }
+            #else
+            SettingsList(
+                viewModel: viewModel,
+                isShowingAPIKeys: $isShowingAPIKeys,
+                dismiss: dismiss
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            #endif
         }
-        #else
-        SettingsList(
-            viewModel: viewModel,
-            isShowingAPIKeys: $isShowingAPIKeys,
-            dismiss: dismiss
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $isShowingAPIKeys) {
-            APIKeysManagementView(viewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
+            APIKeysManagementView(apiKeysViewModel: dependencies.apiKeysViewModel)
         }
-        #endif
     }
 }
 
@@ -109,6 +111,7 @@ private struct SettingsList: View {
                         .font(.system(size: 12))
                         .padding(.vertical, 0)
                         .frame(height: 30)
+                        .tint(Color.secondary)
                     )
                 )
                 SettingsRow(
@@ -119,6 +122,15 @@ private struct SettingsList: View {
                     trailing: AnyView(
                         Toggle("", isOn: $hapticFeedbackEnabled)
                             .labelsHidden()
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            #if os(macOS)
+                            .controlSize(.mini)
+                            #else
+                            .controlSize(.small)
+                            #endif
+                            .tint(.secondary)
+
                     )
                 )
             } header: {
@@ -155,7 +167,7 @@ private struct SettingsList: View {
             }
         }
         .listStyle(.insetGrouped)
-        .background(Color.cyan)
+        .background(AppTheme.Colors.secondaryBackground)
         .onChange(of: colorScheme) { _, newValue in
             (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.overrideUserInterfaceStyle = {
                 switch newValue {

@@ -4,8 +4,8 @@ struct APIKeysManagementView: View {
     @StateObject private var viewModel: APIKeysViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(viewModelFactory: @escaping () -> APIKeysViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModelFactory())
+    init(apiKeysViewModel: APIKeysViewModel) {
+        _viewModel = StateObject(wrappedValue: apiKeysViewModel)
     }
 
     var body: some View {

@@ -29,13 +29,16 @@ private struct AuthenticatedContent: View {
                 #else
                 ProgressView("Loading...")
                 #endif
-            } else if viewModel.state.isAuthenticated {
+            } else if viewModel.state.isAuthenticated, let user = viewModel.state.currentUser {
                 #if os(iOS)
-                AppTabView(apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
+                HomeView(userId: user.id)
                     .environmentObject(viewModel)
+                    .environmentObject(dependencies.apiKeysViewModel)
                 #else
-                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel, apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
+                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
+                    .frame(minWidth: 600, minHeight: 220)
                     .environmentObject(viewModel)
+                    .environmentObject(dependencies.apiKeysViewModel)
                 #endif
             } else {
                 LoginView(loginViewModelFactory: dependencies.viewModelFactory.makeLoginViewModel)
@@ -49,7 +52,9 @@ private struct AuthenticatedContent: View {
 
         }
         .sheet(isPresented: $coordinator.showSettings) {
-            SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
+            NavigationStack {
+                SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
+            }
         }
         .withCoordinatorAlert()
         .onAppear {

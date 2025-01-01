@@ -4,8 +4,8 @@ import CueOpenAI
 public struct MainWindowView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
+    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
-    @StateObject private var apiKeysViewModel: APIKeysViewModel
     @State private var selectedAssistant: Assistant?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var lastStatusUpdate: Date = Date()
@@ -14,9 +14,8 @@ public struct MainWindowView: View {
     @State private var windowDelegate: WindowDelegate?
     #endif
 
-    init(viewModelFactory: @escaping () -> AssistantsViewModel, apiKeysViewModelFactory: @escaping () -> APIKeysViewModel) {
+    init(viewModelFactory: @escaping () -> AssistantsViewModel) {
         self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
-        self._apiKeysViewModel = StateObject(wrappedValue: apiKeysViewModelFactory())
     }
 
     public var body: some View {

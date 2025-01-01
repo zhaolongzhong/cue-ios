@@ -4,7 +4,7 @@ import UIKit
 #endif
 
 struct SignUpView: View {
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var dependencies: AppDependencies
     @StateObject private var viewModel: SignUpViewModel
 
@@ -31,37 +31,12 @@ struct SignUpView: View {
                 .foregroundColor(Color.primary.opacity(0.8))
 
             VStack(spacing: 16) {
-                TextField("Email", text: $viewModel.email)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.emailAddress)
-                    #if os(macOS)
-                    .frame(width: 280)
-                    #else
-                    .autocapitalization(.none)
-                    .keyboardType(.emailAddress)
-                    #endif
-
-                SecureField("Password", text: $viewModel.password)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.newPassword)
-                    #if os(macOS)
-                    .frame(width: 280)
-                    #endif
-
-                SecureField("Confirm password", text: $viewModel.confirmPassword)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.newPassword)
-                    #if os(macOS)
-                    .frame(width: 280)
-                    #endif
-
-                #if os(macOS)
-                TextField("Invite code (optional)", text: $viewModel.inviteCode)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 280)
-                #endif
+                PlatformTextField("Email", text: $viewModel.email)
+                PlatformTextField("Password", text: $viewModel.password, textContentType: .password)
+                PlatformTextField("Confirm password", text: $viewModel.confirmPassword, textContentType: .password)
+                PlatformTextField("Invite code (optional)", text: $viewModel.inviteCode)
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 48)
 
             if let error = viewModel.error {
                 Text(error)
@@ -87,13 +62,10 @@ struct SignUpView: View {
             #if os(iOS)
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color(.systemBackground).opacity(0.1))
-            .background(
-                Color.primary.opacity(0.9)
-            )
-            .foregroundColor(Color(.systemBackground))
+            .background(AppTheme.Colors.secondaryBackground)
+            .foregroundColor(Color.primary.opacity(0.9))
             .cornerRadius(10)
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 48)
             #else
             .frame(width: 80)
             .buttonStyle(.borderedProminent)
@@ -105,37 +77,34 @@ struct SignUpView: View {
 
             HStack(spacing: 4) {
                 Text("Already have an account?")
-                    .foregroundColor(Color.primary.opacity(0.8))
+                    .foregroundColor(Color.primary.opacity(0.6))
                 Button("Log in") {
-                    presentationMode.wrappedValue.dismiss()
+                    dismiss()
                 }
-                #if os(iOS)
                 .foregroundColor(Color.primary)
-                #else
+                #if os(macOS)
                 .buttonStyle(.plain)
                 .controlSize(.small)
                 #endif
             }
-            .padding(.bottom, 20)
         }
-        .authWindowSize()
+        .navigationTitle("Sign up")
         #if os(iOS)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .imageScale(.large)
                 }
             }
-        }
-        #else
 
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                }
-            }
         }
         #endif
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.automatic)
+        #endif
+        .background(AppTheme.Colors.background)
+        .authWindowSize()
     }
 }

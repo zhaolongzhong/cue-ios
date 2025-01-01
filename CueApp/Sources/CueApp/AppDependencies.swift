@@ -13,6 +13,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     @Dependency(\.clientStatusService) public var clientStatusService
 
     public var appStateViewModel: AppStateViewModel
+    public var apiKeysViewModel: APIKeysViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
         ViewModelFactory()
@@ -23,6 +24,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     }
 
     public init() {
+        self.apiKeysViewModel = APIKeysViewModel()
         self.appStateViewModel = AppStateViewModel()
         self.appStateViewModel.delegate = self
     }
@@ -40,7 +42,6 @@ public class ViewModelFactory {
     private var assistantsViewModel: AssistantsViewModel?
     private var chatViewModels: [String: ChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
-    private var apiKeysViewModel: APIKeysViewModel?
     private var realtimeChatViewModel: RealtimeChatViewModel?
 
     func makeAssistantsViewModel() -> AssistantsViewModel {
@@ -69,16 +70,6 @@ public class ViewModelFactory {
             let settingsViewModel = SettingsViewModel()
             self.settingsViewModel = settingsViewModel
             return settingsViewModel
-        }
-    }
-
-    public func makeAPIKeysViewModel() -> APIKeysViewModel {
-        if let apiKeysViewModel = self.apiKeysViewModel {
-            return apiKeysViewModel
-        } else {
-            let apiKeysViewModel = APIKeysViewModel()
-            self.apiKeysViewModel = apiKeysViewModel
-            return apiKeysViewModel
         }
     }
 

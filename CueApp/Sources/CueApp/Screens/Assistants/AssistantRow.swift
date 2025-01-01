@@ -17,13 +17,13 @@ public struct AssistantRow: View {
                 .frame(width: 32, height: 32)
                 .overlay(
                     Text(assistant.name.prefix(2).uppercased())
-                        .foregroundColor(.white)
-                        .font(.headline)
+                        .foregroundColor(.primary.opacity(0.8))
+                        .font(.footnote)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(assistant.name)
-                    .font(.body)
+                    .font(.callout)
                 if let status = status {
                     Text("Runner: ...\(status.runnerId?.suffix(4) ?? "")")
                         .font(.caption)

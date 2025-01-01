@@ -17,6 +17,27 @@ public struct RealtimeChatScreen: View {
                 GlassmorphismParticleBackgroundView(screenSize: geometry.size)
                                     .opacity(colorScheme == .dark ? 0.6 : 0.9)
 
+                VStack {
+                    Spacer()
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            Text(voiceChatViewModel.deltaMessage)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 48)
+                                .id("messageBottom")
+                        }
+                        .frame(maxHeight: .infinity)
+                        .onChange(of: voiceChatViewModel.deltaMessage) { _, newValue in
+                            if !newValue.isEmpty {
+                                withAnimation {
+                                    proxy.scrollTo("messageBottom", anchor: .bottom)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.bottom, 150)
+                }
+
                 VStack(spacing: 16) {
                     #if os(iOS)
                     HStack {
@@ -27,7 +48,7 @@ public struct RealtimeChatScreen: View {
                     #endif
                     Spacer()
                     controlButton
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 16)
                     messageInputView
                 }
                 .padding(.vertical)

@@ -13,10 +13,10 @@ struct macOSApp: App {
             AuthenticatedView()
                 .environmentObject(dependencies)
                 .environmentObject(mainCoordinator)
-                .frame(minWidth: 600, minHeight: 220)
         }
         .windowToolbarStyle(.unified)
-        .windowStyle(HiddenTitleBarWindowStyle())
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
             ToolbarCommands()
@@ -85,8 +85,7 @@ struct OpenAIWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let viewModel = APIKeysViewModel()
-        let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
+        let apiKey = dependencies.apiKeysViewModel.getAPIKey(for: APIKeyType.openai)
         OpenAIChatView(apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)
@@ -100,8 +99,7 @@ struct RealtimeWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let viewModel = APIKeysViewModel()
-        let apiKey = viewModel.getAPIKey(for: APIKeyType.openai)
+        let apiKey = dependencies.apiKeysViewModel.getAPIKey(for: APIKeyType.openai)
         RealtimeChatScreen(viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel, apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)
@@ -115,8 +113,7 @@ struct AnthropicWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let viewModel = APIKeysViewModel()
-        let apiKey = viewModel.getAPIKey(for: APIKeyType.anthropic)
+        let apiKey = dependencies.apiKeysViewModel.getAPIKey(for: APIKeyType.anthropic)
         AnthropicChatView(apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)

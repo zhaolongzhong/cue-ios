@@ -8,9 +8,9 @@ protocol AssistantActions {
     func onChat(assistant: Assistant)
 }
 
-struct AssistantsList: View {
+struct AssistantsListView: View {
     @ObservedObject var assistantsViewModel: AssistantsViewModel
-    let actions: AssistantActions
+    let actions: AssistantActions?
 
     var body: some View {
         List {
@@ -21,11 +21,11 @@ struct AssistantsList: View {
                     actions: actions
                 )
                 .onTapGesture {
-                    actions.onChat(assistant: assistant)
+                    actions?.onChat(assistant: assistant)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) {
-                        actions.onDelete(assistant: assistant)
+                        actions?.onDelete(assistant: assistant)
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }

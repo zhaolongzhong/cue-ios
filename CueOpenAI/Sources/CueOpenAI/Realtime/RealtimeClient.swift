@@ -87,10 +87,14 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
                 await MainActor.run {
                     switch state {
                     case .connected:
+                        self.connectionState = .connected
                         self.state = .active
+                        self.handleConnection()
                     case .disconnected:
+                        self.connectionState = .disconnected
                         self.state = .idle
                     case .connecting:
+                        self.connectionState = .connecting
                         self.state = .connecting
                     case .error(let message):
                         logger.error("RealtimeClient error: \(message)")
@@ -147,6 +151,10 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
     
     @MainActor
     public func startSession(apiKey: String, model: String, sessionCreate: RealtimeSession? = nil) async throws {
+        guard !apiKey.isEmpty && !model.isEmpty else {
+            throw RealtimeClientError.invalidConfiguration("API key and model cannot be empty")
+        }
+        
         guard case .idle = state else {
             logger.warning("Cannot start session in current state: \(self.state.description)")
             return
@@ -157,7 +165,6 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
         self.connection = try await realtimeAPI.createConnection(config: config, sessionCreate: sessionCreate)
         setupConnectionSbuscription()
         try await setEventsSubscription()
-        try await setupAudioManager()
         logger.info("Session started")
     }
     
@@ -206,6 +213,9 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
     }
     
     private func setupAudioManager() async throws {
+        guard .webSocket == transport else {
+            return
+        }
         do {
             let audioManager = AudioManager()
             audioManager.delegate = self
@@ -226,15 +236,18 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
     
     private func handleError(_ error: RealtimeClientError) {
         let errorMessage = error.localizedDescription
-        if !errorMessage.contains("Socket is not connected") {
-            state = .error(errorMessage)
-        }
-        logger.error("Handle error: \(errorMessage)")
+        logger.error("Handle error: \(error)")
+        state = .error(errorMessage)
     }
     
-    
     private func sendInputAudioBufferAppendEvent(audio: Data) {
-        logger.debug("Send audio")
+        guard case .connected = connectionState else {
+            logger.error("Cannot send audio: WebSocket not connected. \(String(describing: self.connectionState))")
+            Task { @MainActor in
+                handleDisconnection()
+            }
+            return
+        }
         let event = ClientEvent.InputAudioBufferAppendEvent(
             eventId: nil,
             audio: audio.base64EncodedString()
@@ -246,6 +259,24 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
                 logger.error("Failed to send input audio buffer append event: \(error)")
             }
         }
+    }
+    
+    @MainActor
+    private func handleConnection() {
+        Task {
+            do {
+                try await setupAudioManager()
+            } catch {
+                let errorMessage = "Failed to setup audio: \(error)"
+                logger.error("Handle connection error: \(errorMessage)")
+                state = .error(errorMessage)
+            }
+        }
+    }
+    
+    @MainActor
+    private func handleDisconnection() {
+        audioManager?.stopAudioEngine()
     }
 }
 

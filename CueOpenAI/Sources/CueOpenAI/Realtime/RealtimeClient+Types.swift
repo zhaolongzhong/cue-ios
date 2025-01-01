@@ -16,7 +16,7 @@ public enum RealtimeConnectionState: Sendable {
 }
 
 public enum RealtimeClientError: Error {
-    case invalidConfiguration
+    case invalidConfiguration(_ message: String? = nil)
     case failedToCreateSecret
     case invalidStringEncoding
     case unknownMessageType
@@ -29,8 +29,8 @@ public enum RealtimeClientError: Error {
     
     public var localizedDescription: String {
         switch self {
-        case .invalidConfiguration:
-            return "Failed to config the Realtime service"
+        case .invalidConfiguration (let message):
+            return "Failed to config the Realtime service. \(message ?? "")"
         case .failedToCreateSecret:
             return "Failed to create client secret"
         case .invalidStringEncoding:
