@@ -36,16 +36,6 @@ public struct OpenAIChatView: View {
             }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             .padding(.all, 8)
         }
-        #if os(iOS)
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    if isFocused {
-                        isFocused = false
-                    }
-                }
-        )
-        #endif
         .onAppear {
             Task {
                 await viewModel.startServer()
@@ -66,6 +56,17 @@ public struct OpenAIChatView: View {
             ToolsListView(tools: viewModel.availableTools)
         }
         #if os(iOS)
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    if isFocused {
+                        isFocused = false
+                    }
+                }
+        )
+        .navigationTitle("OpenAI")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
         .fullScreenCover(isPresented: $showingVoiceChat) {
             RealtimeChatScreen(
                 viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,

@@ -27,7 +27,11 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Dependencies", package: "swift-dependencies")
             ],
-            path: "Sources/CueApp"),
+            path: "Sources/CueApp",
+            resources: [
+                .process("Resources/Assets.xcassets")
+            ]
+        ),
         .testTarget(
             name: "CueAppTests",
             dependencies: ["CueApp"],

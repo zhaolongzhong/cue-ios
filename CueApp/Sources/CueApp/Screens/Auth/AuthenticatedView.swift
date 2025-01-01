@@ -31,10 +31,11 @@ private struct AuthenticatedContent: View {
                 #endif
             } else if viewModel.state.isAuthenticated {
                 #if os(iOS)
-                AppTabView(apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
+                HomeView(apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
                     .environmentObject(viewModel)
                 #else
                 MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel, apiKeysViewModelFactory: dependencies.viewModelFactory.makeAPIKeysViewModel)
+                    .frame(minWidth: 600, minHeight: 220)
                     .environmentObject(viewModel)
                 #endif
             } else {

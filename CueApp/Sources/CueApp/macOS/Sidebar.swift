@@ -38,6 +38,10 @@ struct Sidebar: View {
         )
     }
 
+    private var bundleForAssets: Bundle {
+        Bundle.module
+    }
+
     init(assistantsViewModel: AssistantsViewModel, selectedAssistant: Binding<Assistant?>) {
         self.assistantsViewModel = assistantsViewModel
         self._selectedAssistant = selectedAssistant

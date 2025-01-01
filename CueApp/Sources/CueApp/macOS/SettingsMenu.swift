@@ -5,12 +5,15 @@ struct SettingsMenu: View {
     let onOpenAIChat: () -> Void
     let onAnthropicChat: () -> Void
     let onOpenSettings: () -> Void
+    private var bundleForAssets: Bundle {
+        Bundle.module
+    }
 
     var body: some View {
         Menu {
             if !apiKeysViewModel.openAIKey.isEmpty {
                 Button(action: onOpenAIChat) {
-                    Text("OpenAI Chat")
+                    Text("OpenAI")
                         .frame(minWidth: 200, alignment: .leading)
                 }
 
@@ -19,7 +22,7 @@ struct SettingsMenu: View {
 
             if !apiKeysViewModel.anthropicKey.isEmpty {
                 Button(action: onAnthropicChat) {
-                    Text("Anthropic Chat")
+                    Text("Anthropic")
                         .frame(minWidth: 200, alignment: .leading)
                 }
 

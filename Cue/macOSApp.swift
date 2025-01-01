@@ -13,10 +13,10 @@ struct macOSApp: App {
             AuthenticatedView()
                 .environmentObject(dependencies)
                 .environmentObject(mainCoordinator)
-                .frame(minWidth: 600, minHeight: 220)
         }
         .windowToolbarStyle(.unified)
-        .windowStyle(HiddenTitleBarWindowStyle())
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
             ToolbarCommands()

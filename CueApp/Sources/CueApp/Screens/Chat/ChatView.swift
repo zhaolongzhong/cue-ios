@@ -80,8 +80,13 @@ struct ChatView: View {
                     assistant: viewModel.assistant,
                     assistantsViewModel: self.assistantsViewModel,
                     onUpdate: handleAssistantUpdate)) {
-                    Image(systemName: "ellipsis")
+                        Image(systemName: "ellipsis")
+                            .foregroundColor(.primary.opacity(0.9))
                 }
+            }
+            ToolbarItem(placement: .principal) {
+                Text(viewModel.assistant.name)
+                    .font(.headline)
             }
             #else
             ToolbarItem(placement: .automatic) {

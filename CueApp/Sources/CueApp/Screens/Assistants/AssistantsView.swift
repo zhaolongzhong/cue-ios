@@ -51,7 +51,7 @@ struct AssistantsView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            AssistantsList(
+            AssistantsListView(
                 assistantsViewModel: assistantsViewModel,
                 actions: NavigationAssistantActions(
                     navigationPath: $navigationPath,

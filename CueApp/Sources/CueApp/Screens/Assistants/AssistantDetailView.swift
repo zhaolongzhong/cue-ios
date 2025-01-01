@@ -49,6 +49,7 @@ struct AssistantDetailView: View {
                     .font(.system(size: 12))
                     .padding(.vertical, 0)
                     .frame(height: 30)
+                    .tint(Color.secondary)
                     .onChange(of: viewModel.selectedModel) { _, newValue in
                         Task {
                             await viewModel.updateMetadata(model: newValue)
