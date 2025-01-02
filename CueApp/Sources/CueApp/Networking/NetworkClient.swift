@@ -63,9 +63,12 @@ actor NetworkClient {
         switch httpResponse.statusCode {
         case 200...299:
             do {
-                let decoded = try decoder.decode(T.self, from: data)
-                return decoded
+                return try decoder.decode(T.self, from: data)
             } catch {
+                logger.error("Decoding error: \(error)")
+                if let dataString = String(data: data, encoding: .utf8) {
+                    logger.error("Raw response data: \(dataString)")
+                }
                 throw NetworkError.decodingError(error)
             }
         case 401:
@@ -109,5 +112,22 @@ actor NetworkClient {
         defer { refreshTask = nil }
 
         return try await task.value
+    }
+}
+
+protocol DebugPrintable: Encodable {
+    func debugJSON() -> String
+}
+
+extension DebugPrintable {
+    func debugJSON() -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        do {
+            let data = try encoder.encode(self)
+            return String(data: data, encoding: .utf8) ?? "Failed to encode"
+        } catch {
+            return "Failed to encode: \(error)"
+        }
     }
 }

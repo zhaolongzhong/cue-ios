@@ -20,7 +20,7 @@ final class SidePanelState: ObservableObject {
 
 struct HomeSidePanel: View {
     @EnvironmentObject private var coordinator: AppCoordinator
-    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
     @ObservedObject var sidePanelState: SidePanelState
     @ObservedObject var assistantsViewModel: AssistantsViewModel
     @Binding var navigationPath: NavigationPath
@@ -47,10 +47,10 @@ struct HomeSidePanel: View {
 
     private var providersSection: some View {
         Section(header: providersHeader) {
-            if !apiKeysViewModel.openAIKey.isEmpty {
+            if !apiKeyProviderViewModel.openAIKey.isEmpty {
                 openAIRow
             }
-            if !apiKeysViewModel.anthropicKey.isEmpty {
+            if !apiKeyProviderViewModel.anthropicKey.isEmpty {
                 anthropicRow
             }
         }

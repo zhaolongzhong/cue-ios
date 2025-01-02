@@ -1,7 +1,7 @@
 import SwiftUI
 
 @MainActor
-public final class APIKeysViewModel: ObservableObject {
+public final class APIKeysProviderViewModel: ObservableObject {
     @Published private(set) var openAIKey: String = ""
     @Published private(set) var anthropicKey: String = ""
     @Published private(set) var geminiKey: String = ""

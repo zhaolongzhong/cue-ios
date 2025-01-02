@@ -76,6 +76,7 @@ struct SettingsWindowView: View {
             .navigationTitle("Settings")
             .frame(minHeight: 400)
             .frame(width: 600)
+            .environmentObject(dependencies.apiKeysProviderViewModel)
             .withCoordinatorAlert()
     }
 }
@@ -85,7 +86,7 @@ struct OpenAIWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let apiKey = dependencies.apiKeysViewModel.getAPIKey(for: APIKeyType.openai)
+        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.openai)
         OpenAIChatView(apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)
@@ -99,7 +100,7 @@ struct RealtimeWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let apiKey = dependencies.apiKeysViewModel.getAPIKey(for: APIKeyType.openai)
+        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.openai)
         RealtimeChatScreen(viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel, apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)
@@ -113,7 +114,7 @@ struct AnthropicWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let apiKey = dependencies.apiKeysViewModel.getAPIKey(for: APIKeyType.anthropic)
+        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.anthropic)
         AnthropicChatView(apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)

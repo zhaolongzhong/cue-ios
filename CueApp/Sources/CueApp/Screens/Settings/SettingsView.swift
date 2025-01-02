@@ -1,5 +1,10 @@
 import SwiftUI
 
+private enum SettingsRoute: Hashable {
+    case providerAPIKeys
+    case apiKeys
+}
+
 public struct SettingsView: View {
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var coordinator: AppCoordinator
@@ -22,41 +27,48 @@ public struct SettingsView: View {
 
 private struct SettingsContentView: View {
     @EnvironmentObject private var dependencies: AppDependencies
+    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: SettingsViewModel
+    @State private var isShowingProviderAPIKeys = false
     @State private var isShowingAPIKeys = false
+    @State private var navigationPath = NavigationPath()
 
     init(viewModel: SettingsViewModel) {
         self.viewModel = viewModel
     }
 
     var body: some View {
-        Group {
-            #if os(iOS)
+        NavigationStack(path: $navigationPath) {
             SettingsList(
                 viewModel: viewModel,
-                isShowingAPIKeys: $isShowingAPIKeys,
+                showProviderAPIKeys: {
+                    navigationPath.append(SettingsRoute.providerAPIKeys)
+                },
+                showAPIKeys: {
+                    navigationPath.append(SettingsRoute.apiKeys)
+                },
                 dismiss: dismiss
             )
             .navigationTitle("Settings")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     DismissButton(action: { dismiss() })
                 }
             }
             #else
-            SettingsList(
-                viewModel: viewModel,
-                isShowingAPIKeys: $isShowingAPIKeys,
-                dismiss: dismiss
-            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             #endif
-        }
-        .sheet(isPresented: $isShowingAPIKeys) {
-            APIKeysManagementView(apiKeysViewModel: dependencies.apiKeysViewModel)
+            .navigationDestination(for: SettingsRoute.self) { route in
+                switch route {
+                case .providerAPIKeys:
+                    APIKeysProviderView(apiKeysProviderViewModel: apiKeysProviderViewModel)
+                case .apiKeys:
+                    APIKeysView()
+                }
+            }
         }
     }
 }
@@ -71,7 +83,8 @@ private struct SettingsList: View {
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
-    @Binding var isShowingAPIKeys: Bool
+    let showProviderAPIKeys: () -> Void
+    let showAPIKeys: () -> Void
     let dismiss: DismissAction
 
     var body: some View {
@@ -88,10 +101,10 @@ private struct SettingsList: View {
             .listSectionSpacing(.compact)
 
             Section {
-                APIKeysButton(isShowingAPIKeys: $isShowingAPIKeys)
-                    .padding(.horizontal, 0)
+                APIKeysButton(title: "Provider API Keys", onTap: showProviderAPIKeys)
+                APIKeysButton(title: "Assistant API Keys", onTap: showAPIKeys)
             } header: {
-                SettingsHeader(title: "Configuration")
+                SettingsHeader(title: "API Keys")
             }
             .listSectionSpacing(.compact)
 
@@ -135,14 +148,6 @@ private struct SettingsList: View {
                 )
             } header: {
                 SettingsHeader(title: "Appearance")
-            }
-            .listSectionSpacing(.compact)
-
-            Section {
-                TokenGenerationView(viewModel: viewModel)
-                    .listRowSeparator(.hidden)
-            }  header: {
-                SettingsHeader(title: "Access Token")
             }
             .listSectionSpacing(.compact)
             Section {
@@ -193,21 +198,14 @@ private struct SettingsList: View {
 
                 Section {
                     GroupBox {
-                        APIKeysButton(isShowingAPIKeys: $isShowingAPIKeys)
+                        APIKeysButton(title: "Provider API Keys", onTap: showProviderAPIKeys)
+                            .padding(.horizontal, 6)
+                        Divider()
+                        APIKeysButton(title: "Assistant API Keys", onTap: showAPIKeys)
                             .padding(.horizontal, 6)
                     }
                 } header: {
-                    SettingsHeader(title: "Configuration")
-                }
-
-                Section {
-                    GroupBox {
-                        TokenGenerationView(viewModel: viewModel)
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal, 6)
-                    }
-                } header: {
-                    SettingsHeader(title: "Access Token")
+                    SettingsHeader(title: "API Keys")
                 }
 
                 Section {
@@ -232,8 +230,7 @@ private struct SettingsList: View {
                     }
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 32)
+            .padding(.all, 32)
         }
         #endif
     }
@@ -267,27 +264,22 @@ private struct UserInfoView: View {
 }
 
 private struct APIKeysButton: View {
-
-    @Binding var isShowingAPIKeys: Bool
-
-    init(isShowingAPIKeys: Binding<Bool>) {
-        _isShowingAPIKeys = isShowingAPIKeys
-    }
+    let title: String
+    let onTap: () -> Void
 
     var body: some View {
         Button {
             #if os(iOS)
             HapticManager.shared.impact(style: .light)
             #endif
-            isShowingAPIKeys = true
+            onTap()
         } label: {
             SettingsRow(
                 systemName: "key",
-                title: "API Keys",
+                title: title,
                 showChevron: true
             )
         }
-        .padding(.horizontal, 0)
         .buttonStyle(.plain)
     }
 }

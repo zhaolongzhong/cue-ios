@@ -19,7 +19,7 @@ struct iOSApp: App {
             AuthenticatedView()
                 .environmentObject(dependencies)
                 .environmentObject(appCoordinator)
-                // .environmentObject(dependencies.conversationManager)
+                .tint(.primary)
         }
     }
 

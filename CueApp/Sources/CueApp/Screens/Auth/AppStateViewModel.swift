@@ -30,7 +30,7 @@ struct AppState: Equatable {
 public final class AppStateViewModel: ObservableObject {
     @Published private(set) var state: AppState = AppState(
         isLoading: true,
-        isAuthenticated: false,
+        isAuthenticated: true,
         currentUser: nil,
         error: nil
     )
@@ -60,7 +60,6 @@ public final class AppStateViewModel: ObservableObject {
 
     private func setupSubscriptions() {
         authRepository.isAuthenticatedPublisher
-            .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isAuthenticated in
                 guard let self else { return }

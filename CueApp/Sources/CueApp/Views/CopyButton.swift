@@ -4,7 +4,7 @@ struct CopyButton: View {
     let role: String
     let content: String
     let isVisible: Bool
-    let copyAction: () -> Void
+    var copyAction: (() -> Void)?
 
     @State private var isPressed = false
     @State private var showCopiedFeedback = false
@@ -21,7 +21,8 @@ struct CopyButton: View {
             }
 
             // Execute copy action
-            copyAction()
+            copyToPasteboard(content)
+            copyAction?()
 
             // Show copied feedback
             withAnimation(.easeInOut(duration: 0.2)) {
