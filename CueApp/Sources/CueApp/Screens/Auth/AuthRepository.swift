@@ -65,7 +65,6 @@ protocol AuthRepositoryProtocol: Sendable {
     func getCurrentAuthState() async -> Bool
     func login(email: String, password: String) async -> AuthResult<Void>
     func signup(email: String, password: String, inviteCode: String?) async -> AuthResult<Void>
-    func generateToken() async -> AuthResult<String>
     func logout() async
     func fetchUserProfile() async -> AuthResult<User>
 }
@@ -151,17 +150,6 @@ actor AuthRepository: AuthRepositoryProtocol {
             return .failure(error)
         } catch {
             return .failure(.unknown)
-        }
-    }
-
-    func generateToken() async -> AuthResult<String> {
-        do {
-            let token = try await authService.generateToken()
-            return .success(token)
-        } catch let error as AuthError {
-            return .failure(error)
-        } catch {
-            return .failure(.tokenGenerationFailed)
         }
     }
 

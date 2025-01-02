@@ -16,7 +16,6 @@ extension DependencyValues {
 protocol AuthServiceProtocol: Sendable {
     func login(email: String, password: String) async throws -> TokenResponse
     func signup(email: String, password: String, inviteCode: String?) async throws -> User
-    func generateToken() async throws -> String
     func fetchUserProfile() async throws -> User
 }
 
@@ -58,16 +57,6 @@ final class AuthService: AuthServiceProtocol {
             )
         } catch {
             throw AuthError.networkError
-        }
-    }
-
-    func generateToken() async throws -> String {
-        do {
-            let response: TokenResponse = try await NetworkClient.shared.request(AssistantEndpoint.generateToken)
-            return response.accessToken
-        } catch {
-            logger.error("Token generation error: \(error.localizedDescription)")
-            throw AuthError.tokenGenerationFailed
         }
     }
 

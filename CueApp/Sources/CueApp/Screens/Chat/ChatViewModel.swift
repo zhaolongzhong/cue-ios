@@ -127,6 +127,7 @@ final class ChatViewModel: ObservableObject {
          await fetchRemoteMessages(conversationId: conversationId)
      }
 
+    // todo: move to repository, initialize message
     private func loadCachedMessages(conversationId: String) async {
         switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
         case .success(let messages):

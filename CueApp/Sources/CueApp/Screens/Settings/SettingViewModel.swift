@@ -4,6 +4,7 @@ import Dependencies
 
 @MainActor
 public final class SettingsViewModel: ObservableObject {
+    @Dependency(\.apiKeyRepository) private var apiKeyRepository
     @Dependency(\.authRepository) private var authRepository
     @Published private(set) var currentUser: User?
     @Published private(set) var generatedToken: String?
@@ -37,27 +38,48 @@ public final class SettingsViewModel: ObservableObject {
         }
     }
 
+    func createNewAPIKey() async -> String {
+            let result = await apiKeyRepository.createAPIKey(
+                name: "My API Key",
+                keyType: "live",
+                scopes: ["all"],
+                expiresAt: nil
+            )
+
+            switch result {
+            case .success(let apiKey):
+                // Handle success
+                print("Created API key: \(apiKey.secret)")
+                return apiKey.secret
+            case .failure(let error):
+                // Handle error
+                print("Error: \(error.localizedDescription)")
+            }
+        return ""
+        }
+
     func generateToken() async {
         generatedToken = nil
         tokenError = nil
 
-        switch await authRepository.generateToken() {
-        case .success(let token):
-            generatedToken = token
-
-        case .failure(.tokenGenerationFailed):
-            tokenError = "Failed to generate token. Please try again."
-
-        case .failure(.networkError):
-            tokenError = "Network error occurred. Please try again."
-
-        case .failure(.unauthorized):
-            tokenError = "Please log in to generate token"
-
-        case .failure:
-            tokenError = "An unexpected error occurred"
-            AppLog.log.error("Failed to generate token")
-        }
+//        switch await apiKeyRepository.createNewAPIKey() {
+//        case .success(let token):
+//            generatedToken = token
+//
+//        case .failure(.tokenGenerationFailed):
+//            tokenError = "Failed to generate token. Please try again."
+//
+//        case .failure(.networkError):
+//            tokenError = "Network error occurred. Please try again."
+//
+//        case .failure(.unauthorized):
+//            tokenError = "Please log in to generate token"
+//
+//        case .failure:
+//            tokenError = "An unexpected error occurred"
+//            AppLog.log.error("Failed to generate token")
+//        }
+        generatedToken = await createNewAPIKey()
     }
 
     func logout() async {

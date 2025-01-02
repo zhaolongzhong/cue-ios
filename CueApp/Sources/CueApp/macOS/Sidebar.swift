@@ -24,7 +24,7 @@ struct SidebarAssistantActions: AssistantActions {
 
 struct Sidebar: View {
     @Environment(\.openWindow) private var openWindow
-    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @EnvironmentObject private var apiKeyProviderViewModel: APIKeyProviderViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
     @State private var isShowingNewAssistantSheet = false

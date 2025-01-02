@@ -12,24 +12,20 @@ public struct AppTabView: View {
     @Dependency(\.webSocketService) public var webSocketService
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
+    @EnvironmentObject private var apiKeyProviderViewModel: APIKeyProviderViewModel
     @State private var selectedTab: TabSelection = .assistants
-    @StateObject private var apiKeysViewModel: APIKeysViewModel
-
-    public init(apiKeysViewModelFactory: @escaping () -> APIKeysViewModel) {
-        _apiKeysViewModel = StateObject(wrappedValue: apiKeysViewModelFactory())
-    }
 
     public var body: some View {
         TabView(selection: $selectedTab) {
-            if !apiKeysViewModel.openAIKey.isEmpty {
-            OpenAIChatView(apiKey: apiKeysViewModel.openAIKey)
+            if !apiKeyProviderViewModel.openAIKey.isEmpty {
+            OpenAIChatView(apiKey: apiKeyProviderViewModel.openAIKey)
                 .tabItem {
                     Label("Chat", systemImage: "wand.and.stars")
                 }
                 .tag(TabSelection.chat)
             }
-            if !apiKeysViewModel.anthropicKey.isEmpty {
-                AnthropicChatView(apiKey: apiKeysViewModel.anthropicKey)
+            if !apiKeyProviderViewModel.anthropicKey.isEmpty {
+                AnthropicChatView(apiKey: apiKeyProviderViewModel.anthropicKey)
                     .tabItem {
                         Label("Anthropic", systemImage: "character")
                     }

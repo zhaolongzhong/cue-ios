@@ -4,7 +4,7 @@ import CueOpenAI
 public struct MainWindowView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @EnvironmentObject private var apiKeyProviderViewModel: APIKeyProviderViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
     @State private var selectedAssistant: Assistant?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -35,7 +35,7 @@ public struct MainWindowView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .environmentObject(apiKeysViewModel)
+        .environmentObject(apiKeyProviderViewModel)
         .onChange(of: appStateViewModel.state) { _, state in
             if let _ = state.currentUser?.id {
                 Task {
