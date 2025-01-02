@@ -43,15 +43,6 @@ struct MessageBubble: View {
         return isUser ? AppTheme.Colors.Message.userBubble.opacity(0.2) : AppTheme.Colors.background
     }
 
-    func copyToPasteboard() {
-        #if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(content, forType: .string)
-        #else
-        UIPasteboard.general.string = content
-        #endif
-    }
-
     var body: some View {
         HStack(alignment: .top) {
             if isUser {
@@ -85,9 +76,7 @@ struct MessageBubble: View {
                     if isUser {
                         Spacer()
                     }
-                    CopyButton(role: role, content: content, isVisible: isHovering) {
-                        copyToPasteboard()
-                    }
+                    CopyButton(role: role, content: content, isVisible: isHovering)
                     .padding(.horizontal, getHorizontalPadding())
                     if !isUser {
                         Spacer()

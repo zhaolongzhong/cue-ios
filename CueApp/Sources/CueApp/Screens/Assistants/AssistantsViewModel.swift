@@ -59,11 +59,6 @@ final class AssistantsViewModel: ObservableObject {
         self.objectWillChange.send()
     }
 
-    // MARK: - Public Methods
-    func connect() async {
-        await webSocketService.connect()
-    }
-
     func cleanup() {
         AppLog.log.debug("AssistantsViewModel cleanup")
         assistants.removeAll()

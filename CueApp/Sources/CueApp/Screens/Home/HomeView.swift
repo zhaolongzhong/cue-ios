@@ -10,7 +10,7 @@ enum HomeDestination: Hashable {
 struct HomeView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var sidePanelState = SidePanelState()
     @State private var dragOffset: CGFloat = 0
@@ -76,7 +76,7 @@ private extension HomeView {
             .frame(width: sidebarWidth)
             .offset(x: sidePanelState.isShowing ? 0 : -sidebarWidth)
             .animation(.easeOut, value: sidePanelState.isShowing)
-            .environmentObject(apiKeysViewModel)
+            .environmentObject(apiKeysProviderViewModel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -85,9 +85,9 @@ private extension HomeView {
         Group {
             switch destination {
             case .openai:
-                OpenAIChatView(apiKey: apiKeysViewModel.openAIKey)
+                OpenAIChatView(apiKey: apiKeysProviderViewModel.openAIKey)
             case .anthropic:
-                AnthropicChatView(apiKey: apiKeysViewModel.anthropicKey)
+                AnthropicChatView(apiKey: apiKeysProviderViewModel.anthropicKey)
             case .chat(let assistant):
                 ChatView(
                     assistant: assistant,

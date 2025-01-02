@@ -13,7 +13,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     @Dependency(\.clientStatusService) public var clientStatusService
 
     public var appStateViewModel: AppStateViewModel
-    public var apiKeysViewModel: APIKeysViewModel
+    public var apiKeysProviderViewModel: APIKeysProviderViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
         ViewModelFactory()
@@ -24,7 +24,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     }
 
     public init() {
-        self.apiKeysViewModel = APIKeysViewModel()
+        self.apiKeysProviderViewModel = APIKeysProviderViewModel()
         self.appStateViewModel = AppStateViewModel()
         self.appStateViewModel.delegate = self
     }

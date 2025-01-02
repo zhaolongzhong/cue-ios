@@ -32,18 +32,16 @@ private struct AuthenticatedContent: View {
             } else if viewModel.state.isAuthenticated, let user = viewModel.state.currentUser {
                 #if os(iOS)
                 HomeView(userId: user.id)
-                    .environmentObject(viewModel)
-                    .environmentObject(dependencies.apiKeysViewModel)
                 #else
-                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
+                MainWindowView(userId: user.id, viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                     .frame(minWidth: 600, minHeight: 220)
-                    .environmentObject(viewModel)
-                    .environmentObject(dependencies.apiKeysViewModel)
                 #endif
             } else {
                 LoginView(loginViewModelFactory: dependencies.viewModelFactory.makeLoginViewModel)
             }
         }
+        .environmentObject(viewModel)
+        .environmentObject(dependencies.apiKeysProviderViewModel)
         .onChange(of: viewModel.state.error) { _, error in
             if let error = error {
                 coordinator.showError(error)
@@ -54,6 +52,7 @@ private struct AuthenticatedContent: View {
         .sheet(isPresented: $coordinator.showSettings) {
             NavigationStack {
                 SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
+                    .environmentObject(dependencies.apiKeysProviderViewModel)
             }
         }
         .withCoordinatorAlert()
