@@ -24,7 +24,7 @@ struct SidebarAssistantActions: AssistantActions {
 
 struct Sidebar: View {
     @Environment(\.openWindow) private var openWindow
-    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
     @State private var isShowingNewAssistantSheet = false
@@ -60,10 +60,7 @@ struct Sidebar: View {
                             }
                         )
                     )
-                    .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listItemTint(Color.clear)
                     .tag(assistant)
                 }
             }
@@ -87,7 +84,7 @@ struct Sidebar: View {
                     .ignoresSafeArea()
             )
             #endif
-            .accentColor(AppTheme.Colors.secondaryBackground.opacity(0.5))
+            .accentColor(AppTheme.Colors.systemGray)
             .listStyle(.sidebar)
             .onChange(of: selectedAssistant) { _, _ in
                 self.onSelectedAssistantUpdate()

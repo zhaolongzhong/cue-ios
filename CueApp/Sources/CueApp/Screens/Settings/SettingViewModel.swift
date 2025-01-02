@@ -4,6 +4,7 @@ import Dependencies
 
 @MainActor
 public final class SettingsViewModel: ObservableObject {
+    @Dependency(\.apiKeyRepository) private var apiKeyRepository
     @Dependency(\.authRepository) private var authRepository
     @Published private(set) var currentUser: User?
     @Published private(set) var generatedToken: String?
@@ -34,29 +35,6 @@ public final class SettingsViewModel: ObservableObject {
                 self.error = "An unexpected error occurred"
                 AppLog.log.error("Failed to fetch user profile")
             }
-        }
-    }
-
-    func generateToken() async {
-        generatedToken = nil
-        tokenError = nil
-
-        switch await authRepository.generateToken() {
-        case .success(let token):
-            generatedToken = token
-
-        case .failure(.tokenGenerationFailed):
-            tokenError = "Failed to generate token. Please try again."
-
-        case .failure(.networkError):
-            tokenError = "Network error occurred. Please try again."
-
-        case .failure(.unauthorized):
-            tokenError = "Please log in to generate token"
-
-        case .failure:
-            tokenError = "An unexpected error occurred"
-            AppLog.log.error("Failed to generate token")
         }
     }
 

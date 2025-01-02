@@ -10,7 +10,7 @@ enum HomeDestination: Hashable {
 struct HomeView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var apiKeysViewModel: APIKeysViewModel
+    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var sidePanelState = SidePanelState()
     @State private var dragOffset: CGFloat = 0
@@ -26,6 +26,7 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             mainContent
+                .disabled(sidePanelState.isShowing)
             overlayLayer
             sidePanel
         }
@@ -74,9 +75,9 @@ private extension HomeView {
             .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
             .background(AppTheme.Colors.secondaryBackground)
             .frame(width: sidebarWidth)
-            .offset(x: sidePanelState.isShowing ? 0 : -sidebarWidth)
-            .animation(.easeOut, value: sidePanelState.isShowing)
-            .environmentObject(apiKeysViewModel)
+            .offset(x: sidePanelState.isShowing ? dragOffset : -sidebarWidth + dragOffset)
+            .animation(.interactiveSpring(), value: sidePanelState.isShowing || dragOffset != 0)
+            .environmentObject(apiKeysProviderViewModel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -85,9 +86,9 @@ private extension HomeView {
         Group {
             switch destination {
             case .openai:
-                OpenAIChatView(apiKey: apiKeysViewModel.openAIKey)
+                OpenAIChatView(apiKey: apiKeysProviderViewModel.openAIKey)
             case .anthropic:
-                AnthropicChatView(apiKey: apiKeysViewModel.anthropicKey)
+                AnthropicChatView(apiKey: apiKeysProviderViewModel.anthropicKey)
             case .chat(let assistant):
                 ChatView(
                     assistant: assistant,
@@ -131,19 +132,36 @@ private extension HomeView {
 
     func handleDragChange(_ gesture: DragGesture.Value) {
         let translation = gesture.translation.width
-        if (!sidePanelState.isShowing && translation > 0) ||
-           (sidePanelState.isShowing && translation < 0) {
-            dragOffset = translation
+        if sidePanelState.isShowing {
+            // Dragging to close
+            if translation < 0 {
+                dragOffset = translation
+            }
+        } else {
+            // Dragging to open
+            if translation > 0 {
+                dragOffset = translation
+            }
         }
     }
 
     func handleDragEnd(_ gesture: DragGesture.Value) {
         let translation = gesture.translation.width
-        withAnimation(.easeOut) {
-            if !sidePanelState.isShowing && translation > dragThreshold {
-                sidePanelState.isShowing = true
-            } else if sidePanelState.isShowing && -translation > dragThreshold {
-                sidePanelState.isShowing = false
+        let velocity = gesture.predictedEndTranslation.width - gesture.translation.width
+
+        withAnimation(.interactiveSpring()) {
+            if sidePanelState.isShowing {
+                if -translation > dragThreshold || velocity < -500 {
+                    sidePanelState.hidePanel()
+                } else {
+                    sidePanelState.showPanel()
+                }
+            } else {
+                if translation > dragThreshold || velocity > 500 {
+                    sidePanelState.showPanel()
+                } else {
+                    sidePanelState.hidePanel()
+                }
             }
             dragOffset = 0
         }

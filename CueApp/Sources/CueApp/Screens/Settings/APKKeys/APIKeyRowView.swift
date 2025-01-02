@@ -2,7 +2,8 @@ import SwiftUI
 
 struct APIKeyRowView: View {
     let keyType: APIKeyType
-    @ObservedObject var viewModel: APIKeysViewModel
+    @ObservedObject var viewModel: APIKeysProviderViewModel
+    @State private var showDeleteAlert = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -30,7 +31,7 @@ struct APIKeyRowView: View {
                 HStack(spacing: 4) {
                     if !viewModel.getAPIKey(for: keyType).isEmpty {
                         Button(role: .destructive) {
-                            viewModel.deleteKey(keyType)
+                            showDeleteAlert = true
                         } label: {
                             Image(systemName: "trash")
                                 .foregroundColor(.red)
@@ -47,6 +48,17 @@ struct APIKeyRowView: View {
                 }
             }
         }
-        .padding(.vertical, 8)
+        .padding(.all, 8)
+        .background(AppTheme.Colors.secondaryBackground)
+        .cornerRadius(8)
+        .alert("Delete API Key",
+               isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteKey(keyType)
+            }
+        } message: {
+            Text("Are you sure you want to delete this API key?")
+        }
     }
 }

@@ -30,7 +30,7 @@ struct AppState: Equatable {
 public final class AppStateViewModel: ObservableObject {
     @Published private(set) var state: AppState = AppState(
         isLoading: true,
-        isAuthenticated: false,
+        isAuthenticated: true,
         currentUser: nil,
         error: nil
     )
@@ -52,21 +52,16 @@ public final class AppStateViewModel: ObservableObject {
             state.isAuthenticated = isAuthenticated
             state.isLoading = false
         }
-
-        if isAuthenticated {
-            await fetchUserProfile()
-        }
     }
 
     private func setupSubscriptions() {
         authRepository.isAuthenticatedPublisher
-            .dropFirst()
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isAuthenticated in
                 guard let self else { return }
                 self.updateState { state in
                     state.isAuthenticated = isAuthenticated
-                    state.isLoading = false
                 }
 
                 // Fetch user profile if authenticated but no current user
@@ -96,6 +91,7 @@ public final class AppStateViewModel: ObservableObject {
             updateState { state in
                 state.currentUser = user
                 state.error = nil
+                state.isLoading = false
             }
 
         case .failure(.unauthorized):
