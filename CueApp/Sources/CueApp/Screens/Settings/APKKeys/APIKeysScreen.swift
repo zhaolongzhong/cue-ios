@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct APIKeysView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = APIKeysViewModel()
     @State private var selectedKey: APIKey?
 
@@ -43,8 +44,16 @@ struct APIKeysView: View {
         .navigationTitle("API Keys")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         #endif
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    Image(systemName: "chevron.left")
+                }
+            }
             ToolbarItem(placement: .automatic) {
                 Button {
                     viewModel.isShowingAddKey = true
@@ -145,7 +154,6 @@ struct APIKeyRow: View {
                     .font(.system(.subheadline, design: .monospaced))
                     .foregroundColor(.secondary)
                 CopyButton(
-                    role: "user",
                     content: key.secret,
                     isVisible: true
                 )

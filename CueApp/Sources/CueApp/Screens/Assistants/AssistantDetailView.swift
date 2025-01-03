@@ -19,93 +19,17 @@ struct AssistantDetailView: View {
     }
 
     var body: some View {
-        List {
-            Button {
-                viewModel.prepareNameEdit()
-            } label: {
-                SettingsRow(
-                    systemName: "person.circle",
-                    title: "Name",
-                    value: viewModel.assistant.name
-                )
-            }
-            .buttonStyle(.plain)
-
-            AssistantIDView(id: viewModel.assistant.id)
-
-            SettingsRow(
-                systemName: "gearshape",
-                title: "Model",
-                value: "",
-                trailing: AnyView(
-                    Picker("", selection: $viewModel.selectedModel) {
-                        ForEach(viewModel.availableModels, id: \.self) { model in
-                            Text(model)
-                                .tag(model)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(MenuPickerStyle())
-                    .font(.system(size: 12))
-                    .padding(.vertical, 0)
-                    .frame(height: 30)
-                    .tint(Color.secondary)
-                    .onChange(of: viewModel.selectedModel) { _, newValue in
-                        Task {
-                            await viewModel.updateMetadata(model: newValue)
-                        }
-                    }
-                )
+        VStack {
+            #if os(macOS)
+            MacHeader(
+                title: "Assistant Details",
+                onDismiss: { dismiss() }
             )
+            #endif
 
-            Button {
-                viewModel.showingInstructionEdit = true
-            } label: {
-                SettingsRow(
-                    systemName: "text.bubble",
-                    title: "Instruction",
-                    showChevron: true
-                )
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                viewModel.showingDescriptionEdit = true
-            } label: {
-                SettingsRow(
-                    systemName: "doc.text",
-                    title: "Description",
-                    showChevron: true
-                )
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                viewModel.prepareMaxTurnsEdit()
-            } label: {
-                SettingsRow(
-                    systemName: "number",
-                    title: "Max Turns",
-                    value: viewModel.maxTurns.isEmpty ? "Not set" : viewModel.maxTurns,
-                    showChevron: true
-                )
-            }
-            .buttonStyle(.plain)
+            AssistantDetailContent(viewModel: viewModel)
         }
         .navigationTitle("Assistant Details")
-        #if os(iOS)
-        .listStyle(.insetGrouped)
-        #else
-        .defaultWindowSize()
-        .listStyle(.automatic)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Close") {
-                    dismiss()
-                }
-            }
-        }
-        #endif
         .inputAlert(
             title: "Update Name",
             message: "Enter a new name for this assistant",
@@ -127,23 +51,238 @@ struct AssistantDetailView: View {
             validator: viewModel.validateMaxTurns,
             onSave: viewModel.handleMaxTurnsUpdate
         )
-        .textFieldEditor(
-            title: "Edit Instruction",
-            text: $viewModel.instruction,
-            isPresented: $viewModel.showingInstructionEdit
-        ) { newValue in
-            Task {
-                await viewModel.updateMetadata(instruction: newValue)
+        .sheet(isPresented: $viewModel.showingInstructionEdit) {
+            TextFieldEditorSheet(
+                title: "Edit Instruction",
+                text: $viewModel.instruction
+            ) { newValue in
+                Task {
+                    await viewModel.updateMetadata(instruction: newValue)
+                }
             }
         }
-        .textFieldEditor(
-            title: "Edit Description",
-            text: $viewModel.description,
-            isPresented: $viewModel.showingDescriptionEdit
-        ) { newValue in
-            Task {
-                await viewModel.updateMetadata(description: newValue)
+        .sheet(isPresented: $viewModel.showingDescriptionEdit) {
+            TextFieldEditorSheet(
+                title: "Edit Description",
+                text: $viewModel.description
+            ) { newValue in
+                Task {
+                    await viewModel.updateMetadata(description: newValue)
+                }
             }
         }
+}
+}
+
+// MARK: - Content View
+struct AssistantDetailContent: View {
+    @ObservedObject var viewModel: AssistantDetailViewModel
+
+    var body: some View {
+        List {
+            AssistantNameRow(
+                name: viewModel.assistant.name,
+                onTap: viewModel.prepareNameEdit
+            )
+
+            AssistantIDView(id: viewModel.assistant.id)
+
+            AssistantModelRow(
+                selectedModel: $viewModel.selectedModel,
+                availableModels: viewModel.availableModels
+            ) { newValue in
+                Task {
+                    await viewModel.updateMetadata(model: newValue)
+                }
+            }
+
+            AssistantSettingsRow(
+                title: "Instruction",
+                systemName: "text.bubble",
+                onTap: { viewModel.showingInstructionEdit = true }
+            )
+
+            AssistantSettingsRow(
+                title: "Description",
+                systemName: "doc.text",
+                onTap: { viewModel.showingDescriptionEdit = true }
+            )
+
+            AssistantMaxTurnsRow(
+                maxTurns: viewModel.maxTurns,
+                onTap: viewModel.prepareMaxTurnsEdit
+            )
+        }
+        #if !os(iOS)
+        .listStyle(.automatic)
+        #endif
+    }
+}
+
+// MARK: - Row Components
+struct AssistantNameRow: View {
+    let name: String
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            SettingsRow(
+                systemName: "person.circle",
+                title: "Name",
+                value: name
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct AssistantModelRow: View {
+    @Binding var selectedModel: String
+    let availableModels: [String]
+    let onChange: (String) -> Void
+
+    var body: some View {
+        SettingsRow(
+            systemName: "gearshape",
+            title: "Model",
+            trailing: AnyView(
+                HStack {
+                    Spacer()
+                    Picker("", selection: $selectedModel) {
+                        ForEach(availableModels, id: \.self) { model in
+                            Text(model)
+                                .lineLimit(1)
+                                .tag(model)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .font(.system(size: 12))
+                    #if os(macOS)
+                    .frame(width: 120)
+                    #else
+                    .frame(minWidth: 120)
+                    #endif
+                    .tint(Color.secondary)
+                    .onChange(of: selectedModel) { _, newValue in
+                        onChange(newValue)
+                    }
+                }
+            )
+        )
+    }
+}
+
+struct AssistantSettingsRow: View {
+    let title: String
+    let systemName: String
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            SettingsRow(
+                systemName: systemName,
+                title: title,
+                showChevron: true
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct AssistantMaxTurnsRow: View {
+    let maxTurns: String
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            SettingsRow(
+                systemName: "number",
+                title: "Max Turns",
+                value: maxTurns.isEmpty ? "Not set" : maxTurns,
+                showChevron: true
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - TextFieldEditorSheet
+struct TextFieldEditorSheet: View {
+    let title: String
+    @Binding var text: String
+    let onSave: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        #if os(iOS)
+        navigationView
+        #else
+        macOSView
+        #endif
+    }
+
+    private var navigationView: some View {
+        NavigationView {
+            TextEditor(text: $text)
+                .scrollContentBackground(.hidden)
+                .padding(.all, 8)
+                .background(Color.secondary.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+                .navigationTitle(title)
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            onSave(text)
+                            dismiss()
+                        }
+                    }
+                }
+                .padding(.all, 8)
+        }
+    }
+
+    private var macOSView: some View {
+        VStack {
+            #if os(macOS)
+            MacHeader(
+                title: title,
+                onDismiss: { dismiss() }
+            )
+            #endif
+            VStack(spacing: 20) {
+                TextEditor(text: $text)
+                    .scrollContentBackground(.hidden)
+                    .padding(.vertical, 8)
+                    .background(Color.secondary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary).opacity(0.2))
+
+                HStack(spacing: 12) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .keyboardShortcut(.escape)
+
+                    Button("Save") {
+                        onSave(text)
+                        dismiss()
+                    }
+                    .keyboardShortcut(.return)
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding()
+        }
+        .frame(width: 500, height: 400)
     }
 }

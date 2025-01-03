@@ -5,10 +5,26 @@ import Dependencies
 @MainActor
 final class SignUpViewModel: ObservableObject {
     @Dependency(\.authRepository) var authRepository
-    @Published var email = ""
-    @Published var password = ""
-    @Published var confirmPassword = ""
-    @Published var inviteCode = ""
+    @Published var email = "" {
+        didSet {
+            clearError()
+        }
+    }
+    @Published var password = "" {
+        didSet {
+            clearError()
+        }
+    }
+    @Published var confirmPassword = "" {
+        didSet {
+            clearError()
+        }
+    }
+    @Published var inviteCode = "" {
+        didSet {
+            clearError()
+        }
+    }
     @Published var error: String?
     @Published var isLoading = false
 
@@ -54,5 +70,9 @@ final class SignUpViewModel: ObservableObject {
             error = "An unexpected error occurred. Please try again."
             AppLog.log.error("Signup failed with unknown error")
         }
+    }
+
+    public func clearError() {
+        error = nil
     }
 }

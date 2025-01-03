@@ -1,10 +1,9 @@
 import SwiftUI
 
-@MainActor
 protocol AssistantActions {
     func onDelete(assistant: Assistant)
     func onDetails(assistant: Assistant)
-    func onSetPrimary(assistant: Assistant) async
+    @MainActor func onSetPrimary(assistant: Assistant)
     func onChat(assistant: Assistant)
 }
 

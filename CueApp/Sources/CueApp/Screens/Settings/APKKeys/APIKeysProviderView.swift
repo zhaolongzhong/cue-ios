@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct APIKeysProviderView: View {
-    @StateObject private var viewModel: APIKeysProviderViewModel
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel: APIKeysProviderViewModel
 
     init(apiKeysProviderViewModel: APIKeysProviderViewModel) {
         _viewModel = StateObject(wrappedValue: apiKeysProviderViewModel)
@@ -22,31 +22,31 @@ struct APIKeysProviderView: View {
         .navigationTitle("Provider API Keys")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .overlay {
-            alertOverlay
-        }
-    }
-
-    private var alertOverlay: some View {
-        Group {
-            if viewModel.isAlertPresented,
-               let keyType = viewModel.editingKeyType {
-                TextFieldAlert(
-                    isPresented: Binding(
-                        get: { viewModel.isAlertPresented },
-                        set: { if !$0 { viewModel.cancelEditing() } }
-                    ),
-                    text: Binding(
-                        get: { viewModel.tempAPIKey },
-                        set: { viewModel.tempAPIKey = $0 }
-                    ),
-                    title: "Edit \(keyType.displayName) API Key",
-                    message: ""
-                ) { _ in
-                    viewModel.saveKey()
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    Image(systemName: "chevron.left")
                 }
             }
         }
+        #endif
+        .inputAlert(
+            title: "Edit Key",
+            text: Binding(
+                get: { viewModel.tempAPIKey },
+                set: { viewModel.tempAPIKey = $0 }
+            ),
+            isPresented: Binding(
+                get: { viewModel.isAlertPresented },
+                set: { if !$0 { viewModel.cancelEditing() } }
+            ),
+
+            onSave: { _ in
+                viewModel.saveKey()
+            }
+        )
     }
 }

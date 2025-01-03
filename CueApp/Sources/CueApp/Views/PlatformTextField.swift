@@ -27,9 +27,11 @@ struct PlatformTextField: View {
     var commonTextFieldStyle: some View {
         #if os(iOS) || os(tvOS) || os(watchOS)
         TextField(placeholder, text: $text)
-            .textFieldStyle(PlainTextFieldStyle())
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(height: 48)
+            .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color(.systemGray6))
@@ -51,9 +53,11 @@ struct PlatformTextField: View {
     var secureField: some View {
         #if os(iOS) || os(tvOS) || os(watchOS)
         SecureField(placeholder, text: $text)
-            .textFieldStyle(PlainTextFieldStyle())
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(height: 48)
+            .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color(.systemGray6))

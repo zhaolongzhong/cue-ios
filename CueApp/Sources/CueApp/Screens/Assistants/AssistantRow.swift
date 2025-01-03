@@ -13,7 +13,7 @@ public struct AssistantRow: View {
     public var body: some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(self.isOnline ? Color.green : Color.gray.opacity(0.5))
+                .strokeBorder(self.isOnline ? Color.green : Color.gray.opacity(0.5), lineWidth: 0.5)
                 .frame(width: 32, height: 32)
                 .overlay(
                     Text(assistant.name.prefix(2).uppercased())
@@ -23,7 +23,6 @@ public struct AssistantRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(assistant.name)
-                    .font(.callout)
                 if let status = status {
                     Text("Runner: ...\(status.runnerId?.suffix(4) ?? "")")
                         .font(.caption)
@@ -70,9 +69,7 @@ public struct AssistantContextMenu: View {
 
             if !assistant.isPrimary {
                 Button {
-                    Task {
-                        await actions?.onSetPrimary(assistant: assistant)
-                    }
+                    actions?.onSetPrimary(assistant: assistant)
                 } label: {
                     Label("Set as Primary", systemImage: "star.fill")
                 }

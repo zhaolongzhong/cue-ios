@@ -26,9 +26,9 @@ public struct SettingsView: View {
 }
 
 private struct SettingsContentView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: SettingsViewModel
     @State private var isShowingProviderAPIKeys = false
     @State private var isShowingAPIKeys = false
@@ -101,8 +101,8 @@ private struct SettingsList: View {
             .listSectionSpacing(.compact)
 
             Section {
-                APIKeysButton(title: "Provider API Keys", onTap: showProviderAPIKeys)
-                APIKeysButton(title: "Assistant API Keys", onTap: showAPIKeys)
+                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: showProviderAPIKeys)
+                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: showAPIKeys)
             } header: {
                 SettingsHeader(title: "API Keys")
             }
@@ -127,6 +127,7 @@ private struct SettingsList: View {
                         .tint(Color.secondary)
                     )
                 )
+                #if os(iOS)
                 SettingsRow(
                     systemName: "iphone.radiowaves.left.and.right",
                     title: "Haptic Feedback",
@@ -135,17 +136,13 @@ private struct SettingsList: View {
                     trailing: AnyView(
                         Toggle("", isOn: $hapticFeedbackEnabled)
                             .labelsHidden()
-                            .labelsHidden()
                             .toggleStyle(.switch)
-                            #if os(macOS)
-                            .controlSize(.mini)
-                            #else
                             .controlSize(.small)
-                            #endif
                             .tint(.secondary)
 
                     )
                 )
+                #endif
             } header: {
                 SettingsHeader(title: "Appearance")
             }
@@ -172,7 +169,7 @@ private struct SettingsList: View {
             }
         }
         .listStyle(.insetGrouped)
-        .background(AppTheme.Colors.secondaryBackground)
+        .background(AppTheme.Colors.secondaryBackground.opacity(0.2))
         .onChange(of: colorScheme) { _, newValue in
             (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.overrideUserInterfaceStyle = {
                 switch newValue {
@@ -198,10 +195,10 @@ private struct SettingsList: View {
 
                 Section {
                     GroupBox {
-                        APIKeysButton(title: "Provider API Keys", onTap: showProviderAPIKeys)
+                        APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: showProviderAPIKeys)
                             .padding(.horizontal, 6)
                         Divider()
-                        APIKeysButton(title: "Assistant API Keys", onTap: showAPIKeys)
+                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: showAPIKeys)
                             .padding(.horizontal, 6)
                     }
                 } header: {
@@ -265,6 +262,7 @@ private struct UserInfoView: View {
 
 private struct APIKeysButton: View {
     let title: String
+    let horizontal: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -275,7 +273,7 @@ private struct APIKeysButton: View {
             onTap()
         } label: {
             SettingsRow(
-                systemName: "key",
+                systemName: horizontal ? "key.horizontal" : "key",
                 title: title,
                 showChevron: true
             )
@@ -314,11 +312,11 @@ extension View {
         onConfirm: @escaping () -> Void
     ) -> some View {
         confirmationDialog(
-            "Log Out",
+            "Log out",
             isPresented: isPresented,
             titleVisibility: .visible
         ) {
-            Button("Log Out", role: .destructive) {
+            Button("Log out", role: .destructive) {
                 onConfirm()
             }
             Button("Cancel", role: .cancel) {

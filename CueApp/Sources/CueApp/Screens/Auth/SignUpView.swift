@@ -1,110 +1,99 @@
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 struct SignUpView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var dependencies: AppDependencies
     @StateObject private var viewModel: SignUpViewModel
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case email, password, confirmPassword, inviteCode
+    }
 
     init(signUpiewModelFactory: @escaping () -> SignUpViewModel) {
         _viewModel = StateObject(wrappedValue: signUpiewModelFactory())
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("Cue")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+        ScrollView(showsIndicators: false) {
+            VStack {
+                VStack(spacing: 24) {
+                    Text("Create your account")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .padding(.top, 16)
+
+                    VStack(spacing: 16) {
+                        PlatformTextField("Email", text: $viewModel.email)
+                            .focused($focusedField, equals: .email)
+                        PlatformTextField("Password", text: $viewModel.password, textContentType: .password)
+                            .focused($focusedField, equals: .password)
+                        PlatformTextField("Confirm password", text: $viewModel.confirmPassword, textContentType: .password)
+                            .focused($focusedField, equals: .confirmPassword)
+                        PlatformTextField("Invite code (optional)", text: $viewModel.inviteCode)
+                            .focused($focusedField, equals: .inviteCode)
+                    }
+
+                    if let error = viewModel.error {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                            .padding(.top, 4)
+                    }
+
+                    PlatformButton(
+                        action: {
+                            focusedField = nil
+                            await viewModel.signup()
+                        },
+                        isLoading: viewModel.isLoading
+                    ) {
+                        Text("Sign up")
+                    }
+                    .padding(.top, 8)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Text("Already have an account?")
+                        .foregroundColor(Color.primary.opacity(0.6))
+                    Button("Log in") {
+                        focusedField = nil
+                        dismiss()
+                    }
                     .foregroundColor(Color.primary)
-                Text("~")
-                    .font(.system(size: 50, weight: .light, design: .monospaced))
-                    .foregroundColor(Color.primary.opacity(0.9))
-            }
-            .padding(.vertical, 50)
-
-            Text("Create your account")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(Color.primary.opacity(0.8))
-
-            VStack(spacing: 16) {
-                PlatformTextField("Email", text: $viewModel.email)
-                PlatformTextField("Password", text: $viewModel.password, textContentType: .password)
-                PlatformTextField("Confirm password", text: $viewModel.confirmPassword, textContentType: .password)
-                PlatformTextField("Invite code (optional)", text: $viewModel.inviteCode)
-            }
-            .padding(.horizontal, 48)
-
-            if let error = viewModel.error {
-                Text(error)
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
-
-            Button(action: {
-                Task {
-                    await viewModel.signup()
+                    #if os(macOS)
+                    .buttonStyle(.plain)
+                    .controlSize(.small)
+                    #endif
                 }
-            }) {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Sign up")
-                        #if os(iOS)
-                        .fontWeight(.semibold)
-                        #endif
-                }
+                .padding(.bottom, 32)
             }
             #if os(iOS)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(AppTheme.Colors.secondaryBackground)
-            .foregroundColor(Color.primary.opacity(0.9))
-            .cornerRadius(10)
-            .padding(.horizontal, 48)
-            #else
-            .frame(width: 80)
-            .buttonStyle(.borderedProminent)
-            .tint(Color.primary.opacity(0.9))
+            .frame(minHeight: UIScreen.main.bounds.height - 100)
             #endif
-            .disabled(viewModel.isLoading)
-
-            Spacer()
-
-            HStack(spacing: 4) {
-                Text("Already have an account?")
-                    .foregroundColor(Color.primary.opacity(0.6))
-                Button("Log in") {
-                    dismiss()
-                }
-                .foregroundColor(Color.primary)
-                #if os(macOS)
-                .buttonStyle(.plain)
-                .controlSize(.small)
-                #endif
-            }
+            .padding(.horizontal)
         }
+        .scrollDismissesKeyboard(.immediately)
+        .background(AppTheme.Colors.background)
+        .authWindowSize()
         .navigationTitle("Sign up")
         #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
+                Button(action: {
+                    focusedField = nil
+                    dismiss()
+                }) {
                     Image(systemName: "chevron.left")
                         .imageScale(.large)
                 }
             }
-
         }
         #endif
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.automatic)
-        #endif
-        .background(AppTheme.Colors.background)
-        .authWindowSize()
     }
 }

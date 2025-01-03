@@ -4,6 +4,11 @@ struct LoginView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @StateObject private var viewModel: LoginViewModel
     @State private var showSignUp = false
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case email, password
+    }
 
     init(loginViewModelFactory: @escaping () -> LoginViewModel) {
         _viewModel = StateObject(wrappedValue: loginViewModelFactory())
@@ -11,92 +16,90 @@ struct LoginView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                HStack {
-                    Text("Cue")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
+            ScrollView(showsIndicators: false) {
+                VStack {
+                    VStack(spacing: 24) {
+                        HStack {
+                            Text("Cue")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .foregroundColor(Color.primary)
+                            Text("~")
+                                .font(.system(size: 50, weight: .light, design: .monospaced))
+                        }
+                        .padding(.top, 48)
+                        .padding(.bottom, 32)
+
+                        Text("Welcome back")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .padding(.bottom, 8)
+
+                        VStack(spacing: 16) {
+                            PlatformTextField("Email", text: $viewModel.email)
+                                .focused($focusedField, equals: .email)
+                            PlatformTextField("Password", text: $viewModel.password, textContentType: .password)
+                                .focused($focusedField, equals: .password)
+                        }
+
+                        if let error = viewModel.error {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .font(.caption)
+                                .padding(.top, 4)
+                        }
+
+                        VStack(spacing: 12) {
+                            PlatformButton(
+                                action: {
+                                    focusedField = nil
+                                    await viewModel.login()
+                                },
+                                isLoading: viewModel.isLoading
+                            ) {
+                                Text("Log in")
+                            }
+
+                            PlatformButton(
+                                action: {
+                                    focusedField = nil
+                                },
+                                style: .secondary
+                            ) {
+                                Text("Forgot Password?")
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 4) {
+                        Text("Don't have an account?")
+                            .foregroundColor(Color.primary.opacity(0.6))
+                        Button("Sign up") {
+                            focusedField = nil
+                            showSignUp = true
+                        }
                         .foregroundColor(Color.primary)
-                    Text("~")
-                        .font(.system(size: 50, weight: .light, design: .monospaced))
-                        .foregroundColor(Color.primary.opacity(0.9))
-                }
-                .padding(.vertical, 36)
-
-                Text("Welcome back")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color.primary.opacity(0.8))
-
-                VStack(spacing: 16) {
-                    PlatformTextField("Email", text: $viewModel.email)
-                    PlatformTextField("Password", text: $viewModel.password, textContentType: .password)
-                }
-                .padding(.horizontal, 48)
-
-                if let error = viewModel.error {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .font(.caption)
-                }
-
-                Button(action: {
-                    Task {
-                        await viewModel.login()
+                        #if os(macOS)
+                        .buttonStyle(.plain)
+                        .controlSize(.small)
+                        #endif
                     }
-                }) {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Log in")
-                    }
+                    .padding(.bottom, 32)
                 }
                 #if os(iOS)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(AppTheme.Colors.secondaryBackground)
-                .foregroundColor(Color.primary.opacity(0.9))
-                .cornerRadius(10)
-                .padding(.horizontal, 48)
-                #else
-                .frame(width: 80)
-                .buttonStyle(.borderedProminent)
-                .tint(Color.primary.opacity(0.9))
+                .frame(minHeight: UIScreen.main.bounds.height - 100)
                 #endif
-                .disabled(viewModel.isLoading)
-
-                Button("Forgot password?", action: {
-                    // Handle forgot password
-                })
-                .foregroundColor(Color.primary.opacity(0.9))
-                #if os(macOS)
-                .buttonStyle(.plain)
-                .controlSize(.small)
-                #endif
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Text("Don't have an account?")
-                        .foregroundColor(Color.primary.opacity(0.6))
-                    Button("Sign up") {
-                        showSignUp = true
-                    }
-                    .foregroundColor(Color.primary)
-                    #if os(macOS)
-                    .buttonStyle(.plain)
-                    .controlSize(.small)
-                    #endif
-                }
+                .padding(.horizontal)
             }
+            .scrollDismissesKeyboard(.immediately)
             .background(AppTheme.Colors.background)
-            .authWindowSize()
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView(signUpiewModelFactory: dependencies.viewModelFactory.makeSignUpViewModel)
             }
         }
         .tint(Color.primary.opacity(0.8))
-
     }
 }

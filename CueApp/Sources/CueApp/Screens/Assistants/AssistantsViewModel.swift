@@ -116,7 +116,7 @@ final class AssistantsViewModel: ObservableObject {
     func createAssistant(name: String) async -> Assistant? {
         switch await assistantRepository.createAssistant(name: name, isPrimary: false) {
         case .success(let assistant):
-            assistants.append(assistant)
+            assistants.insert(assistant, at: 0)
             AppLog.log.debug("Created assistant: \(assistant.id)")
             return assistant
 
@@ -138,23 +138,24 @@ final class AssistantsViewModel: ObservableObject {
         }
     }
 
-    func setPrimaryAssistant(id: String) async {
+    func setPrimaryAssistant(id: String) {
         let previousPrimaryId = primaryAssistant?.id
+        Task {
+            switch await assistantRepository.updateAssistant(
+                id: id,
+                name: nil,
+                metadata: AssistantMetadataUpdate(isPrimary: true, model: nil)
+            ) {
+            case .success(let assistant):
+                updateLocalAssistant(assistant)
 
-        switch await assistantRepository.updateAssistant(
-            id: id,
-            name: nil,
-            metadata: AssistantMetadataUpdate(isPrimary: true, model: nil)
-        ) {
-        case .success(let assistant):
-            updateLocalAssistant(assistant)
+                if let previousId = previousPrimaryId, previousId != id {
+                    await updatePreviousPrimaryAssistant(id: previousId)
+                }
 
-            if let previousId = previousPrimaryId, previousId != id {
-                await updatePreviousPrimaryAssistant(id: previousId)
+            case .failure(let error):
+                handleError(error, context: "Setting primary assistant failed")
             }
-
-        case .failure(let error):
-            handleError(error, context: "Setting primary assistant failed")
         }
     }
 

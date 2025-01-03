@@ -13,18 +13,44 @@ public enum WindowSize {
 public struct WindowSizeModifier: ViewModifier {
     let width: CGFloat
     let height: CGFloat
+    let isFixedSize: Bool
 
-    init(width: CGFloat = WindowSize.defaultWidth, height: CGFloat = WindowSize.defaultHeight) {
+    init(width: CGFloat = WindowSize.defaultWidth,
+         height: CGFloat = WindowSize.defaultHeight,
+         isFixedSize: Bool = false) {
         self.width = width
         self.height = height
+        self.isFixedSize = isFixedSize
+    }
+
+    private func configureWindow() {
+        #if os(macOS)
+        if let window = NSApp.windows.first {
+            if isFixedSize {
+                window.styleMask.remove(.resizable)
+                window.setContentSize(NSSize(width: width, height: height))
+                window.collectionBehavior.remove(.fullScreenPrimary)
+                window.minSize = NSSize(width: width, height: height)
+                window.maxSize = NSSize(width: width, height: height)
+            } else {
+                window.styleMask.insert(.resizable)
+                window.minSize = NSSize(width: width, height: height)
+                window.setContentSize(NSSize(width: width, height: height))
+            }
+        }
+        #endif
     }
 
     public func body(content: Content) -> some View {
         content
             #if os(macOS)
-            .frame(minWidth: width, minHeight: height)
+            .frame(
+                width: isFixedSize ? width : nil,
+                height: isFixedSize ? height : nil
+            )
             .onAppear {
                 setWindowSize(width: width, height: height)
+                configureWindow()
             }
             #endif
     }
@@ -36,6 +62,8 @@ extension View {
     }
 
     public func authWindowSize() -> some View {
-        windowSize(width: WindowSize.Auth.width, height: WindowSize.Auth.height)
+        modifier(WindowSizeModifier(width: WindowSize.Auth.width,
+                                    height: WindowSize.Auth.height,
+                                    isFixedSize: true))
     }
 }

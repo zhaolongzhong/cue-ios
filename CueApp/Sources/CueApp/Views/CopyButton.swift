@@ -1,17 +1,12 @@
 import SwiftUI
 
 struct CopyButton: View {
-    let role: String
     let content: String
     let isVisible: Bool
     var copyAction: (() -> Void)?
 
     @State private var isPressed = false
     @State private var showCopiedFeedback = false
-
-    var isUser: Bool {
-        role.lowercased() == "user"
-    }
 
     var body: some View {
         Button(action: {
@@ -45,13 +40,13 @@ struct CopyButton: View {
             ZStack {
                 // Copy icon
                 Image(systemName: "doc.on.doc")
-                    .font(.system(size: 12))
+                    .font(.system(size: 14))
                     .foregroundColor(.secondary.opacity(showCopiedFeedback ? 0 : 0.6))
                     .scaleEffect(isPressed ? 0.8 : 1.0)
 
                 // Checkmark feedback
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12))
+                    .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .opacity(showCopiedFeedback ? 1 : 0)
                     .scaleEffect(showCopiedFeedback ? 1 : 0.5)

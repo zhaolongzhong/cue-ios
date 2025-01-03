@@ -67,6 +67,7 @@ struct MessageBubble: View {
                     .padding(.vertical, isUser ? 10 : 4)
                     .background(isUser ? bubbleColor : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: isUser ? 16 : 0))
+                    .padding(.horizontal, getHorizontalPadding())
                     .textSelection(.enabled)
                     if !isUser {
                         Spacer()
@@ -76,8 +77,8 @@ struct MessageBubble: View {
                     if isUser {
                         Spacer()
                     }
-                    CopyButton(role: role, content: content, isVisible: isHovering)
-                    .padding(.horizontal, getHorizontalPadding())
+                    CopyButton(content: content, isVisible: isHovering)
+                        .padding(.horizontal, getHorizontalPadding())
                     if !isUser {
                         Spacer()
                     }

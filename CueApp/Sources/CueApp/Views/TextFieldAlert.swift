@@ -36,9 +36,11 @@ struct CenteredAlert<Content: View>: View {
                     .font(.headline)
                     .multilineTextAlignment(.center)
 
-                Text(message)
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
+                if !message.isEmpty {
+                    Text(message)
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                }
 
                 content
                     .padding(.horizontal)
@@ -50,7 +52,7 @@ struct CenteredAlert<Content: View>: View {
                         secondaryButton.action()
                     }) {
                         Text(secondaryButton.title)
-                            .foregroundColor(secondaryButton.style == .cancel ? .red : .blue)
+                            .foregroundColor(.secondary)
                     }
 
                     Spacer()
@@ -60,13 +62,13 @@ struct CenteredAlert<Content: View>: View {
                         isPresented = false
                     }) {
                         Text(primaryButton.title)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.primary.opacity(0.8))
                     }
                 }
                 .padding(.horizontal)
             }
             .padding()
-            .background(AppTheme.Colors.background)
+            .background(AppTheme.Colors.secondaryBackground)
             .cornerRadius(12)
             .shadow(radius: 10)
             .frame(maxWidth: 300)

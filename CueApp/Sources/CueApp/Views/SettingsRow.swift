@@ -25,7 +25,7 @@ struct SettingsRow: View {
         HStack(spacing: 14) {
             if let icon = icon {
                 icon
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
                     .frame(width: 16, height: 16)
             }

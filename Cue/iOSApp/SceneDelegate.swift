@@ -32,6 +32,7 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
                 }
             }()
             windowScene.windows.first?.overrideUserInterfaceStyle = style
+            windowScene.windows.first?.tintColor = .systemBlue.withAlphaComponent(0.5)
         }
     }
 

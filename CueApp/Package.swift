@@ -29,7 +29,7 @@ let package = Package(
             ],
             path: "Sources/CueApp",
             resources: [
-                .process("Resources/Assets.xcassets")
+                .copy("Resources/Assets.xcassets")
             ]
         ),
         .testTarget(

@@ -15,8 +15,13 @@ struct HomeView: View {
     @StateObject private var sidePanelState = SidePanelState()
     @State private var dragOffset: CGFloat = 0
 
+    // Side panel configuration constants
     private let sidebarWidth: CGFloat = 300
+    private let edgeWidth: CGFloat = 20
     private let dragThreshold: CGFloat = 50
+    private let animationDuration: Double = 0.3
+    private let springStiffness: Double = 300
+    private let springDamping: Double = 30
 
     init(userId: String) {
         let homeViewModel = HomeViewModel(userId: userId)
@@ -29,9 +34,14 @@ struct HomeView: View {
                 .disabled(sidePanelState.isShowing)
             overlayLayer
             sidePanel
+                .gesture(sidePanelDragGesture)
         }
-        .gesture(sidePanelGesture)
-        .background(AppTheme.Colors.secondaryBackground)
+        .modifier(LeftEdgeGesture(
+            edgeWidth: edgeWidth,
+            onDragChange: handleEdgeDragChange,
+            onDragEnd: handleEdgeDragEnd
+        ))
+        .background(AppTheme.Colors.secondaryBackground.opacity(0.2))
         .onAppear {
             Task {
                 await viewModel.initialize()
@@ -57,11 +67,29 @@ private extension HomeView {
 
     var overlayLayer: some View {
         Color.black
-            .opacity(sidePanelState.isShowing ? 0.3 : 0)
-            .animation(.easeOut, value: sidePanelState.isShowing)
+            .opacity(calculateOverlayOpacity())
+            .animation(.easeInOut(duration: animationDuration), value: dragOffset)
+            .animation(.easeInOut(duration: animationDuration), value: sidePanelState.isShowing)
             .ignoresSafeArea()
             .allowsHitTesting(sidePanelState.isShowing)
-            .onTapGesture { sidePanelState.hidePanel() }
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: animationDuration)) {
+                    #if os(iOS)
+                    HapticManager.shared.impact(style: .light)
+                    #endif
+                    sidePanelState.hidePanel()
+                }
+            }
+    }
+
+    private func calculateOverlayOpacity() -> Double {
+        if sidePanelState.isShowing {
+            // When panel is showing, calculate opacity based on drag offset
+            return 0.3 * (1 + dragOffset / sidebarWidth)
+        } else {
+            // When panel is closed/opening, calculate opacity based on drag progress
+            return 0.3 * (dragOffset / sidebarWidth)
+        }
     }
 
     var sidePanel: some View {
@@ -76,7 +104,13 @@ private extension HomeView {
             .background(AppTheme.Colors.secondaryBackground)
             .frame(width: sidebarWidth)
             .offset(x: sidePanelState.isShowing ? dragOffset : -sidebarWidth + dragOffset)
-            .animation(.interactiveSpring(), value: sidePanelState.isShowing || dragOffset != 0)
+            .animation(
+                .interpolatingSpring(
+                    stiffness: springStiffness,
+                    damping: springDamping
+                ),
+                value: sidePanelState.isShowing || dragOffset != 0
+            )
             .environmentObject(apiKeysProviderViewModel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -101,11 +135,96 @@ private extension HomeView {
         }
         .withCommonNavigationBar()
     }
+}
 
-    var sidePanelGesture: some Gesture {
+// MARK: - Home View Event Handlers
+private extension HomeView {
+    func handleAssistantSelection(_ assistant: Assistant) {
+        viewModel.navigateToDestination(.chat(assistant))
+        sidePanelState.hidePanel()
+    }
+
+    func handleEdgeDragChange(_ gesture: DragGesture.Value) {
+        guard !sidePanelState.isShowing else { return }
+        // Only handle edge drag when panel is closed
+        dragOffset = max(0, min(sidebarWidth, gesture.translation.width))
+    }
+
+    func handleEdgeDragEnd(_ gesture: DragGesture.Value) {
+        if !sidePanelState.isShowing {
+            let translation = gesture.translation.width
+            let velocity = gesture.predictedEndTranslation.width - gesture.translation.width
+
+            withAnimation(.interpolatingSpring(
+                stiffness: springStiffness,
+                damping: springDamping
+            )) {
+                if translation > dragThreshold || velocity > 500 {
+                    sidePanelState.showPanel()
+                } else {
+                    sidePanelState.hidePanel()
+                }
+                dragOffset = 0
+            }
+        }
+    }
+
+    // Gesture for handling panel closing
+    var sidePanelDragGesture: some Gesture {
         DragGesture()
-            .onChanged(handleDragChange)
-            .onEnded(handleDragEnd)
+            .onChanged { gesture in
+                guard sidePanelState.isShowing else { return }
+                // Allow dragging to left (negative values) when panel is open
+                dragOffset = min(0, gesture.translation.width)
+            }
+            .onEnded { gesture in
+                guard sidePanelState.isShowing else { return }
+                let translation = gesture.translation.width
+                let velocity = gesture.predictedEndTranslation.width - gesture.translation.width
+
+                withAnimation(.interpolatingSpring(
+                    stiffness: springStiffness,
+                    damping: springDamping
+                )) {
+                    if -translation > dragThreshold || velocity < -500 {
+                        sidePanelState.hidePanel()
+                    } else {
+                        sidePanelState.showPanel()
+                    }
+                    dragOffset = 0
+                }
+            }
+    }
+}
+
+// MARK: - Navigation Bar Modifier
+struct CommonNavigationBarModifier: ViewModifier {
+    @EnvironmentObject private var sidePanelState: SidePanelState
+
+    func body(content: Content) -> some View {
+        content
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                #if os(iOS)
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        sidePanelState.togglePanel()
+                        HapticManager.shared.impact(style: .light)
+                    } label: {
+                        Image("menu", bundle: Bundle.module)
+                            .resizable()
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(.primary.opacity(0.9))
+                    }
+                }
+                #endif
+            }
+    }
+}
+
+extension View {
+    func withCommonNavigationBar() -> some View {
+        modifier(CommonNavigationBarModifier())
     }
 }
 
@@ -123,77 +242,26 @@ struct HomeDefaultView: View {
     }
 }
 
-// MARK: - Home View Event Handlers
-private extension HomeView {
-    func handleAssistantSelection(_ assistant: Assistant) {
-        viewModel.navigateToDestination(.chat(assistant))
-        sidePanelState.hidePanel()
-    }
-
-    func handleDragChange(_ gesture: DragGesture.Value) {
-        let translation = gesture.translation.width
-        if sidePanelState.isShowing {
-            // Dragging to close
-            if translation < 0 {
-                dragOffset = translation
-            }
-        } else {
-            // Dragging to open
-            if translation > 0 {
-                dragOffset = translation
-            }
-        }
-    }
-
-    func handleDragEnd(_ gesture: DragGesture.Value) {
-        let translation = gesture.translation.width
-        let velocity = gesture.predictedEndTranslation.width - gesture.translation.width
-
-        withAnimation(.interactiveSpring()) {
-            if sidePanelState.isShowing {
-                if -translation > dragThreshold || velocity < -500 {
-                    sidePanelState.hidePanel()
-                } else {
-                    sidePanelState.showPanel()
-                }
-            } else {
-                if translation > dragThreshold || velocity > 500 {
-                    sidePanelState.showPanel()
-                } else {
-                    sidePanelState.hidePanel()
-                }
-            }
-            dragOffset = 0
-        }
-    }
-}
-
-// MARK: - Navigation Bar Modifier
-struct CommonNavigationBarModifier: ViewModifier {
-    @EnvironmentObject private var sidePanelState: SidePanelState
+struct LeftEdgeGesture: ViewModifier {
+    let edgeWidth: CGFloat
+    let onDragChange: (DragGesture.Value) -> Void
+    let onDragEnd: (DragGesture.Value) -> Void
 
     func body(content: Content) -> some View {
-        content
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        sidePanelState.togglePanel()
-                    } label: {
-                        Image("menu", bundle: Bundle.module)
-                            .resizable()
-                            .frame(width: 24, height: 24)
-                            .foregroundColor(.primary.opacity(0.9))
+        content.gesture(
+            DragGesture()
+                .onChanged { value in
+                    // Only process gesture if it started from the left edge
+                    if value.startLocation.x <= edgeWidth {
+                        onDragChange(value)
                     }
                 }
-                #endif
-            }
-    }
-}
-
-extension View {
-    func withCommonNavigationBar() -> some View {
-        modifier(CommonNavigationBarModifier())
+                .onEnded { value in
+                    // Only process end if it started from the left edge
+                    if value.startLocation.x <= edgeWidth {
+                        onDragEnd(value)
+                    }
+                }
+        )
     }
 }

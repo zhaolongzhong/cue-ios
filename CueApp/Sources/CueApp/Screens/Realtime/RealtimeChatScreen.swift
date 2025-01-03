@@ -15,10 +15,25 @@ public struct RealtimeChatScreen: View {
         GeometryReader { geometry in
             ZStack {
                 GlassmorphismParticleBackgroundView(screenSize: geometry.size)
-                                    .opacity(colorScheme == .dark ? 0.6 : 0.9)
+                    .opacity(colorScheme == .dark ? 0.6 : 0.9)
+                    .zIndex(0)
 
-                VStack {
+                VStack(spacing: 16) {
+                    #if os(iOS)
+                    HStack {
+                        Spacer()
+                        DismissButton(action: {
+                            dismiss()
+                        })
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+
+                    }
+                    .allowsHitTesting(true)
+                    .padding(.horizontal)
+                    #endif
                     Spacer()
+
                     ScrollViewReader { proxy in
                         ScrollView {
                             Text(voiceChatViewModel.deltaMessage)
@@ -35,23 +50,15 @@ public struct RealtimeChatScreen: View {
                             }
                         }
                     }
-                    .padding(.bottom, 150)
-                }
+                    .scrollDismissesKeyboard(.immediately)
+                    .padding(.bottom, 24)
 
-                VStack(spacing: 16) {
-                    #if os(iOS)
-                    HStack {
-                        Spacer()
-                        DismissButton(action: { dismiss() })
-                            .padding(.horizontal)
-                    }
-                    #endif
-                    Spacer()
                     controlButton
                         .padding(.bottom, 16)
                     messageInputView
                 }
                 .padding(.vertical)
+                .zIndex(1)
             }
         }
         .onChange(of: voiceChatViewModel.chatError) { _, error in
@@ -74,7 +81,7 @@ public struct RealtimeChatScreen: View {
             }
             #else
             TextField("Type a message...", text: $voiceChatViewModel.newMessage)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .customTextFieldStyle()
             #endif
 
             Button(action: {

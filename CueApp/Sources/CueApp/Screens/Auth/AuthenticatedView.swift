@@ -24,6 +24,7 @@ private struct AuthenticatedContent: View {
         Group {
             if !viewModel.state.isAuthenticated {
                 LoginView(loginViewModelFactory: dependencies.viewModelFactory.makeLoginViewModel)
+                    .authWindowSize()
             } else if viewModel.state.isAuthenticated, let user = viewModel.state.currentUser {
                 #if os(iOS)
                 HomeView(userId: user.id)

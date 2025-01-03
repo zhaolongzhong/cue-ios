@@ -19,8 +19,8 @@ struct NavigationAssistantActions: AssistantActions {
         navigationPath.wrappedValue.append(AppDestination.details(assistant))
     }
 
-    func onSetPrimary(assistant: Assistant) async {
-        _ = await assistantsViewModel.setPrimaryAssistant(id: assistant.id)
+    func onSetPrimary(assistant: Assistant) {
+        assistantsViewModel.setPrimaryAssistant(id: assistant.id)
     }
 
     func onChat(assistant: Assistant) {

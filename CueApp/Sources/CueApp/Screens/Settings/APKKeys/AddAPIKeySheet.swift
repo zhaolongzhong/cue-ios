@@ -155,7 +155,6 @@ struct NewKeyCreatedSheet: View {
                         .cornerRadius(8)
 
                     CopyButton(
-                        role: "user",
                         content: apiKey.secret,
                         isVisible: true
                     )

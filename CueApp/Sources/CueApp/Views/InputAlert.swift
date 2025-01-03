@@ -37,8 +37,11 @@ struct InputAlert: View {
             message: message,
             content: {
                 TextField(placeholder, text: $text)
+                    .scrollContentBackground(.hidden)
                     .padding(.all, 8)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .background(Color.secondary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary).opacity(0.2))
                     #if os(iOS)
                     .keyboardType(isNumeric ? .numberPad : .default)
                     .autocapitalization(.none)
@@ -66,7 +69,7 @@ struct InputAlert: View {
 extension View {
     func inputAlert(
         title: String,
-        message: String,
+        message: String? = nil,
         text: Binding<String>,
         isPresented: Binding<Bool>,
         placeholder: String = "Enter text",
@@ -81,12 +84,13 @@ extension View {
                         isPresented: isPresented,
                         text: text,
                         title: title,
-                        message: message,
+                        message: message ?? "",
                         placeholder: placeholder,
                         isNumeric: isNumeric,
                         validator: validator,
                         onSave: onSave
                     )
+                    .buttonStyle(.plain)
                 }
             }
         )

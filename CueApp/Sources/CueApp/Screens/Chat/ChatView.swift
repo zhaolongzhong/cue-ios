@@ -37,12 +37,21 @@ struct ChatView: View {
                     selectedMessage = message
                 }
             )
-            .padding(.horizontal, 10)
-            .background(Color.clear)
             .id(viewModel.assistant.id)
             .overlay(
                 LoadingOverlay(isVisible: viewModel.isLoading)
             )
+            .frame(maxHeight: .infinity)
+            #if os(iOS)
+            .simultaneousGesture(
+                TapGesture()
+                    .onEnded { _ in
+                        if isFocused {
+                            isFocused = false
+                        }
+                    }
+            )
+            #endif
             .scrollDismissesKeyboard(.never)
 
             RichTextField(isEnabled: viewModel.isInputEnabled, onShowTools: {
@@ -56,18 +65,7 @@ struct ChatView: View {
             }, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             .padding(.all, 8)
         }
-        .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if os(iOS)
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    if isFocused {
-                        isFocused = false
-                    }
-                }
-        )
-        #endif
         .navigationTitle(viewModel.assistant.name)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -89,12 +87,17 @@ struct ChatView: View {
                     .font(.headline)
             }
             #else
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    viewModel.showAssistantDetails = true
+            ToolbarItemGroup(placement: .primaryAction) {
+                Spacer()
+                Menu {
+                    Button("Details") {
+                        viewModel.showAssistantDetails = true
+                    }
                 } label: {
                     Image(systemName: "ellipsis")
+                        .foregroundStyle(.primary)
                 }
+                .menuIndicator(.hidden)
             }
             #endif
         }

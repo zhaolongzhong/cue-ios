@@ -39,7 +39,6 @@ struct MessagesListView: View {
                     scrollToBottomImmediately()
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                .padding(0)
                 .focusable(false)
             }
         }
@@ -163,7 +162,7 @@ struct ScrollButton: View {
             Button(action: action) {
                 Circle()
                     .fill(AppTheme.Colors.alternateInputBackground)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 36, height: 36)
                     .overlay(
                         Image(systemName: "arrow.down")
                             .font(.system(size: 12, weight: .regular))

@@ -48,7 +48,7 @@ struct RichTextField: View {
                                 onSend()
                             }
                         }
-                        .submitLabel(.send)
+                        .submitLabel(.return)
                 }
             }
 

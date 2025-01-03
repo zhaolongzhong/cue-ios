@@ -4,8 +4,16 @@ import Dependencies
 @MainActor
 final class LoginViewModel: ObservableObject {
     @Dependency(\.authRepository) var authRepository
-    @Published var email = ""
-    @Published var password = ""
+    @Published var email = "" {
+        didSet {
+            clearError()
+        }
+    }
+    @Published var password = "" {
+        didSet {
+            clearError()
+        }
+    }
     @Published var error: String?
     @Published var isLoading = false
 
@@ -35,5 +43,9 @@ final class LoginViewModel: ObservableObject {
             error = "An unexpected error occurred. Please try again."
             AppLog.log.error("Login failed with unknown error")
         }
+    }
+
+    public func clearError() {
+        error = nil
     }
 }
