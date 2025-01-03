@@ -37,8 +37,11 @@ struct InputAlert: View {
             message: message,
             content: {
                 TextField(placeholder, text: $text)
+                    .scrollContentBackground(.hidden)
                     .padding(.all, 8)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .background(Color.secondary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary).opacity(0.2))
                     #if os(iOS)
                     .keyboardType(isNumeric ? .numberPad : .default)
                     .autocapitalization(.none)
@@ -87,6 +90,7 @@ extension View {
                         validator: validator,
                         onSave: onSave
                     )
+                    .buttonStyle(.plain)
                 }
             }
         )

@@ -23,7 +23,6 @@ public struct AssistantRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(assistant.name)
-                    .font(.callout)
                 if let status = status {
                     Text("Runner: ...\(status.runnerId?.suffix(4) ?? "")")
                         .font(.caption)

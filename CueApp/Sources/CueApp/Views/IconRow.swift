@@ -11,7 +11,7 @@ struct IconRow: View {
     var iconSize: CGFloat = 18
 
     // Styling
-    var spacing: CGFloat = 8
+    var spacing: CGFloat = 12
     var showDivider: Bool = true
     var titleColor: Color = .primary
     var titleFont: Font = .body
@@ -45,6 +45,7 @@ struct IconRow: View {
                         view.background(backgroundStyle)
                             .clipShape(Circle())
                     }
+                    .frame(width: 32, height: 32)
                     .accessibilityHidden(true)
 
                     Text(title)

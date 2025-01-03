@@ -116,7 +116,7 @@ final class AssistantsViewModel: ObservableObject {
     func createAssistant(name: String) async -> Assistant? {
         switch await assistantRepository.createAssistant(name: name, isPrimary: false) {
         case .success(let assistant):
-            assistants.append(assistant)
+            assistants.insert(assistant, at: 0)
             AppLog.log.debug("Created assistant: \(assistant.id)")
             return assistant
 

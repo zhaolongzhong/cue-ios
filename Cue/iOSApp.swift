@@ -11,7 +11,9 @@ struct iOSApp: App {
     @StateObject private var appCoordinator = AppCoordinator()
 
     init() {
-        setupAudioSession()
+        if UserDefaults.standard.object(forKey: "hapticFeedbackEnabled") == nil {
+            UserDefaults.standard.set(true, forKey: "hapticFeedbackEnabled")
+        }
     }
 
     var body: some Scene {
@@ -20,15 +22,6 @@ struct iOSApp: App {
                 .environmentObject(dependencies)
                 .environmentObject(appCoordinator)
                 .tint(.primary)
-        }
-    }
-
-    private func setupAudioSession() {
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("Failed to set up audio session: \(error)")
         }
     }
 }

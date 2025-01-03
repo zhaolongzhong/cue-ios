@@ -4,6 +4,7 @@ import Dependencies
 final class SidePanelState: ObservableObject {
     @Published var isShowing = false
     @Published var selectedAssistant: Assistant?
+    @Published var isShowingNewAssistant = false
 
     func togglePanel() {
         withAnimation(.easeOut) {
@@ -31,21 +32,46 @@ struct HomeSidePanel: View {
     let onSelectAssistant: (Assistant) -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    providersSection
-                    assistantsSection
+        NavigationStack {
+            VStack(spacing: 16) {
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
+                            providersSection
+                        }
+                        assistantsSection
+                    }
+                }
+
+                settingsRow
+            }
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Cue")
+                        .font(.title2)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        sidePanelState.isShowingNewAssistant = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
-
-            settingsRow
-        }
-        .padding(.horizontal, 16)
-        .onAppear {
-            Task {
-                await assistantsViewModel.fetchAssistants()
+            #endif
+            .padding(.horizontal, 16)
+            .background(AppTheme.Colors.secondaryBackground)
+            .onAppear {
+                Task {
+                    await assistantsViewModel.fetchAssistants()
+                }
             }
+        }
+        .sheet(isPresented: $sidePanelState.isShowingNewAssistant) {
+            AddAssistantSheet(viewModel: assistantsViewModel)
         }
     }
 
@@ -100,8 +126,7 @@ struct HomeSidePanel: View {
                 navigationPath.append(HomeDestination.openai)
                 sidePanelState.hidePanel()
             },
-            iconName: "openai",
-            titleFont: .callout
+            iconName: "openai"
         )
     }
 
@@ -112,8 +137,7 @@ struct HomeSidePanel: View {
                 navigationPath.append(HomeDestination.anthropic)
                 sidePanelState.hidePanel()
             },
-            iconName: "anthropic",
-            titleFont: .callout
+            iconName: "anthropic"
         )
     }
 
@@ -124,10 +148,7 @@ struct HomeSidePanel: View {
                 coordinator.showSettingsSheet()
             },
             iconName: "gearshape",
-            isSystemImage: true,
-            titleColor: .secondary,
-            titleFont: .callout,
-            showBackground: true
+            isSystemImage: true
         )
     }
 }

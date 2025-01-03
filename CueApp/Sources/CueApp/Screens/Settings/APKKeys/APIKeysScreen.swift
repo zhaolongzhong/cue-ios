@@ -145,7 +145,6 @@ struct APIKeyRow: View {
                     .font(.system(.subheadline, design: .monospaced))
                     .foregroundColor(.secondary)
                 CopyButton(
-                    role: "user",
                     content: key.secret,
                     isVisible: true
                 )

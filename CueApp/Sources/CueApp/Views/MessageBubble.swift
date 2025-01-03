@@ -76,8 +76,8 @@ struct MessageBubble: View {
                     if isUser {
                         Spacer()
                     }
-                    CopyButton(role: role, content: content, isVisible: isHovering)
-                    .padding(.horizontal, getHorizontalPadding())
+                    CopyButton(content: content, isVisible: isHovering)
+                        .padding(.horizontal, getHorizontalPadding())
                     if !isUser {
                         Spacer()
                     }
