@@ -36,6 +36,7 @@ public struct OpenAIChatView: View {
             }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             .padding(.all, 8)
         }
+        .defaultNavigationBar(showCustomBackButton: false, title: "OpenAI")
         .onAppear {
             Task {
                 await viewModel.startServer()
@@ -64,9 +65,6 @@ public struct OpenAIChatView: View {
                     }
                 }
         )
-        .navigationTitle("OpenAI")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
         .fullScreenCover(isPresented: $showingVoiceChat) {
             RealtimeChatScreen(
                 viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,

@@ -66,11 +66,13 @@ struct ChatView: View {
             .padding(.all, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle(viewModel.assistant.name)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
-        #endif
+        .defaultNavigationBar(showCustomBackButton: false, title: viewModel.assistant.name)
+//        .navigationTitle(viewModel.assistant.name)
+//        #if os(iOS)
+//        .navigationBarTitleDisplayMode(.inline)
+//        .toolbarBackground(.visible, for: .navigationBar)
+//        .navigationBarBackButtonHidden(true)
+//        #endif
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .automatic) {

@@ -19,20 +19,7 @@ struct APIKeysProviderView: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle("Provider API Keys")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    Image(systemName: "chevron.left")
-                }
-            }
-        }
-        #endif
+        .defaultNavigationBar(title: "Provider API Keys")
         .inputAlert(
             title: "Edit Key",
             text: Binding(

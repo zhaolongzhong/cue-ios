@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DismissButton: View {
     let action: () -> Void
+    var iconSize: CGFloat = 16
+    var tappablePadding: CGFloat = 8
 
     init(action: @escaping () -> Void) {
         self.action = action
@@ -11,9 +13,12 @@ struct DismissButton: View {
         Button(action: action) {
             #if os(iOS)
             Image(systemName: "xmark")
-                .font(.system(size: 15, weight: .semibold))
+                .resizable()
+                .frame(width: iconSize, height: iconSize)
                 .foregroundColor(.almostPrimary)
-                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
+                .padding(tappablePadding)
+                .contentShape(Rectangle())
             #else
             Image(systemName: "xmark")
                 .font(.system(size: 11, weight: .semibold))
@@ -27,20 +32,10 @@ struct DismissButton: View {
             #endif
         }
         .buttonStyle(.plain)
+        .frame(width: 36, height: 36)
         .keyboardShortcut(.cancelAction)
         #if os(macOS)
         .keyboardShortcut(.escape, modifiers: [])
         #endif
-    }
-}
-
-struct DismissDoneButton: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        Button("Done") {
-            dismiss()
-        }
-        .buttonStyle(.plain)
     }
 }

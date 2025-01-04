@@ -78,22 +78,6 @@ struct SignUpView: View {
         .scrollDismissesKeyboard(.immediately)
         .background(AppTheme.Colors.background)
         .authWindowSize()
-        .navigationTitle("Sign up")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    focusedField = nil
-                    dismiss()
-                }) {
-                    Image(systemName: "chevron.left")
-                        .imageScale(.large)
-                }
-            }
-        }
-        #endif
+        .defaultNavigationBar(title: "Sign up")
     }
 }

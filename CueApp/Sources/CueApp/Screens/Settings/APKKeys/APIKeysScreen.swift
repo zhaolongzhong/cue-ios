@@ -41,19 +41,8 @@ struct APIKeysView: View {
         .refreshable {
             await viewModel.refresh()
         }
-        .navigationTitle("API Keys")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        #endif
+        .defaultNavigationBar(title: "Assistants API Keys")
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    Image(systemName: "chevron.left")
-                }
-            }
             ToolbarItem(placement: .automatic) {
                 Button {
                     viewModel.isShowingAddKey = true

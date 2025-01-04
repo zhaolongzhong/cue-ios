@@ -22,14 +22,14 @@ struct AssistantDetailView: View {
         VStack {
             #if os(macOS)
             MacHeader(
-                title: "Assistant Details",
+                title: "Details",
                 onDismiss: { dismiss() }
             )
             #endif
 
             AssistantDetailContent(viewModel: viewModel)
         }
-        .navigationTitle("Assistant Details")
+        .defaultNavigationBar(title: "Details")
         .inputAlert(
             title: "Update Name",
             message: "Enter a new name for this assistant",

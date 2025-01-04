@@ -61,11 +61,10 @@ struct AssistantsView: View {
                     }
                 )
             )
-            .navigationTitle("Assistants")
+            .defaultNavigationBar(showCustomBackButton: false, title: "Assistants")
             #if os(iOS)
             .listStyle(InsetGroupedListStyle())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.visible, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     Button {

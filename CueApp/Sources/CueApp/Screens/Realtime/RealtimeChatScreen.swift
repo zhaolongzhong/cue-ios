@@ -25,12 +25,10 @@ public struct RealtimeChatScreen: View {
                         DismissButton(action: {
                             dismiss()
                         })
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-
                     }
                     .allowsHitTesting(true)
                     .padding(.horizontal)
+                    .padding(.top, geometry.safeAreaInsets.top)
                     #endif
                     Spacer()
 
@@ -60,6 +58,7 @@ public struct RealtimeChatScreen: View {
                 .padding(.vertical)
                 .zIndex(1)
             }
+            .edgesIgnoringSafeArea(.all)
         }
         .onChange(of: voiceChatViewModel.chatError) { _, error in
             if let error = error {
