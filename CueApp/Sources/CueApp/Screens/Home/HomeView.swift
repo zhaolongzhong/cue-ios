@@ -211,7 +211,7 @@ struct CommonNavigationBarModifier: ViewModifier {
                         sidePanelState.togglePanel()
                         HapticManager.shared.impact(style: .light)
                     } label: {
-                        Image("menu", bundle: Bundle.module)
+                        Image("menu")
                             .resizable()
                             .frame(width: 24, height: 24)
                             .foregroundColor(.primary.opacity(0.9))
