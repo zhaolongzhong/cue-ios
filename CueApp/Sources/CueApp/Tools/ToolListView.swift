@@ -4,23 +4,27 @@ import CueOpenAI
 struct ToolsListView: View {
     @Environment(\.dismiss) var dismiss
     let tools: [Tool]
+    let title: String
+
+    init(title: String? = nil, tools: [Tool]) {
+        self.title = title ?? "Tools"
+        self.tools = tools
+    }
 
     var body: some View {
         #if os(macOS)
-        NavigationStack {
-            VStack {
-                HStack {
-                    Text("Available Tools")
-                        .font(.headline)
-                    Spacer()
-                    DismissButton(action: { dismiss() })
-                }
-                .padding()
-                content
+        VStack {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                DismissButton(action: { dismiss() })
             }
+            .padding()
+            content
         }
-        .frame(minWidth: 400, minHeight: 300)
-        .frame(idealWidth: 800, idealHeight: 600)
+        .frame(minHeight: 400, maxHeight: 600)
+        .frame(width: 600)
         .resizableSheet()
         #else
         NavigationView {
@@ -42,7 +46,7 @@ struct ToolsListView: View {
             .padding(.vertical, 4)
         }
         #if os(iOS)
-        .navigationTitle("Available Tools")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

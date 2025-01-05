@@ -3,13 +3,13 @@ import CueOpenAI
 
 // MARK: - Tool Models
 
-public struct MCPTool: Codable {
+public struct MCPTool: Codable, Sendable {
     let name: String
     let description: String
     let inputSchema: InputSchema
 }
 
-public struct InputSchema: Codable {
+public struct InputSchema: Codable, Sendable {
     let type: String
     let properties: [String: PropertyDetails]?
     let required: [String]?
@@ -44,7 +44,7 @@ public struct InputSchema: Codable {
 }
 
 // Custom type to handle different default value types
-public enum DefaultValue: Codable, Equatable {
+public enum DefaultValue: Codable, Equatable, Sendable {
     case string(String)
     case integer(Int)
     case double(Double)
@@ -86,7 +86,7 @@ public enum DefaultValue: Codable, Equatable {
     }
 }
 
-public struct PropertyDetails: Codable {
+public struct PropertyDetails: Codable, Sendable {
     let type: String?  // Made optional because it might be missing when anyOf is present
     let title: String?
     let items: Items?
@@ -102,7 +102,7 @@ public struct PropertyDetails: Codable {
     }
 }
 
-public struct TypeDefinition: Codable {
+public struct TypeDefinition: Codable, Sendable {
     let type: String
 }
 

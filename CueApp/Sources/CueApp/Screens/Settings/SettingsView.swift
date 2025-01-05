@@ -2,7 +2,10 @@ import SwiftUI
 
 private enum SettingsRoute: Hashable {
     case providerAPIKeys
-    case apiKeys
+    case assistantAPIKeys
+    #if os(macOS)
+    case developer
+    #endif
 }
 
 public struct SettingsView: View {
@@ -30,8 +33,6 @@ private struct SettingsContentView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @ObservedObject var viewModel: SettingsViewModel
-    @State private var isShowingProviderAPIKeys = false
-    @State private var isShowingAPIKeys = false
     @State private var navigationPath = NavigationPath()
 
     init(viewModel: SettingsViewModel) {
@@ -42,12 +43,7 @@ private struct SettingsContentView: View {
         NavigationStack(path: $navigationPath) {
             SettingsList(
                 viewModel: viewModel,
-                showProviderAPIKeys: {
-                    navigationPath.append(SettingsRoute.providerAPIKeys)
-                },
-                showAPIKeys: {
-                    navigationPath.append(SettingsRoute.apiKeys)
-                },
+                navigationPath: $navigationPath,
                 dismiss: dismiss
             )
             .navigationTitle("Settings")
@@ -65,8 +61,12 @@ private struct SettingsContentView: View {
                 switch route {
                 case .providerAPIKeys:
                     APIKeysProviderView(apiKeysProviderViewModel: apiKeysProviderViewModel)
-                case .apiKeys:
+                case .assistantAPIKeys:
                     APIKeysView()
+                #if os(macOS)
+                case .developer:
+                    DeveloperView()
+                #endif
                 }
             }
         }
@@ -83,8 +83,7 @@ private struct SettingsList: View {
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
-    let showProviderAPIKeys: () -> Void
-    let showAPIKeys: () -> Void
+    @Binding var navigationPath: NavigationPath
     let dismiss: DismissAction
 
     var body: some View {
@@ -101,8 +100,12 @@ private struct SettingsList: View {
             .listSectionSpacing(.compact)
 
             Section {
-                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: showProviderAPIKeys)
-                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: showAPIKeys)
+                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
+                    navigationPath.append(SettingsRoute.providerAPIKeys)
+                })
+                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
+                    navigationPath.append(SettingsRoute.assistantAPIKeys)
+                })
             } header: {
                 SettingsHeader(title: "API Keys")
             }
@@ -195,10 +198,14 @@ private struct SettingsList: View {
 
                 Section {
                     GroupBox {
-                        APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: showProviderAPIKeys)
+                        APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
+                            navigationPath.append(SettingsRoute.providerAPIKeys)
+                        })
                             .padding(.horizontal, 6)
                         Divider()
-                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: showAPIKeys)
+                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
+                            navigationPath.append(SettingsRoute.assistantAPIKeys)
+                        })
                             .padding(.horizontal, 6)
                     }
                 } header: {
@@ -207,12 +214,29 @@ private struct SettingsList: View {
 
                 Section {
                     GroupBox {
-                        SettingsRow(
-                            systemName: "info.circle",
-                            title: "Version",
-                            value: "\(viewModel.getVersionInfo())",
-                            showChevron: false
-                        ).padding(.horizontal, 6)
+                        Button {
+                            navigationPath.append(SettingsRoute.developer)
+                        } label: {
+                            SettingsRow(
+                                systemName: "hammer",
+                                title: "Developer",
+                                showChevron: true
+                            ).padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Section {
+                    GroupBox {
+                        VStack(spacing: 0) {
+                            SettingsRow(
+                                systemName: "info.circle",
+                                title: "Version",
+                                value: "\(viewModel.getVersionInfo())",
+                                showChevron: false
+                            ).padding(.horizontal, 6)
+                        }
                     }
                 }
 

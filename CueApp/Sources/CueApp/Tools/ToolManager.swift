@@ -49,6 +49,10 @@ class ToolManager {
         mcpToolsSubject.send(allTools)
         AppLog.log.debug("Total mcp tools: \(allTools.count)")
     }
+
+    func getMCPToolsBy(serverName: String) -> [MCPTool] {
+        return mcpManager?.serverTools[serverName] ?? []
+    }
     #endif
 
     func getMCPTools() -> [MCPTool] {
