@@ -8,6 +8,7 @@ enum HomeDestination: Hashable {
 }
 
 struct HomeView: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
@@ -35,6 +36,13 @@ struct HomeView: View {
             overlayLayer
             sidePanel
                 .gesture(sidePanelDragGesture)
+            LiveIndicatorView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.bottom, 72)
+                .padding(.horizontal, 8)
+                .onTapGesture {
+                    coordinator.showLiveChatSheet()
+                }
         }
         .modifier(LeftEdgeGesture(
             edgeWidth: edgeWidth,
@@ -47,6 +55,13 @@ struct HomeView: View {
                 await viewModel.initialize()
             }
         }
+        .fullScreenCover(isPresented: $coordinator.showLiveChat) {
+            RealtimeChatScreen(
+                viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,
+                apiKey: apiKeysProviderViewModel.openAIKey
+            )
+        }
+
     }
 }
 

@@ -14,11 +14,16 @@ public class AppCoordinator: ObservableObject {
 
     @Published public var activeAlert: AlertType?
     @Published public var showSettings = false
+    @Published public var showLiveChat = false
 
     public init() {}
 
     func showSettingsSheet() {
         showSettings = true
+    }
+
+    func showLiveChatSheet() {
+        showLiveChat = true
     }
 
     public func showError(_ message: String) {

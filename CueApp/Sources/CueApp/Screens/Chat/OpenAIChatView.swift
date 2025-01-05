@@ -9,7 +9,6 @@ public struct OpenAIChatView: View {
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
-    @State private var showingVoiceChat = false
 
     private let apiKey: String
 
@@ -27,7 +26,7 @@ public struct OpenAIChatView: View {
                 #if os(macOS)
                 openWindow(id: "realtime-chat-window")
                 #else
-                showingVoiceChat = true
+                coordinator.showLiveChatSheet()
                 #endif
             }, onSend: {
                 Task {
@@ -65,12 +64,6 @@ public struct OpenAIChatView: View {
                     }
                 }
         )
-        .fullScreenCover(isPresented: $showingVoiceChat) {
-            RealtimeChatScreen(
-                viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,
-                apiKey: apiKey
-            )
-        }
         #endif
     }
 
