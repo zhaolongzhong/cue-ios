@@ -64,7 +64,7 @@ struct Sidebar: View {
                         .padding(.horizontal, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedAssistant == assistant ? AppTheme.Colors.systemGray.opacity(0.2) : Color.clear)
+                                .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
                         )
                         .padding(.horizontal, 8)
                         .onTapGesture { selectedAssistant = assistant }

@@ -43,9 +43,11 @@ public class AudioManager: NSObject, @unchecked Sendable {
     private let logger = Logger(subsystem: "AudioManager",
                               category: "AudioManager")
     
-    private enum AudioConstants {
-        static let receiveSampleRate: Double = 24000 // 24kHz, server output
-        static let sendSampleRate: Double = 16000 // 16kHz, server input
+    private struct AudioConstants {
+        struct SampleRate {
+            static let receive: Double = 24000 // 24kHz, server output
+            static let send: Double = 16000 // 16kHz, server input
+        }
         static let channels: UInt32 = 1
         static let bufferSize: AVAudioFrameCount = 4096
     }
@@ -68,7 +70,7 @@ public class AudioManager: NSObject, @unchecked Sendable {
     weak var delegate: AudioManagerDelegate?
     
     override init() {
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: AudioConstants.receiveSampleRate, channels: AudioConstants.channels) else {
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: AudioConstants.SampleRate.receive, channels: AudioConstants.channels) else {
             fatalError("Failed to create AVAudioFormat")
         }
         self.audioFormat = format
@@ -237,7 +239,7 @@ public class AudioManager: NSObject, @unchecked Sendable {
         }
         
         do {
-            let destinationConfig = AudioConversionConfig.pcm16(sampleRate: AudioConstants.sendSampleRate)
+            let destinationConfig = AudioConversionConfig.pcm16(sampleRate: AudioConstants.SampleRate.send)
             let convertedBuffer = try convertBuffer(buffer, toConfig: destinationConfig)
             let int16Data = try convertBufferToInt16Data(convertedBuffer)
             self.delegate?.audioManager(self, didReceiveProcessedAudio: int16Data)
@@ -314,7 +316,7 @@ public class AudioManager: NSObject, @unchecked Sendable {
     private func preparePlayerAudioBuffer(from data: Data) -> AVAudioPCMBuffer? {
         do {
             // Convert incoming PCM16 data to buffer
-            let sourceConfig = AudioConversionConfig.pcm16(sampleRate: AudioConstants.receiveSampleRate)
+            let sourceConfig = AudioConversionConfig.pcm16(sampleRate: AudioConstants.SampleRate.receive)
             let sourceBuffer = try convertPCMDataToBuffer(data, config: sourceConfig)
             
             // Convert to float format for playback

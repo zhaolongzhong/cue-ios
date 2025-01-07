@@ -112,9 +112,9 @@ struct MessageBubble: View {
             .frame(width: 20, height: 20)
             .background(
                 Circle()
-                    .stroke(lineWidth: 1)
-                    .opacity(0.3)
+                    .stroke(AppTheme.Colors.separator, lineWidth: 1)
             )
+            .padding(.leading, 4)
     }
 }
 

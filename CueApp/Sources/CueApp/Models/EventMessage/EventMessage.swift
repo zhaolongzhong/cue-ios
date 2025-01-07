@@ -32,6 +32,7 @@ struct MessagePayloadBase: Codable {
     var message: String?
     var sender: String?
     var recipient: String?
+    var author: Author?
     var websocketRequestId: String?
     var metadata: Metadata?
 }

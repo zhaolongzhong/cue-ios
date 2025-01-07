@@ -35,7 +35,7 @@ struct MessagesListView: View {
             .focusable(false)
 
             if showScrollButton {
-                ScrollButton(isVisible: showScrollButton) {
+                ScrollButton {
                     scrollToBottomImmediately()
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -154,26 +154,31 @@ struct MessagesList: View {
 }
 
 struct ScrollButton: View {
-    let isVisible: Bool
     let action: () -> Void
 
     var body: some View {
-        if isVisible {
-            Button(action: action) {
-                Circle()
-                    .fill(AppTheme.Colors.alternateInputBackground)
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Image(systemName: "arrow.down")
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(AppTheme.Colors.primaryText)
-                    )
-                    .shadow(radius: 2)
-            }
-            .buttonStyle(.plain)
-            .padding(16)
-            .transition(.opacity)
+        Button(action: action) {
+            Circle()
+                .fill(AppTheme.Colors.alternateInputBackground)
+                .frame(width: platformButtonSize, height: platformButtonSize)
+                .overlay(
+                    Image(systemName: "arrow.down")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(AppTheme.Colors.primaryText)
+                )
+                .shadow(radius: 2)
         }
+        .buttonStyle(.plain)
+        .padding(16)
+        .transition(.opacity)
+    }
+
+    private var platformButtonSize: CGFloat {
+        #if os(iOS)
+        36
+        #else
+        32
+        #endif
     }
 }
 

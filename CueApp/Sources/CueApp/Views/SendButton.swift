@@ -7,12 +7,13 @@ struct SendButton: View {
     var body: some View {
         Button(action: action) {
             Circle()
-                .fill(isEnabled ? Color(white: 0.3) : Color.gray.opacity(0.8))
+                .fill(isEnabled ? Color.primary : Color.primary.opacity(0.8))
                 .frame(width: 32, height: 32)
                 .overlay(
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color.primary)
+                        .colorInvert()
                 )
         }
         .disabled(!isEnabled)

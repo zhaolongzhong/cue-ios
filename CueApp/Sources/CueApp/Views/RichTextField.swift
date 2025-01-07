@@ -37,12 +37,13 @@ struct RichTextField: View {
             if isTextFieldVisible {
                 HStack {
                     TextField("Type a message...", text: $inputMessage, axis: .vertical)
+                        .scrollContentBackground(.hidden)
                         .textFieldStyle(.plain)
                         .padding(.horizontal, 8)
                         .padding(.top, 12)
                         .lineLimit(1...5)
                         .focused($isFocused)
-                        .background(AppTheme.Colors.secondaryBackground)
+                        .background(.clear)
                         .onSubmit {
                             if isMessageValid {
                                 onSend()
@@ -121,7 +122,14 @@ struct RichTextField: View {
             }
         }
         .padding(.all, 8)
-        .background(AppTheme.Colors.secondaryBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(AppTheme.Colors.secondaryBackground.opacity(0.2))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5)
+                )
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             Group {

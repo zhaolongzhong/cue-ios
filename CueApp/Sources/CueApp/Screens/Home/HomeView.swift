@@ -55,12 +55,14 @@ struct HomeView: View {
                 await viewModel.initialize()
             }
         }
+        #if os(iOS)
         .fullScreenCover(isPresented: $coordinator.showLiveChat) {
             RealtimeChatScreen(
                 viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,
                 apiKey: apiKeysProviderViewModel.openAIKey
             )
         }
+        #endif
 
     }
 }

@@ -23,7 +23,7 @@ extension AppTheme {
             #if os(iOS)
             Color(uiColor: .secondarySystemBackground)
             #elseif os(macOS)
-            Color(nsColor: .windowBackgroundColor).opacity(0.8)
+            Color(nsColor: .underPageBackgroundColor)
             #endif
         }
 
