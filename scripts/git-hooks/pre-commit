@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Get the current branch name
+branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}ERROR: Not on any branch. Detached HEAD state detected.${NC}"
+    exit 1
+fi
+
+# Protected branches
+protected_branches=('main' 'master' 'release' 'production' 'develop')
+
+# Check if current branch is protected
+is_protected=false
+for protected_branch in "${protected_branches[@]}"; do
+    if [ "$branch" = "$protected_branch" ]; then
+        is_protected=true
+        break
+    fi
+done
+
+if [ "$is_protected" = true ]; then
+    echo -e "${RED}🚫 ERROR: Direct commits to '$branch' branch are not allowed!${NC}"
+    echo -e "${YELLOW}┌────────────────────────────────────────────────────┐${NC}"
+    echo -e "${YELLOW}│            Protected Branch Workflow                │${NC}"
+    echo -e "${YELLOW}└────────────────────────────────────────────────────┘${NC}"
+    echo -e "${BLUE}1. Create a new feature branch:${NC}"
+    echo -e "   git checkout -b feature/your-feature-name"
+    echo -e "   git checkout -b bugfix/your-bugfix-name"
+    echo -e ""
+    echo -e "${BLUE}2. Standard workflow:${NC}"
+    echo -e "   git add ."
+    echo -e "   git commit -m 'feat/fix: your message'"
+    echo -e "   git push origin your-branch-name"
+    echo -e ""
+    echo -e "${RED}Emergency Override (NOT RECOMMENDED):${NC}"
+    echo -e "   git commit --no-verify"
+    echo -e ""
+    echo -e "${YELLOW}Remember:${NC}"
+    echo -e "• Always work in feature branches"
+    echo -e "• Use conventional commit messages"
+    echo -e "• Push changes immediately after commit"
+    exit 1
+fi
+
+# Verify branch naming convention
+branch_pattern="^(feature|bugfix|docs|style|refactor|test|chore)/.+"
+if [[ ! $branch =~ $branch_pattern ]]; then
+    echo -e "${RED}🚫 ERROR: Invalid branch name format${NC}"
+    echo -e "${YELLOW}Branch name must follow the convention:${NC}"
+    echo -e "• feature/feature-name ${GREEN}(for new features)${NC}"
+    echo -e "• bugfix/bug-name     ${GREEN}(for bug fixes)${NC}"
+    echo -e "• docs/change-name    ${GREEN}(for documentation)${NC}"
+    echo -e "• refactor/name       ${GREEN}(for code refactoring)${NC}"
+    echo -e "• style/change-name   ${GREEN}(for styling changes)${NC}"
+    echo -e "• test/suite-name     ${GREEN}(for testing changes)${NC}"
+    echo -e "• chore/task-name     ${GREEN}(for maintenance tasks)${NC}"
+    echo -e ""
+    echo -e "${BLUE}To rename your branch:${NC}"
+    echo -e "1. Create new branch with correct name:"
+    echo -e "   git checkout -b feature/your-feature-name"
+    echo -e ""
+    echo -e "2. Move your changes:"
+    echo -e "   git checkout feature/your-feature-name"
+    echo -e ""
+    exit 1
+fi
+
+# Check commit message format (if staging area is not empty)
+if git diff --cached --quiet; then
+    :
+else
+    # Get the commit message from the staged changes
+    commit_msg=$(git log -1 --pretty=%B)
+    commit_pattern="^(feat|fix|docs|style|refactor|test|chore)(\([a-z]+\))?: .+"
+    
+    if [[ ! $commit_msg =~ $commit_pattern ]]; then
+        echo -e "${RED}🚫 ERROR: Invalid commit message format${NC}"
+        echo -e "${YELLOW}Commit message must follow conventional commits:${NC}"
+        echo -e "• feat: add user authentication"
+        echo -e "• fix: resolve crash in chat view"
+        echo -e "• docs: update README for setup steps"
+        echo -e "• style: improve chat bubble layout"
+        echo -e "• refactor: extract networking layer"
+        echo -e "• test: add unit tests for AuthManager"
+        echo -e "• chore: update SwiftLint rules"
+        echo -e ""
+        exit 1
+    fi
+fi
+
+# Run SwiftLint if available
+if command -v swiftlint >/dev/null 2>&1; then
+    echo -e "${BLUE}Running SwiftLint...${NC}"
+    swiftlint lint --quiet
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}🚫 SwiftLint found issues${NC}"
+        exit 1
+    fi
+fi
+
+# All checks passed
+echo -e "${GREEN}✓ Pre-commit checks passed${NC}"
+exit 0
