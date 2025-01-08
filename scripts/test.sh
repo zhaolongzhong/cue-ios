@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd "$(dirname "$0")/.."
+
 # Default arguments
 RUN_UNIT_TESTS=true
 RUN_UI_TESTS=false
+
 
 # Parse arguments
 while getopts ":uia" opt; do
@@ -25,6 +28,12 @@ while getopts ":uia" opt; do
       ;;
   esac
 done
+
+if [ "$RUN_UNIT_TESTS" = true ]; then
+cd CueApp
+swift test
+exit 0
+fi
 
 CONFIGURATION="Debug"
 

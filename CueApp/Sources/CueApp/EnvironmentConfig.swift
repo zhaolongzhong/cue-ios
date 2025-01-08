@@ -22,58 +22,62 @@ protocol URLConfiguration: Sendable {
 }
 
 final class EnvironmentConfig: URLConfiguration, Sendable {
-    static let shared = EnvironmentConfig()
-
     private let baseAPIURLValue: String
     private let baseWebSocketURLValue: String
     private let clientIdKey = "CLIENT_ID"
-
-    // MARK: - Properties
     let clientId: String
 
-    // MARK: - Initialization
-    private init() {
+    init(domain: String) {
+        let scheme = domain.contains("localhost") || domain.starts(with: "192") ? "http" : "https"
+        let wsScheme = domain.contains("localhost") || domain.starts(with: "192") ? "ws" : "wss"
+
+        let normalizedDomain = domain.contains("localhost")
+            ? domain.replacingOccurrences(of: "localhost", with: "127.0.0.1")
+            : domain
+
+        // Construct the base URLs
+        self.baseAPIURLValue = "\(scheme)://\(normalizedDomain)/api/v1"
+        self.baseWebSocketURLValue = "\(wsScheme)://\(normalizedDomain)/api/v1/ws"
+
+        // Initialize clientId
+        if let existingClientId = UserDefaults.standard.string(forKey: clientIdKey) {
+            self.clientId = existingClientId
+        } else {
+            let newClientId = UUID().uuidString
+            UserDefaults.standard.set(newClientId, forKey: clientIdKey)
+            self.clientId = newClientId
+        }
+    }
+
+    var baseAPIURL: String { baseAPIURLValue }
+    var baseWebSocketURL: String { baseWebSocketURLValue }
+
+    static func createProductionConfig() -> EnvironmentConfig {
         do {
-            // Retrieve BASE_URL using the generic method
-            var domain: String = try Configuration.value(for: "BASE_URL")
-
-            // Determine the schemes based on the domain
-            let scheme = domain.contains("localhost") || domain.starts(with: "192") ? "http" : "https"
-            let wsScheme = domain.contains("localhost") || domain.starts(with: "192") ? "ws" : "wss"
-
-            if domain.contains("localhost") {
-                domain = domain.replacingOccurrences(of: "localhost", with: "127.0.0.1")
-            }
-
-            // Construct the base URLs
-            self.baseAPIURLValue = "\(scheme)://\(domain)/api/v1"
-            self.baseWebSocketURLValue = "\(wsScheme)://\(domain)/api/v1/ws"
-
-            // Initialize clientId
-            if let existingClientId = UserDefaults.standard.string(forKey: clientIdKey) {
-                self.clientId = existingClientId
-            } else {
-                let newClientId = UUID().uuidString
-                UserDefaults.standard.set(newClientId, forKey: clientIdKey)
-                self.clientId = newClientId
-            }
+            let domain: String = try Configuration.value(for: "BASE_URL")
+            return EnvironmentConfig(domain: domain)
         } catch {
             fatalError("BASE_URL configuration is missing or invalid.")
         }
     }
-
-    // MARK: - URLConfiguration Implementation
-
-    var baseAPIURL: String {
-        baseAPIURLValue
-    }
-
-    var baseWebSocketURL: String {
-        baseWebSocketURLValue
-    }
 }
 
 extension EnvironmentConfig {
+    // For testing
+    nonisolated(unsafe) private static var _shared: EnvironmentConfig?
+
+    static var shared: EnvironmentConfig {
+        get {
+            if _shared == nil {
+                _shared = createProductionConfig()
+            }
+            return _shared!
+        }
+        set {
+            _shared = newValue
+        }
+    }
+
     static var getBaseAPIURL: String {
         shared.baseAPIURL
     }
@@ -84,5 +88,10 @@ extension EnvironmentConfig {
 
     static var getClientId: String {
         shared.clientId
+    }
+
+    // Helper method to reset shared instance
+    static func resetShared() {
+        _shared = nil
     }
 }

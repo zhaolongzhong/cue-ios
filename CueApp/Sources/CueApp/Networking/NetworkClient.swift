@@ -8,7 +8,11 @@ struct APIError: Codable {
     let details: [String: String]?
 }
 
-actor NetworkClient {
+protocol NetworkClientProtocol: Actor {
+    func request<T: Decodable>(_ endpoint: Endpoint) async throws -> T
+}
+
+actor NetworkClient: NetworkClientProtocol {
     private let session: URLSession
     private let logger = Logger(subsystem: "NetworkClient", category: "Network")
     private let decoder: JSONDecoder

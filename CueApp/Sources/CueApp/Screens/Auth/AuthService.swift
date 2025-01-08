@@ -3,7 +3,7 @@ import Dependencies
 import os.log
 
 extension AuthService: DependencyKey {
-    public static let liveValue = AuthService()
+    public static let liveValue = AuthService(networkClient: NetworkClient.shared)
 }
 
 extension DependencyValues {
@@ -21,10 +21,15 @@ protocol AuthServiceProtocol: Sendable {
 
 final class AuthService: AuthServiceProtocol {
     private let logger = Logger(subsystem: "AuthService", category: "Auth")
+    private let networkClient: NetworkClientProtocol
+
+    init(networkClient: NetworkClientProtocol) {
+        self.networkClient = networkClient
+    }
 
     func login(email: String, password: String) async throws -> TokenResponse {
         do {
-            return try await NetworkClient.shared.request(
+            return try await networkClient.request(
                 AuthEndpoint.login(email: email, password: password)
             )
         } catch NetworkError.unauthorized {
@@ -39,7 +44,7 @@ final class AuthService: AuthServiceProtocol {
 
     func signup(email: String, password: String, inviteCode: String?) async throws -> User {
         do {
-            return try await NetworkClient.shared.request(
+            return try await networkClient.request(
                 AuthEndpoint.signup(email: email, password: password, inviteCode: inviteCode)
             )
         } catch NetworkError.httpError(let code, _) where code == 409 {
@@ -52,7 +57,7 @@ final class AuthService: AuthServiceProtocol {
 
     func logout() async throws -> StatusResponse {
         do {
-            return try await NetworkClient.shared.request(
+            return try await networkClient.request(
                 AuthEndpoint.logout
             )
         } catch {
@@ -62,7 +67,7 @@ final class AuthService: AuthServiceProtocol {
 
     func fetchUserProfile() async throws -> User {
         do {
-            return try await NetworkClient.shared.request(AuthEndpoint.me)
+            return try await networkClient.request(AuthEndpoint.me)
         } catch NetworkError.unauthorized {
             throw AuthError.unauthorized
         } catch NetworkError.forbidden(let message) {

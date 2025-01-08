@@ -3,7 +3,7 @@ import Combine
 import Dependencies
 import os.log
 
-enum AuthError: LocalizedError {
+enum AuthError: LocalizedError, Equatable {
     case invalidCredentials
     case emailAlreadyExists
     case networkError
