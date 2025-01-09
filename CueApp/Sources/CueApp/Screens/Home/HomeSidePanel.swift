@@ -76,6 +76,11 @@ struct HomeSidePanel: View {
             .onAppear {
                 Task {
                     await assistantsViewModel.fetchAssistants()
+                    // After fetching, if there's no selection, select primary assistant
+                    if sidePanelState.selectedAssistant == nil,
+                       let primaryAssistant = assistantsViewModel.assistants.first(where: { $0.isPrimary }) {
+                        onSelectAssistant(primaryAssistant)
+                    }
                 }
             }
         }
