@@ -112,6 +112,16 @@ struct AssistantDetailContent: View {
                 maxTurns: viewModel.maxTurns,
                 onTap: viewModel.prepareMaxTurnsEdit
             )
+            
+            NavigationLink {
+                AssistantContextView(viewModel: viewModel)
+            } label: {
+                SettingsRow(
+                    systemName: "doc.text.magnifyingglass",
+                    title: "View Contexts",
+                    showChevron: true
+                )
+            }
         }
         #if !os(iOS)
         .listStyle(.automatic)

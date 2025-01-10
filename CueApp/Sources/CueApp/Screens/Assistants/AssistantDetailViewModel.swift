@@ -11,6 +11,8 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var showingInstructionEdit = false
     @Published var showingDescriptionEdit = false
     @Published var showingMaxTurnsEdit = false
+    @Published var showingProjectContextEdit = false
+    @Published var showingSystemContextEdit = false
     @Published var showCopiedAlert = false
 
     @Published var newName = ""
@@ -19,6 +21,8 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var description = ""
     @Published var maxTurns = ""
     @Published var tempMaxTurns = ""
+    @Published var projectContext = ""
+    @Published var systemContext = ""
 
     let availableModels = [
         "claude-3-5-sonnet-20241022",
@@ -59,14 +63,18 @@ final class AssistantDetailViewModel: ObservableObject {
         model: String? = nil,
         instruction: String? = nil,
         description: String? = nil,
-        maxTurns: Int? = nil
+        maxTurns: Int? = nil,
+        context: String? = nil,
+        system: String? = nil
     ) async {
         guard let updatedAssistant = await assistantsViewModel.updateMetadata(
             id: assistant.id,
             model: model,
             instruction: instruction,
             description: description,
-            maxTurns: maxTurns
+            maxTurns: maxTurns,
+            context: context,
+            system: system
         ) else {
             AppLog.log.error("Error when updating assistant metadata.")
             return

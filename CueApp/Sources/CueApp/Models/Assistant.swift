@@ -5,13 +5,13 @@ struct AssistantCreate: Codable {
 }
 
 struct AssistantMetadata: Codable, Equatable, Hashable {
-    let isPrimary: Bool?
-    let model: String?
+    let isPrimary: Bool
+    let model: String
     let instruction: String?
     let description: String?
     let maxTurns: Int?
-    let context: JSONValue?
-    let tools: [String]?
+    let context: String?
+    let system: String?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
@@ -20,7 +20,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
         case description
         case maxTurns = "max_turns"
         case context
-        case tools
+        case system
     }
 }
 
@@ -30,8 +30,8 @@ struct AssistantMetadataUpdate: Codable, Sendable {
     let instruction: String?
     let description: String?
     let maxTurns: Int?
-    let context: JSONValue?
-    let tools: [String]?
+    let context: String?
+    let system: String?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
@@ -40,7 +40,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         case description
         case maxTurns = "max_turns"
         case context
-        case tools
+        case system
     }
 
     // Initialize with all optional parameters
