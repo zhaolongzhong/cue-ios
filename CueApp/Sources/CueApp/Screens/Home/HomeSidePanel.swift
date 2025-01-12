@@ -1,10 +1,22 @@
 import SwiftUI
 import Dependencies
 
+@MainActor
 final class SidePanelState: ObservableObject {
     @Published var isShowing = false
-    @Published var selectedAssistant: Assistant?
     @Published var isShowingNewAssistant = false
+
+    private let selectionManager: AssistantSelectionManager
+
+    // Forward the selectedAssistant from the manager
+    var selectedAssistant: Assistant? {
+        get { selectionManager.selectedAssistant }
+        set { selectionManager.selectAssistant(newValue) }
+    }
+
+    init(selectionManager: AssistantSelectionManager = AssistantSelectionManager()) {
+        self.selectionManager = selectionManager
+    }
 
     func togglePanel() {
         withAnimation(.easeOut) {
@@ -21,6 +33,15 @@ final class SidePanelState: ObservableObject {
     func showPanel() {
         isShowing = true
     }
+
+    // Forward selection methods to the manager
+    func selectAssistant(_ assistant: Assistant?) {
+        selectionManager.selectAssistant(assistant)
+    }
+
+    func restoreSelection(from assistants: [Assistant]) {
+        selectionManager.restoreSelection(from: assistants)
+    }
 }
 
 struct HomeSidePanel: View {
@@ -32,6 +53,18 @@ struct HomeSidePanel: View {
     let onSelectAssistant: (Assistant) -> Void
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
+
+    init(
+        sidePanelState: SidePanelState,
+        assistantsViewModel: AssistantsViewModel,
+        navigationPath: Binding<NavigationPath>,
+        onSelectAssistant: @escaping (Assistant) -> Void
+    ) {
+        self.sidePanelState = sidePanelState
+        self.assistantsViewModel = assistantsViewModel
+        self._navigationPath = navigationPath
+        self.onSelectAssistant = onSelectAssistant
+    }
 
     private var showDeleteAlert: Binding<Bool> {
         Binding(
@@ -76,6 +109,12 @@ struct HomeSidePanel: View {
             .onAppear {
                 Task {
                     await assistantsViewModel.fetchAssistants()
+                    if sidePanelState.selectedAssistant == nil {
+                        sidePanelState.restoreSelection(from: assistantsViewModel.assistants)
+                    }
+                    if let assistant = sidePanelState.selectedAssistant {
+                        onSelectAssistant(assistant)
+                    }
                 }
             }
         }
@@ -151,6 +190,7 @@ struct HomeSidePanel: View {
                     )
                 )
                 .onTapGesture {
+                    sidePanelState.selectAssistant(assistant)
                     onSelectAssistant(assistant)
                 }
             }
