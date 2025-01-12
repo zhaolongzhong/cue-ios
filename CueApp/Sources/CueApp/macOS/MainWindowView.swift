@@ -9,6 +9,7 @@ public struct MainWindowView: View {
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
     @State private var selectedAssistant: Assistant?
+    @StateObject private var selectionManager = AssistantSelectionManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var lastStatusUpdate: Date = Date()
     private let userId: String
@@ -26,7 +27,10 @@ public struct MainWindowView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             Sidebar(
                 assistantsViewModel: assistantsViewModel,
-                selectedAssistant: $selectedAssistant
+                selectedAssistant: Binding(
+                    get: { selectionManager.selectedAssistant },
+                    set: { selectionManager.selectAssistant($0) }
+                )
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 300, max: 400)
             .id("sidebar-\(lastStatusUpdate.timeIntervalSince1970)")
@@ -34,15 +38,15 @@ public struct MainWindowView: View {
             NavigationStack {
                 DetailContent(
                     assistantsViewModel: assistantsViewModel,
-                    selectedAssistant: selectedAssistant ?? assistantsViewModel.assistants.first
+                    selectedAssistant: selectionManager.selectedAssistant ?? assistantsViewModel.assistants.first
                 )
             }
         }
         .navigationSplitViewStyle(.balanced)
         .environmentObject(apiKeysProviderViewModel)
         .onChange(of: assistantsViewModel.assistants) { _, newValue in
-            if selectedAssistant == nil && !newValue.isEmpty {
-                selectedAssistant = newValue.first
+            if selectionManager.selectedAssistant == nil {
+                selectionManager.restoreSelection(from: newValue)
             }
         }
         .onReceive(assistantsViewModel.$clientStatuses) { _ in
@@ -52,8 +56,8 @@ public struct MainWindowView: View {
             Task {
                 await webSocketService.connect()
             }
-            if selectedAssistant == nil && !assistantsViewModel.assistants.isEmpty {
-                selectedAssistant = assistantsViewModel.assistants.first
+            if selectionManager.selectedAssistant == nil {
+                selectionManager.restoreSelection(from: assistantsViewModel.assistants)
             }
         }
         #if os(macOS)

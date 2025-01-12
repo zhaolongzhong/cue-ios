@@ -78,7 +78,7 @@ final class AssistantsViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        switch await assistantRepository.listAssistants(skip: 0, limit: 8) {
+        switch await assistantRepository.listAssistants(skip: 0, limit: 20) {
         case .success(let fetchedAssistants):
             self.assistants = fetchedAssistants
 

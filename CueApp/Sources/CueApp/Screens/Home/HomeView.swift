@@ -13,6 +13,7 @@ struct HomeView: View {
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @StateObject private var viewModel: HomeViewModel
+    @StateObject private var assistantsViewModel: AssistantsViewModel = AssistantsViewModel()
     @StateObject private var sidePanelState = SidePanelState()
     @State private var dragOffset: CGFloat = 0
 
@@ -53,6 +54,10 @@ struct HomeView: View {
         .onAppear {
             Task {
                 await viewModel.initialize()
+                await assistantsViewModel.fetchAssistants()
+                if sidePanelState.selectedAssistant == nil {
+                    sidePanelState.restoreSelection(from: assistantsViewModel.assistants)
+                }
             }
         }
         #if os(iOS)
@@ -71,7 +76,19 @@ struct HomeView: View {
 private extension HomeView {
     var mainContent: some View {
         NavigationStack(path: $viewModel.navigationPath) {
-            HomeDefaultView(sidePanelState: sidePanelState)
+                Group {
+                    if let assistant = sidePanelState.selectedAssistant {
+                        ChatView(
+                            assistant: assistant,
+                            chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
+                            assistantsViewModel: assistantsViewModel,
+                            tag: "home"
+                        )
+                        .id(assistant.id)
+                    } else {
+                        HomeDefaultView(sidePanelState: sidePanelState)
+                    }
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .background(AppTheme.Colors.secondaryBackground)
                 .withCommonNavigationBar()
@@ -113,7 +130,7 @@ private extension HomeView {
         ZStack(alignment: .leading) {
             HomeSidePanel(
                 sidePanelState: sidePanelState,
-                assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(),
+                assistantsViewModel: assistantsViewModel,
                 navigationPath: $viewModel.navigationPath,
                 onSelectAssistant: handleAssistantSelection
             )
