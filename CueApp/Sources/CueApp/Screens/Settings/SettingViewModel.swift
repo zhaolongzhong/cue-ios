@@ -6,16 +6,17 @@ import Dependencies
 public final class SettingsViewModel: ObservableObject {
     @Dependency(\.apiKeyRepository) private var apiKeyRepository
     @Dependency(\.authRepository) private var authRepository
+    @Dependency(\.settingsRepository) private var settingsRepository
     @Published private(set) var currentUser: User?
-    @Published private(set) var generatedToken: String?
+    @Published private(set) var appConfig: AppConfig?
     @Published private(set) var tokenError: String?
     @Published private(set) var error: String?
-    @Published private(set) var isGeneratingToken = false
 
     private var cancellables = Set<AnyCancellable>()
 
     init() {
         refreshUserProfile()
+        refreshAppConfig()
     }
 
     private func refreshUserProfile() {
@@ -34,6 +35,19 @@ public final class SettingsViewModel: ObservableObject {
             case .failure:
                 self.error = "An unexpected error occurred"
                 AppLog.log.error("Failed to fetch user profile")
+            }
+        }
+    }
+
+    private func refreshAppConfig() {
+        Task {
+            let result = await settingsRepository.fetchAppConfig()
+            switch result {
+            case .success(let config):
+                self.appConfig = config
+                self.error = nil
+            case .failure(let err):
+                self.error = err.localizedDescription
             }
         }
     }

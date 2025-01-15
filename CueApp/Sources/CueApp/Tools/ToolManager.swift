@@ -4,7 +4,7 @@ import Combine
 
 @MainActor
 class ToolManager {
-    private var localTools: [LocalTool]
+    private var localTools: [LocalTool] = []
     #if os(macOS)
     private let mcpManager: MCPServerManager?
     #endif
@@ -14,9 +14,6 @@ class ToolManager {
     }
 
     init() {
-        self.localTools = [
-            WeatherTool()
-        ]
         #if os(macOS)
         self.localTools.append(ScreenshotTool())
         self.mcpManager = MCPServerManager()

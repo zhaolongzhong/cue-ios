@@ -80,6 +80,7 @@ enum ColorSchemeOption: String, CaseIterable {
 }
 
 private struct SettingsList: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
@@ -229,14 +230,28 @@ private struct SettingsList: View {
 
                 Section {
                     GroupBox {
-                        VStack(spacing: 0) {
-                            SettingsRow(
-                                systemName: "info.circle",
-                                title: "Version",
-                                value: "\(viewModel.getVersionInfo())",
-                                showChevron: false
-                            ).padding(.horizontal, 6)
+                        if let appcastUrl = viewModel.appConfig?.appcastUrl {
+                            Button {
+                                coordinator.checkForUpdates(withAppcastUrl: appcastUrl)
+                            } label: {
+                                SettingsRow(
+                                    systemName: "arrow.triangle.2.circlepath",
+                                    title: "Check for Updates",
+                                    showChevron: false
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 6)
+                            Divider()
                         }
+
+                        SettingsRow(
+                            systemName: "info.circle",
+                            title: "Version",
+                            value: "\(viewModel.getVersionInfo())",
+                            showChevron: false
+                        )
+                        .padding(.horizontal, 6)
                     }
                 }
 

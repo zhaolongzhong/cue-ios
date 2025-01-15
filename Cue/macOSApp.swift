@@ -1,12 +1,22 @@
 import CueApp
 import SwiftUI
+import Sparkle
 
 #if os(macOS)
 @main
 struct macOSApp: App {
+
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) var appDelegate
     @StateObject private var dependencies = AppDependencies()
-    @StateObject private var mainCoordinator = AppCoordinator()
+    @StateObject private var mainCoordinator: AppCoordinator
+    private let updaterController: SPUStandardUpdaterController
+
+    init() {
+        let dynamicDelegate = DynamicFeedUpdaterDelegate(initialURL: "")
+        let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: dynamicDelegate, userDriverDelegate: nil)
+        _mainCoordinator = StateObject(wrappedValue: AppCoordinator(updater: updaterController.updater, dynamicDelegate: dynamicDelegate))
+        self.updaterController = updaterController
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -20,31 +30,41 @@ struct macOSApp: App {
         .commands {
             SidebarCommands()
             ToolbarCommands()
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updater: updaterController.updater)
+            }
         }
 
-        CommonWindowGroup(id: "settings-window", dependencies: dependencies) {
+        CommonWindowGroup(id: "settings-window", dependencies: dependencies, appCoordinator: mainCoordinator) {
             SettingsWindowView()
         }
 
-        CommonWindowGroup(id: "openai-chat-window", dependencies: dependencies) {
+        CommonWindowGroup(id: "openai-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
             OpenAIWindowView()
         }
 
-        CommonWindowGroup(id: "realtime-chat-window", dependencies: dependencies) {
+        CommonWindowGroup(id: "realtime-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
             RealtimeWindowView()
         }
 
-        CommonWindowGroup(id: "anthropic-chat-window", dependencies: dependencies) {
+        CommonWindowGroup(id: "anthropic-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
             AnthropicWindowView()
         }
     }
 }
 
 struct CommonWindowGroup<Content: View>: Scene {
-    @StateObject private var openAICoordinator = AppCoordinator()
+    @StateObject private var appCoordinator: AppCoordinator
     let id: String
     let dependencies: AppDependencies
     let content: () -> Content
+
+    init(id: String, dependencies: AppDependencies, appCoordinator: AppCoordinator, content: @escaping () -> Content) {
+        _appCoordinator = StateObject(wrappedValue: appCoordinator)
+        self.id = id
+        self.dependencies = dependencies
+        self.content = content
+    }
 
     var body: some Scene {
         WindowGroup(id: id) {
@@ -55,7 +75,7 @@ struct CommonWindowGroup<Content: View>: Scene {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .environmentObject(dependencies)
-                    .environmentObject(openAICoordinator)
+                    .environmentObject(appCoordinator)
             }
         }
         .windowToolbarStyle(.unified(showsTitle: true))

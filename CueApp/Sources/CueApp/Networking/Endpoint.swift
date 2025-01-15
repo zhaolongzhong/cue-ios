@@ -59,8 +59,9 @@ extension Endpoint {
             finalHeaders["Authorization"] = "Bearer \(token)"
         }
 
-        finalHeaders.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+        finalHeaders["platform"] = "macos"
 
+        finalHeaders.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         return request
     }
 }

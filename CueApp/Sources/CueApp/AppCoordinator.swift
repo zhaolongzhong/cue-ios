@@ -1,4 +1,5 @@
 import SwiftUI
+import Sparkle
 
 @MainActor
 public class AppCoordinator: ObservableObject {
@@ -15,8 +16,20 @@ public class AppCoordinator: ObservableObject {
     @Published public var activeAlert: AlertType?
     @Published public var showSettings = false
     @Published public var showLiveChat = false
+    private let updater: SPUUpdater?
+    private let dynamicDelegate: DynamicFeedUpdaterDelegate?
 
-    public init() {}
+    public init(updater: SPUUpdater? = nil, dynamicDelegate: DynamicFeedUpdaterDelegate? = nil) {
+       self.updater = updater
+       self.dynamicDelegate = dynamicDelegate
+    }
+
+    public func checkForUpdates(withAppcastUrl appcastUrl: String? = nil) {
+        if let appcastUrl = appcastUrl {
+            dynamicDelegate?.dynamicFeedURL = appcastUrl
+        }
+        updater?.checkForUpdates()
+    }
 
     func showSettingsSheet() {
         showSettings = true

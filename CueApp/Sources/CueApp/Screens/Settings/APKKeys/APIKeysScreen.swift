@@ -159,7 +159,7 @@ struct APIKeyRow: View {
             }
         }
         .padding(.all, 8)
-        .background(AppTheme.Colors.secondaryBackground)
+        .background(AppTheme.Colors.separator)
         .cornerRadius(8)
         .contextMenu {
             Button("Update") {
