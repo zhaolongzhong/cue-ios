@@ -69,11 +69,18 @@ actor NetworkClient: NetworkClientProtocol {
             do {
                 return try decoder.decode(T.self, from: data)
             } catch {
-                logger.error("Decoding error: \(error)")
-                if let dataString = String(data: data, encoding: .utf8) {
-                    logger.error("Raw response data: \(dataString)")
+                do {
+                    // Set the alternative key decoding strategy
+                    let decoder = JSONDecoder()
+                    decoder.keyDecodingStrategy = .convertFromSnakeCase
+                    return try decoder.decode(T.self, from: data)
+                } catch {
+                    logger.error("Decoding error with convertFromSnakeCase: \(error)")
+                    if let dataString = String(data: data, encoding: .utf8) {
+                        logger.error("Raw response data: \(dataString)")
+                    }
+                    throw NetworkError.decodingError(error)
                 }
-                throw NetworkError.decodingError(error)
             }
         case 401:
             throw NetworkError.unauthorized
