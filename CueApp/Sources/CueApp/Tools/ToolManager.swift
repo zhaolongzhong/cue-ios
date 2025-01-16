@@ -98,7 +98,6 @@ class ToolManager {
 
         #if os(macOS)
         if let mcpTools = mcpManager?.getToolsJSON() {
-            print("inx has mcpTools: \(mcpTools.count)")
             tools.append(contentsOf: mcpTools)
         }
         #endif

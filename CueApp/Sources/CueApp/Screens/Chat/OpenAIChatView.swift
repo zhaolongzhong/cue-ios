@@ -9,6 +9,7 @@ public struct OpenAIChatView: View {
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
+    @State private var selectedApp: AccessibleApplication = .textEdit
 
     private let apiKey: String
 
@@ -20,7 +21,8 @@ public struct OpenAIChatView: View {
     public var body: some View {
         VStack {
             messageList
-            RichTextField(showVoiceChat: true, onShowTools: {
+            observedAppView
+            RichTextField(showVoiceChat: true, showAXapp: true, onShowTools: {
                 showingToolsList = true
             }, onOpenVoiceChat: {
                 #if os(macOS)
@@ -28,11 +30,15 @@ public struct OpenAIChatView: View {
                 #else
                 coordinator.showLiveChatSheet()
                 #endif
-            }, onSend: {
+            }, onStartAXApp: { app in
+                viewModel.updateObservedApplication(to: app)
+            },
+              onSend: {
                 Task {
                     await viewModel.sendMessage()
                 }
-            }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+            },
+            toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             .padding(.all, 8)
         }
         .defaultNavigationBar(showCustomBackButton: false, title: "OpenAI")
@@ -94,6 +100,27 @@ public struct OpenAIChatView: View {
                 withAnimation {
                     proxy.scrollTo(bottomID, anchor: .bottom)
                 }
+            }
+        }
+    }
+
+    private var observedAppView: some View {
+        Group {
+            if let observedApp = viewModel.observedApp {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Observed app: \(observedApp.name)")
+                        if let focusedLines = viewModel.focusedLines {
+                            Text(focusedLines)
+                        }
+                    }
+                    Button("Stop") {
+                        viewModel.stopObserveApp()
+                    }
+                }
+                .padding(.all, 12)
+                .background(RoundedRectangle(cornerRadius: 8)
+                    .fill(AppTheme.Colors.separator))
             }
         }
     }

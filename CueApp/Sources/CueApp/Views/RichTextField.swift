@@ -4,19 +4,24 @@ struct RichTextField: View {
     @Environment(\.colorScheme) private var colorScheme
     let isEnabled: Bool
     let showVoiceChat: Bool
+    let showAXApp: Bool
     let onShowTools: () -> Void
     let onOpenVoiceChat: (() -> Void)?
+    let onStartAXApp: ((AccessibleApplication) -> Void)?
     let onSend: () -> Void
     let toolCount: Int
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
+    @StateObject private var axManager = AXManager()
 
     init(
         isEnabled: Bool = true,
         showVoiceChat: Bool = false,
+        showAXapp: Bool = false,
         onShowTools: @escaping () -> Void,
         onOpenVoiceChat: (() -> Void)? = nil,
+        onStartAXApp: ((AccessibleApplication) -> Void)? = nil,
         onSend: @escaping () -> Void,
         toolCount: Int = 0,
         inputMessage: Binding<String>,
@@ -24,8 +29,10 @@ struct RichTextField: View {
     ) {
         self.isEnabled = isEnabled
         self.showVoiceChat = showVoiceChat
+        self.showAXApp = showAXapp
         self.onShowTools = onShowTools
         self.onOpenVoiceChat = onOpenVoiceChat
+        self.onStartAXApp = onStartAXApp
         self.onSend = onSend
         self.toolCount = toolCount
         self._inputMessage = inputMessage
@@ -99,6 +106,9 @@ struct RichTextField: View {
                         }
                     }
                     .buttonStyle(.plain)
+                }
+                if showAXApp {
+                    AXAppSelectionMenu(onStartAXApp: onStartAXApp)
                 }
                 if showVoiceChat {
                     Button {

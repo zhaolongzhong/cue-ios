@@ -6,6 +6,7 @@ import Combine
 final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
     private let toolManager: ToolManager
+    private let axManager: AXManager
     private let model: String = "gpt-4o-mini"
     private var cancellables = Set<AnyCancellable>()
 
@@ -14,20 +15,34 @@ final class OpenAIChatViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var availableTools: [Tool] = []
     @Published var error: ChatError?
+    @Published var observedApp: AccessibleApplication?
+    private var textAreaContent: TextAreaContent?
+    @Published var focusedLines: String?
 
     init(apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
+        self.axManager = AXManager()
         self.availableTools = toolManager.getTools()
         setupToolsSubscription()
+        setupTextAreaContentSubscription()
     }
 
     private func setupToolsSubscription() {
         toolManager.mcptoolsPublisher
-            .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
                 self.availableTools = self.toolManager.getTools()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func setupTextAreaContentSubscription() {
+        axManager.$textAreaContentList
+            .sink { [weak self] newValue in
+                guard let self = self else { return }
+                self.textAreaContent = newValue.first
+                self.focusedLines = self.textAreaContent?.focusedLines
             }
             .store(in: &cancellables)
     }
@@ -36,11 +51,32 @@ final class OpenAIChatViewModel: ObservableObject {
         await self.toolManager.startMcpServer()
     }
 
+    func updateObservedApplication(to newApp: AccessibleApplication) {
+        self.axManager.updateObservedApplication(to: newApp)
+        self.observedApp = newApp
+    }
+
+    func stopObserveApp() {
+        self.axManager.stopObserving()
+        self.observedApp = nil
+        self.textAreaContent = nil
+    }
+
     func sendMessage() async {
+        var messageParams = Array(self.messages.suffix(10))
+        if let textAreaContent = self.axManager.textAreaContentList.first {
+            let context = textAreaContent.getTextAreaContext()
+            let contextMessage = OpenAI.ChatMessage.userMessage(
+                OpenAI.MessageParam(role: Role.assistant.rawValue, content: context)
+            )
+            messageParams.append(contextMessage)
+
+        }
         let userMessage = OpenAI.ChatMessage.userMessage(
-            OpenAI.MessageParam(role: "user", content: newMessage)
+            OpenAI.MessageParam(role: Role.user.rawValue, content: newMessage)
         )
-        messages.append(userMessage)
+        self.messages.append(userMessage)
+        messageParams.append(userMessage)
 
         isLoading = true
         newMessage = ""
@@ -50,7 +86,7 @@ final class OpenAIChatViewModel: ObservableObject {
 
             let response = try await openAI.chat.completions.create(
                 model: self.model,
-                messages: messages,
+                messages: messageParams,
                 tools: tools,
                 toolChoice: "auto"
             )
@@ -84,14 +120,14 @@ final class OpenAIChatViewModel: ObservableObject {
                     let assistantMessage = OpenAI.ChatMessage.assistantMessage(
                         finalMessage
                     )
-                    messages.append(assistantMessage)
+                    self.messages.append(assistantMessage)
                 }
             } else {
                 // Normal message without tool calls
                 let assistantMessage = OpenAI.ChatMessage.assistantMessage(
                     assistantResponse
                 )
-                messages.append(assistantMessage)
+                self.messages.append(assistantMessage)
             }
         } catch let error as OpenAI.Error {
             let chatError: ChatError
@@ -144,5 +180,24 @@ final class OpenAIChatViewModel: ObservableObject {
 
     func clearError() {
         error = nil
+    }
+}
+
+extension TextAreaContent {
+    func getTextAreaContext() -> String {
+        let selectionLinesXML = self.selectionLines.joined(separator: "\n")
+        return """
+        <full_content>\(self.content)</full_content>
+        <selection_lines>\(selectionLinesXML)</selection_lines>
+        """
+    }
+
+    var focusedLines: String? {
+        guard let lineRange = selectionLinesRange else { return nil }
+        if lineRange.startLine == lineRange.endLine {
+            return "Focused on line \(lineRange.startLine)"
+        } else {
+            return "Focused on lines \(lineRange.startLine)-\(lineRange.endLine)"
+        }
     }
 }
