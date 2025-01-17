@@ -9,6 +9,7 @@ enum EventMessageType: String, Codable {
     case clientConnect = "client_connect"
     case clientDisconnect = "client_disconnect"
     case clientStatus = "client_status"
+    case userControl = "user_control"  // New type for control commands
     case ping = "ping"
     case pong = "pong"
     case error = "error"
@@ -108,6 +109,19 @@ struct PingPongEventPayload: Codable {
     var type: String
 }
 
+// MARK: - ControlCommand
+
+public struct ControlCommand: Codable, Sendable {
+    public enum Action: String, Codable {
+        case stop = "stop"      // Stop current task/generation
+        case reset = "reset"    // Reset assistant state
+        case retry = "retry"    // Retry last operation
+    }
+    
+    let action: Action
+    let targetId: String  // assistant/runner ID to target
+}
+
 // MARK: - EventPayload
 
 enum EventPayload: Codable, Sendable {
@@ -115,6 +129,7 @@ enum EventPayload: Codable, Sendable {
     case pingPongEvent(PingPongEventPayload)
     case message(MessagePayload)
     case genericMessage(GenericMessagePayload)
+    case control(ControlCommand)  // New case for control commands
 
     // Custom initializer to decode based on available keys
     init(from decoder: Decoder) throws {
@@ -133,6 +148,8 @@ enum EventPayload: Codable, Sendable {
         case .message(let payload):
             try payload.encode(to: encoder)
         case .genericMessage(let payload):
+            try payload.encode(to: encoder)
+        case .control(let payload):
             try payload.encode(to: encoder)
         }
     }
@@ -188,6 +205,9 @@ public struct EventMessage: Codable, Sendable {
         case .user, .assistant:
             let messagePayload = try container.decode(MessagePayload.self, forKey: .payload)
             payload = .message(messagePayload)
+        case .userControl:
+            let controlPayload = try container.decode(ControlCommand.self, forKey: .payload)
+            payload = .control(controlPayload)
         case .generic, .error:
             let genericPayload = try container.decode(GenericMessagePayload.self, forKey: .payload)
             payload = .genericMessage(genericPayload)
