@@ -1,6 +1,7 @@
 import CueApp
 import SwiftUI
 import Sparkle
+import Sentry
 
 #if os(macOS)
 @main
@@ -16,6 +17,29 @@ struct macOSApp: App {
         let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: dynamicDelegate, userDriverDelegate: nil)
         _mainCoordinator = StateObject(wrappedValue: AppCoordinator(updater: updaterController.updater, dynamicDelegate: dynamicDelegate))
         self.updaterController = updaterController
+        
+        SentrySDK.start { options in
+            options.dsn = "https://1a0cffbf8b7d6371fd223c2e237ea149@o4507807473074176.ingest.us.sentry.io/4507860274446336"
+            options.debug = true // Enabled debug when first installing is always helpful
+            options.sampleRate = 0.25
+            options.tracesSampleRate = 0.2
+            let httpStatusCodeRange = HttpStatusCodeRange(min: 400, max: 599)
+            options.failedRequestStatusCodes = [ httpStatusCodeRange ]
+        }
+        
+        enum CustomError: Error {
+            case testError(String)
+        }
+        
+        // Basic error capture
+        func captureBasicError() {
+            do {
+                throw CustomError.testError("This is a test error")
+            } catch {
+                SentrySDK.capture(error: error)
+            }
+        }
+        captureBasicError()
     }
 
     var body: some Scene {
