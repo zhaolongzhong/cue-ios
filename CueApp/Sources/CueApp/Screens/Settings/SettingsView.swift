@@ -123,7 +123,7 @@ private struct SettingsList: View {
                         systemName: "shield.checkerboard",
                         title: "Google Apps",
                         value: "",
-                        showChevron: true
+                        showChevron: false
                     )
                 }
             } header: {

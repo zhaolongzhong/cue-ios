@@ -16,13 +16,18 @@ let package = Package(
             targets: ["CueOpenAI"]),
     ],
     dependencies: [
+        .package(path: "../CueCommon"),
         .package(url: "https://github.com/stasel/WebRTC.git", branch: "latest"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "CueOpenAI", dependencies: ["WebRTC"]),
+            name: "CueOpenAI",
+            dependencies: [
+                "WebRTC",
+                .product(name: "CueCommon", package: "CueCommon")]
+        ),
         .testTarget(
             name: "CueOpenAITests",
             dependencies: ["CueOpenAI"]

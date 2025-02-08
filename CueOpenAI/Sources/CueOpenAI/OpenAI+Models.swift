@@ -1,4 +1,5 @@
 import Foundation
+import CueCommon
 
 extension OpenAI {
     public struct Usage: Codable, Sendable {
@@ -106,7 +107,7 @@ extension OpenAI {
         public let content: String?
         public let toolCalls: [ToolCall]?
     
-        public init(role: String, content: String?, toolCalls: [ToolCall]?) {
+        public init(role: String, content: String?, toolCalls: [ToolCall]? = nil) {
             self.role = role
             self.content = content
             self.toolCalls = toolCalls
@@ -169,7 +170,7 @@ extension OpenAI {
         }
     }
     
-    public enum ChatMessage: Codable, Sendable, Identifiable {
+    public enum ChatMessageParam: Codable, Sendable, Identifiable {
         case userMessage(MessageParam)
         case assistantMessage(AssistantMessage)
         case toolMessage(ToolMessage)
@@ -254,10 +255,10 @@ extension OpenAI {
     
     public struct ChatCompletionRequest: Codable, Sendable {
         public let model: String
-        public let messages: [ChatMessage]
+        public let messages: [ChatMessageParam]
         public let maxTokens: Int
         public let temperature: Double
-        public let tools: [Tool]?
+        public let tools: [JSONValue]?
         public let toolChoice: String?
         
         private enum CodingKeys: String, CodingKey {
@@ -268,10 +269,10 @@ extension OpenAI {
         
         public init(
             model: String,
-            messages: [OpenAI.ChatMessage],
+            messages: [OpenAI.ChatMessageParam],
             maxTokens: Int = 1000,
             temperature: Double = 1.0,
-            tools: [Tool]? = nil,
+            tools: [JSONValue]? = nil,
             toolChoice: String? = nil
         ) {
             self.model = model

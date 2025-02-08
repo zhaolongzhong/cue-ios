@@ -140,9 +140,7 @@ extension JSONValue {
                 return Anthropic.ContentBlock(content: text)
 
             case "tool_use":
-                guard let _ = contentDict["id"]?.asString,
-                      let name = contentDict["name"]?.asString,
-                      case .dictionary(_)? = contentDict["input"] else {
+                guard let name = contentDict["name"]?.asString else {
                     return nil
                 }
                 return Anthropic.ContentBlock(content: "Tool use: \(name)")

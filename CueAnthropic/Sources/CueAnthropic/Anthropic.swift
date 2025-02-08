@@ -73,7 +73,7 @@ public struct Anthropic {
         }
     }
 
-    public enum ChatMessage: Codable, Sendable, Identifiable {
+    public enum ChatMessageParam: Codable, Sendable, Identifiable {
         case userMessage(MessageParam)
         case assistantMessage(MessageParam)
         case toolMessage(ToolResultMessage)
@@ -153,7 +153,7 @@ public struct Anthropic {
     public struct MessageRequest: Codable {
         public let model: String
         public let maxTokens: Int
-        public let messages: [ChatMessage]
+        public let messages: [ChatMessageParam]
         public let tools: [JSONValue]?
         public let toolChoice: [String: String]?
 
@@ -168,7 +168,7 @@ public struct Anthropic {
         public init(
             model: String,
             maxTokens: Int,
-            messages: [ChatMessage],
+            messages: [ChatMessageParam],
             tools: [JSONValue]? = nil,
             toolChoice: [String: String]? = nil
         ) {
@@ -202,7 +202,7 @@ public struct MessagesAPI {
     public func create(
         model: String = "claude-3-opus-20240229",
         maxTokens: Int = 1024,
-        messages: [Anthropic.ChatMessage],
+        messages: [Anthropic.ChatMessageParam],
         tools: [JSONValue]? = nil,
         toolChoice: [String: String]? = nil
     ) async throws -> Anthropic.AnthropicMessage {

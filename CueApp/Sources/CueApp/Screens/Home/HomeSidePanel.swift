@@ -78,6 +78,7 @@ struct HomeSidePanel: View {
             VStack(spacing: 16) {
                 ScrollView {
                     LazyVStack(spacing: 16) {
+                        cueRow
                         if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
                             providersSection
                         }
@@ -195,6 +196,17 @@ struct HomeSidePanel: View {
                 }
             }
         }
+    }
+
+    private var cueRow: some View {
+        IconRow(
+            title: "Cue",
+            action: {
+                navigationPath.append(HomeDestination.cue)
+                sidePanelState.hidePanel()
+            },
+            iconName: ""
+        )
     }
 
     private var openAIRow: some View {

@@ -1,6 +1,6 @@
 import Foundation
 
-enum ChatError: Equatable, Identifiable {
+enum ChatError: Equatable, Identifiable, Error {
     case apiError(String)
     case sessionError(String)
     case toolError(String)

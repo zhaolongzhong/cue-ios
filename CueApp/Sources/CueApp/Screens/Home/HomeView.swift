@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Navigation
 enum HomeDestination: Hashable {
+    case cue
     case openai
     case anthropic
     case chat(Assistant)
@@ -153,6 +154,8 @@ private extension HomeView {
     func destinationView(for destination: HomeDestination) -> some View {
         Group {
             switch destination {
+            case .cue:
+                CueChatView()
             case .openai:
                 OpenAIChatView(apiKey: apiKeysProviderViewModel.openAIKey)
             case .anthropic:

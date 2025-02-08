@@ -7,14 +7,19 @@ import CueAnthropic
 @MainActor
 final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
+    private let model: ChatModel = .claude35Haiku
     private let toolManager: ToolManager
-    private let model: String = "claude-3-5-haiku-20241022"
+    private var tools: [JSONValue] = []
     private var cancellables = Set<AnyCancellable>()
 
-    @Published var messages: [Anthropic.ChatMessage] = []
+    @Published var messages: [Anthropic.ChatMessageParam] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
-    @Published var availableTools: [Tool] = []
+    @Published var availableTools: [Tool] = [] {
+        didSet {
+            updateTools()
+        }
+    }
     @Published var error: ChatError?
 
     init(apiKey: String) {
@@ -24,8 +29,12 @@ final class AnthropicChatViewModel: ObservableObject {
         setupToolsSubscription()
     }
 
+    private func updateTools() {
+        tools = self.toolManager.getToolsJSONValue(model: self.model.id)
+    }
+
     private func setupToolsSubscription() {
-        toolManager.mcptoolsPublisher
+        toolManager.mcpToolsPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
@@ -39,7 +48,7 @@ final class AnthropicChatViewModel: ObservableObject {
     }
 
     func sendMessage() async {
-        let userMessage = Anthropic.ChatMessage.userMessage(
+        let userMessage = Anthropic.ChatMessageParam.userMessage(
             Anthropic.MessageParam(role: "user", content: [Anthropic.ContentBlock(content: newMessage)])
         )
         messages.append(userMessage)
@@ -48,78 +57,18 @@ final class AnthropicChatViewModel: ObservableObject {
         newMessage = ""
 
         do {
-            let mcpTools = toolManager.getMCPTools()
-            let jsonValues = try mcpTools.map { try JSONValue(encodable: $0) }
+            let agent = AgentLoop(chatClient: anthropic, toolManager: toolManager, model: model.id)
+            let completionRequest = CompletionRequest(model: model.id, tools: tools, toolChoice: "auto")
+            let updatedMessages = try await agent.run(with: messages, request: completionRequest)
+            self.messages = updatedMessages
 
-            let response = try await anthropic.messages.create(
-                model: self.model,
-                maxTokens: 1024,
-                messages: messages,
-                tools: jsonValues,
-                toolChoice: [
-                    "type": "auto"
-                ]
-            )
-
-            AppLog.log.debug("response: \(String(describing: response))")
-
-            // Process the response content
-            for contentBlock in response.content {
-                switch contentBlock {
-                case .text(let textBlock):
-                    // Add assistant's text response
-                    let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                        Anthropic.MessageParam(role: "assistant", content: [Anthropic.ContentBlock(content: textBlock.text)])
-                    )
-                    messages.append(assistantMessage)
-                case .toolUse(let toolBlock):
-                    // Handle tool use
-                    let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                        Anthropic.MessageParam(role: "assistant", content: [Anthropic.ContentBlock(toolUseBlock: toolBlock)])
-                    )
-                    messages.append(assistantMessage)
-                    let toolResult = await handleToolUse(toolBlock)
-                    // Add tool response
-                    let result = Anthropic.ToolResultContent(
-                        isError: false,
-                        toolUseId: toolBlock.id,
-                        type: "tool_result",
-                        content: [Anthropic.ContentBlock(content: toolResult)]
-                    )
-
-                    let toolResultMessage = Anthropic.ChatMessage.toolMessage(Anthropic.ToolResultMessage(role: "user", content: [result]))
-                    messages.append(toolResultMessage)
-
-                    // Get follow-up response with tool results
-                    let followUpResponse = try await anthropic.messages.create(
-                        model: self.model,
-                        maxTokens: 1024,
-                        messages: messages,
-                        tools: jsonValues,
-                        toolChoice: [
-                            "type": "auto"
-                        ]
-                    )
-
-                    // Process follow-up response
-                    for followUpBlock in followUpResponse.content {
-                        if case .text(let textBlock) = followUpBlock {
-                            let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                                Anthropic.MessageParam(role: "assistant", content: [Anthropic.ContentBlock(content: textBlock.text)])
-                            )
-                            messages.append(assistantMessage)
-                        }
-                    }
-                }
-            }
         } catch let error as Anthropic.Error {
-            let chatError: ChatError
-            switch error {
-            case .apiError(let apiError):
-                chatError = .apiError(apiError.error.message)
-            default:
-                chatError = .unknownError(error.localizedDescription)
-            }
+            let chatError: ChatError = {
+                switch error {
+                case .apiError(let apiError): return .apiError(apiError.error.message)
+                default: return .unknownError(error.localizedDescription)
+                }
+            }()
             self.error = chatError
             ErrorLogger.log(chatError)
         } catch {
@@ -127,6 +76,7 @@ final class AnthropicChatViewModel: ObservableObject {
             self.error = chatError
             ErrorLogger.log(chatError)
         }
+
         isLoading = false
     }
 

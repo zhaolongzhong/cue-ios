@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CueCommon
 import CueOpenAI
 import CueAnthropic
 import CueMCP
@@ -11,7 +12,7 @@ class ToolManager {
     private let mcpManager: MCPServerManager?
     #endif
     private let mcpToolsSubject = CurrentValueSubject<[MCPTool], Never>([])
-    var mcptoolsPublisher: AnyPublisher<[MCPTool], Never> {
+    var mcpToolsPublisher: AnyPublisher<[MCPTool], Never> {
         mcpToolsSubject.eraseToAnyPublisher()
     }
 
@@ -105,6 +106,30 @@ class ToolManager {
         }
         #endif
         return tools
+    }
+
+    private func getToolsJSONValue() -> [JSONValue] {
+        do {
+            return try getTools().map { try JSONValue(encodable: $0) }
+        } catch {
+            print("Conversion error: \(error)")
+            return []
+        }
+    }
+
+    func getToolsJSONValue(model: String = ChatModel.gpt4oMini.id) -> [JSONValue] {
+        if model.lowercased().contains("claude") {
+            let mcpTools = self.getMCPTools()
+            return mcpTools.compactMap {
+                do {
+                    return try JSONValue(encodable: $0)
+                } catch {
+                    return nil
+                }
+            }
+        } else {
+            return self.getToolsJSONValue()
+        }
     }
 
     func callTool(name: String, arguments: [String: Any]) async throws -> String {

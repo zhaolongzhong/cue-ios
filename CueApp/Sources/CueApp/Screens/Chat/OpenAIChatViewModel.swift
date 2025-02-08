@@ -1,21 +1,27 @@
 import Foundation
-import CueOpenAI
 import Combine
+import CueCommon
+import CueOpenAI
 
 @MainActor
 final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
+    private let model: ChatModel = .gpt4oMini
     private let toolManager: ToolManager
+    private var tools: [JSONValue] = []
     #if os(macOS)
     private let axManager: AXManager
     #endif
-    private let model: String = "gpt-4o-mini"
     private var cancellables = Set<AnyCancellable>()
 
-    @Published var messages: [OpenAI.ChatMessage] = []
+    @Published var messages: [OpenAI.ChatMessageParam] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
-    @Published var availableTools: [Tool] = []
+    @Published var availableTools: [Tool] = [] {
+        didSet {
+            updateTools()
+        }
+    }
     @Published var error: ChatError?
     @Published var observedApp: AccessibleApplication?
     #if os(macOS)
@@ -30,12 +36,17 @@ final class OpenAIChatViewModel: ObservableObject {
         self.axManager = AXManager()
         #endif
         self.availableTools = toolManager.getTools()
+        updateTools()
         setupToolsSubscription()
         setupTextAreaContentSubscription()
     }
 
+    private func updateTools() {
+        tools = self.toolManager.getToolsJSONValue(model: self.model.id)
+    }
+
     private func setupToolsSubscription() {
-        toolManager.mcptoolsPublisher
+        toolManager.mcpToolsPublisher
             .sink { [weak self] _ in
                 guard let self = self else { return }
                 self.availableTools = self.toolManager.getTools()
@@ -76,17 +87,19 @@ final class OpenAIChatViewModel: ObservableObject {
 
     func sendMessage() async {
         var messageParams = Array(self.messages.suffix(10))
+
         #if os(macOS)
         if let textAreaContent = self.axManager.textAreaContentList.first {
             let context = textAreaContent.getTextAreaContext()
-            let contextMessage = OpenAI.ChatMessage.userMessage(
-                OpenAI.MessageParam(role: Role.assistant.rawValue, content: context)
+            let contextMessage = OpenAI.ChatMessageParam.assistantMessage(
+                OpenAI.AssistantMessage(role: Role.assistant.rawValue, content: context)
             )
             messageParams.append(contextMessage)
         }
         #endif
 
-        let userMessage = OpenAI.ChatMessage.userMessage(
+        // Add the user's new message.
+        let userMessage = OpenAI.ChatMessageParam.userMessage(
             OpenAI.MessageParam(role: Role.user.rawValue, content: newMessage)
         )
         self.messages.append(userMessage)
@@ -96,89 +109,16 @@ final class OpenAIChatViewModel: ObservableObject {
         newMessage = ""
 
         do {
-            let tools = toolManager.getTools()
-            var currentMessages = messageParams
-            var iteration = 0
-            let maxIterations = 20
-
-            repeat {
-                let response = try await openAI.chat.completions.create(
-                    model: self.model,
-                    messages: currentMessages,
-                    tools: tools,
-                    toolChoice: "auto"
-                )
-                guard let message = response.choices.first?.message else { break }
-
-                if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                    // Append the assistant message triggering the tool calls.
-                    let assistantMsg = OpenAI.ChatMessage.assistantMessage(message)
-                    messages.append(assistantMsg)
-                    currentMessages.append(assistantMsg)
-
-                    // Process tool calls.
-                    let toolMessages = await callTools(toolCalls)
-                    for toolMessage in toolMessages {
-                        let msg = OpenAI.ChatMessage.toolMessage(toolMessage)
-                        messages.append(msg)
-                        currentMessages.append(msg)
-                    }
-                } else {
-                    // Final assistant response with no tool calls.
-                    let assistantMsg = OpenAI.ChatMessage.assistantMessage(message)
-                    messages.append(assistantMsg)
-                    break
-                }
-                iteration += 1
-            } while iteration < maxIterations
-
-        } catch let error as OpenAI.Error {
-            let chatError: ChatError
-            switch error {
-            case .apiError(let apiError):
-                chatError = .apiError(apiError.error.message)
-            default:
-                chatError = .unknownError(error.localizedDescription)
-            }
-            self.error = chatError
-            ErrorLogger.log(chatError)
+            let agent = AgentLoop(chatClient: openAI, toolManager: toolManager, model: model.id)
+            let completionRequest = CompletionRequest(model: model.id, tools: tools, toolChoice: "auto")
+            let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
+            messages = updatedMessages
         } catch {
             let chatError = ChatError.unknownError(error.localizedDescription)
             self.error = chatError
             ErrorLogger.log(chatError)
         }
         isLoading = false
-    }
-
-    private func callTools(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
-        var results: [OpenAI.ToolMessage] = []
-
-        for toolCall in toolCalls {
-            if let data = toolCall.function.arguments.data(using: .utf8),
-               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                do {
-                    let result = try await toolManager.callTool(
-                        name: toolCall.function.name,
-                        arguments: args
-                    )
-                    results.append(OpenAI.ToolMessage(
-                        role: "tool",
-                        content: result,
-                        toolCallId: toolCall.id
-                    ))
-                } catch {
-                    let toolError = ChatError.toolError(error.localizedDescription)
-                    ErrorLogger.log(toolError)
-                    results.append(OpenAI.ToolMessage(
-                        role: "tool",
-                        content: "Error: \(error.localizedDescription)",
-                        toolCallId: toolCall.id
-                    ))
-                }
-            }
-        }
-
-        return results
     }
 
     func clearError() {

@@ -20,7 +20,7 @@ class DeveloperViewModel: ObservableObject {
     }
 
     private func setupToolsSubscription() {
-        toolManager.mcptoolsPublisher
+        toolManager.mcpToolsPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }

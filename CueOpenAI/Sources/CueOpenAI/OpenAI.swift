@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import CueCommon
 
 public let log = Logger(subsystem: "openai", category: "openai")
 
@@ -68,10 +69,10 @@ public struct CompletionsAPI {
     
     public func create(
         model: String,
-        messages: [OpenAI.ChatMessage],
+        messages: [OpenAI.ChatMessageParam],
         maxTokens: Int = 1000,
         temperature: Double = 1.0,
-        tools: [Tool]? = nil,
+        tools: [JSONValue]? = nil,
         toolChoice: String? = nil
     ) async throws -> OpenAI.ChatCompletion {
         let request = OpenAI.ChatCompletionRequest(

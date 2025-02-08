@@ -11,10 +11,10 @@ public final class RealtimeChatViewModel: ObservableObject {
     private let openAI: OpenAI
     private let toolManager: ToolManager
     private let apiKey: String
-    private let model: String = "gpt-4o-mini-realtime-preview-2024-12-17"
+    private let model: String = ChatRealtimeModel.gpt4oMiniRealtimePreview.id
     private let logger = Logger(subsystem: "RealtimeVoiceChatViewModel", category: "RealtimeVoiceChatViewModel")
 
-    @Published private(set) var messages: [OpenAI.ChatMessage] = []
+    @Published private(set) var messages: [OpenAI.ChatMessageParam] = []
     @Published var newMessage: String = ""
 
     @Published private(set) var deltaMessage: String = ""

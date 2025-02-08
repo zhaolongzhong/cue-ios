@@ -88,7 +88,7 @@ public struct AnthropicChatView: View {
     }
 }
 
-extension Anthropic.ChatMessage {
+extension Anthropic.ChatMessageParam {
     public var id: String {
         // Create a unique identifier based on role and content
         "\(role)-\(content)".hash.description
