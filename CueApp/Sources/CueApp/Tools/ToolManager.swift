@@ -1,6 +1,8 @@
 import Foundation
-import CueOpenAI
 import Combine
+import CueOpenAI
+import CueAnthropic
+import CueMCP
 
 @MainActor
 class ToolManager {

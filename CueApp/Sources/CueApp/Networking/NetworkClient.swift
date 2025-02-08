@@ -54,44 +54,66 @@ actor NetworkClient: NetworkClientProtocol {
         let token = await TokenManager.shared.accessToken
 
         if endpoint.requiresAuth && (token == nil || token?.isEmpty == true) {
+            logger.debug("Unauthorized: missing or empty token")
             throw NetworkError.unauthorized
         }
+
         let request = try endpoint.urlRequest(with: token)
+        logger.debug("Performing request: \(request.httpMethod ?? "N/A") \(request.url?.absoluteString ?? "unknown URL")")
+        if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
+            logger.debug("Request body: \(bodyString)")
+        }
 
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("Invalid response: \(response)")
             throw NetworkError.invalidResponse
         }
 
+        logger.debug("HTTP status code: \(httpResponse.statusCode)")
+
         switch httpResponse.statusCode {
         case 200...299:
+            #if DEBUG
+            if let raw = String(data: data, encoding: .utf8) {
+                logger.debug("Raw response: \(raw)")
+            }
+            #endif
             do {
+                logger.debug("Attempting default decoding")
                 return try decoder.decode(T.self, from: data)
             } catch {
+                logger.debug("Default decoding failed: \(error)")
                 do {
-                    // Set the alternative key decoding strategy
-                    let decoder = JSONDecoder()
-                    decoder.keyDecodingStrategy = .convertFromSnakeCase
-                    return try decoder.decode(T.self, from: data)
+                    let altDecoder = JSONDecoder()
+                    altDecoder.keyDecodingStrategy = .convertFromSnakeCase
+                    logger.debug("Attempting decoding with convertFromSnakeCase")
+                    return try altDecoder.decode(T.self, from: data)
                 } catch {
                     logger.error("Decoding error with convertFromSnakeCase: \(error)")
-                    if let dataString = String(data: data, encoding: .utf8) {
-                        logger.error("Raw response data: \(dataString)")
+                    if let raw = String(data: data, encoding: .utf8) {
+                        logger.error("Raw response data: \(raw)")
                     }
                     throw NetworkError.decodingError(error)
                 }
             }
         case 401:
+            logger.error("Unauthorized error: \(httpResponse.statusCode)")
             throw NetworkError.unauthorized
         case 403:
             let errorResponse = try? decoder.decode(APIError.self, from: data)
-            throw NetworkError.forbidden(message: errorResponse?.detail ?? "Token expired")
+            let message = errorResponse?.detail ?? "Token expired"
+            logger.error("Forbidden error: \(httpResponse.statusCode) - \(message)")
+            throw NetworkError.forbidden(message: message)
         case 400...499:
+            logger.error("HTTP client error: \(httpResponse.statusCode)")
             throw NetworkError.httpError(httpResponse.statusCode, data)
         case 500...599:
+            logger.error("Server error: \(httpResponse.statusCode)")
             throw NetworkError.serverError
         default:
+            logger.error("Unhandled HTTP status code: \(httpResponse.statusCode)")
             throw NetworkError.httpError(httpResponse.statusCode, data)
         }
     }

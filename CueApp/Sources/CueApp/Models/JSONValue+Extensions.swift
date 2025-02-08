@@ -1,5 +1,7 @@
 import Foundation
+import CueCommon
 import CueOpenAI
+import CueAnthropic
 
 extension JSONValue {
     func toChatCompletion() -> OpenAI.ChatCompletion? {
@@ -84,16 +86,8 @@ extension JSONValue {
             reasoningTokens: reasoningTokens
         )
 
-        // Parse prompt tokens details
-        guard case .int(let promptAudioTokens) = promptTokensDetailsDict["audio_tokens"],
-              case .int(let cachedTokens) = promptTokensDetailsDict["cached_tokens"] else {
-            return nil
-        }
-
-        let promptTokensDetails = OpenAI.PromptTokenDetails(
-            cachedTokens: cachedTokens,
-            audioTokens: promptAudioTokens
-        )
+        let cachedTokens = promptTokensDetailsDict["cached_tokens"]?.asInt ?? 0
+        let promptTokensDetails = OpenAI.PromptTokenDetails(cachedTokens: cachedTokens)
 
         let usage = OpenAI.Usage(
             totalTokens: totalTokens,
@@ -111,6 +105,80 @@ extension JSONValue {
             object: object,
             model: model,
             created: created
+        )
+    }
+}
+
+extension JSONValue {
+    public func toAnthropicMessage() -> Anthropic.AnthropicMessage? {
+        guard case .dictionary(let dict) = self else { return nil }
+
+        // Extract required fields
+        guard let id = dict["id"]?.asString,
+              let model = dict["model"]?.asString,
+              let role = dict["role"]?.asString,
+              let type = dict["type"]?.asString,
+              let stopReason = dict["stop_reason"]?.asString,
+              case .array(let contentArray) = dict["content"] else {
+            return nil
+        }
+
+        // Parse stop sequence (optional)
+        let stopSequence = dict["stop_sequence"]?.asString
+
+        // Parse content items
+        let content: [Anthropic.ContentBlock?] = contentArray.map { contentValue -> Anthropic.ContentBlock? in
+            guard case .dictionary(let contentDict) = contentValue,
+                  let typeStr = contentDict["type"]?.asString else {
+                return nil
+            }
+
+            // Parse based on content type
+            switch typeStr {
+            case "text":
+                guard let text = contentDict["text"]?.asString else { return nil }
+                return Anthropic.ContentBlock(content: text)
+
+            case "tool_use":
+                guard let _ = contentDict["id"]?.asString,
+                      let name = contentDict["name"]?.asString,
+                      case .dictionary(_)? = contentDict["input"] else {
+                    return nil
+                }
+                return Anthropic.ContentBlock(content: "Tool use: \(name)")
+            default:
+                print("unexpected type")
+            }
+            return nil
+        }
+
+        let usage: Anthropic.Usage?
+        if case .dictionary(let usageDict) = dict["usage"] {
+            usage = parseAnthropicUsage(from: usageDict)
+        } else {
+            usage = nil
+        }
+
+        guard let usage = usage else { return nil }
+
+        return Anthropic.AnthropicMessage(
+            id: id,
+            content: content.compactMap { $0},
+            model: model,
+            role: role,
+            stopReason: stopReason,
+            stopSequence: stopSequence,
+            type: type,
+            usage: usage
+        )
+    }
+
+    private func parseAnthropicUsage(from dict: [String: JSONValue]) -> Anthropic.Usage? {
+        return Anthropic.Usage(
+            cacheCreationInputTokens: dict["cache_creation_input_tokens"]?.asInt,
+            cacheReadInputTokens: dict["cache_read_input_tokens"]?.asInt,
+            inputTokens: dict["input_tokens"]?.asInt,
+            outputTokens: dict["output_tokens"]?.asInt
         )
     }
 }

@@ -1,8 +1,9 @@
 import Foundation
+import CueCommon
 
 // MARK: - Base Result Model
 
-struct MCPCallToolResult: Codable {
+public struct MCPCallToolResult: Codable {
     let content: [MCPContent]
     let isError: Bool
 
@@ -11,7 +12,7 @@ struct MCPCallToolResult: Codable {
         case isError
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Handle isError as either bool or number
@@ -30,7 +31,7 @@ struct MCPCallToolResult: Codable {
 
 // MARK: - Content Models
 
-enum MCPContent: Codable {
+public enum MCPContent: Codable {
     case text(MCPTextContent)
     case image(MCPImageContent)
 
@@ -38,7 +39,7 @@ enum MCPContent: Codable {
         case type
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
 
@@ -56,7 +57,7 @@ enum MCPContent: Codable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         switch self {
         case .text(let textContent):
             try textContent.encode(to: encoder)
@@ -66,12 +67,12 @@ enum MCPContent: Codable {
     }
 }
 
-struct MCPTextContent: Codable {
+public struct MCPTextContent: Codable {
     let type: String
     let text: String
 }
 
-struct MCPImageContent: Codable {
+public struct MCPImageContent: Codable {
     let type: String
     let data: String
     let mimeType: String
@@ -80,7 +81,7 @@ struct MCPImageContent: Codable {
 // MARK: - Extensions
 #if os(macOS)
 extension MCPServerManager {
-    func callToolWithResult(_ server: String, name: String, arguments: [String: Any]) async throws -> MCPCallToolResult {
+    public func callToolWithResult(_ server: String, name: String, arguments: [String: Any]) async throws -> MCPCallToolResult {
         let request = [
             "jsonrpc": "2.0",
             "id": 0,
@@ -91,9 +92,10 @@ extension MCPServerManager {
             ]
         ] as [String: Any]
 
-        let result = try await callTool(server: server, request: request)
-        let jsonData = try JSONSerialization.data(withJSONObject: convertToDict(result))
+        let result: JSONValue = try await callTool(server: server, request: request)
+        let jsonData = try JSONEncoder().encode(result)
         return try JSONDecoder().decode(MCPCallToolResult.self, from: jsonData)
+
     }
 }
 #endif
@@ -101,7 +103,7 @@ extension MCPServerManager {
 // MARK: - Debug Helpers
 
 extension MCPContent: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         switch self {
         case .text(let content):
             return "Text: \(content.text)"
@@ -112,7 +114,7 @@ extension MCPContent: CustomStringConvertible {
 }
 
 extension MCPCallToolResult: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         """
         Tool Result:
           Error: \(isError)

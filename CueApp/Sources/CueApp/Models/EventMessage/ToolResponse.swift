@@ -1,4 +1,6 @@
+import CueCommon
 import CueOpenAI
+import CueAnthropic
 
 struct ToolMessages: Codable {
     let messages: [OpenAI.ToolMessage]
@@ -31,7 +33,7 @@ extension OpenAI.ToolMessage {
 struct ToolResultMessage: Codable {
     let msgId: String
     let role: String
-    let content: [ToolResultContent]
+    let content: [Anthropic.ToolResultContent]
 
     enum CodingKeys: String, CodingKey {
         case msgId = "msg_id"
@@ -118,7 +120,7 @@ extension JSONValue {
         }
 
         // Parse content array
-        let content: [ToolResultContent?] = contentArray.map { contentValue -> ToolResultContent? in
+        let content: [Anthropic.ToolResultContent?] = contentArray.map { contentValue -> Anthropic.ToolResultContent? in
             guard case .dictionary(let contentDict) = contentValue,
                   case .bool(let isError) = contentDict["is_error"],
                   let toolUseId = contentDict["tool_use_id"]?.asString,
@@ -136,11 +138,11 @@ extension JSONValue {
                 content = ""
             }
 
-            return ToolResultContent(
+            return Anthropic.ToolResultContent(
                 isError: isError,
                 toolUseId: toolUseId,
                 type: type,
-                content: [ContentBlock(content: content)]
+                content: [Anthropic.ContentBlock(content: content)]
             )
         }
 

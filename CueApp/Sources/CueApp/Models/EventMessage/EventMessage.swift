@@ -1,4 +1,5 @@
 import Foundation
+import CueCommon
 
 // MARK: - EventMessageType
 
@@ -16,7 +17,7 @@ enum EventMessageType: String, Codable {
 
 // MARK: - Metadata
 
-struct Metadata: Codable {
+public struct Metadata: Codable, Sendable {
     var author: Author?
     var model: String?
 

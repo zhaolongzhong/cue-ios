@@ -1,5 +1,7 @@
 import Foundation
+import CueCommon
 import CueOpenAI
+import CueAnthropic
 
 extension MessageModel {
     init(
@@ -146,7 +148,7 @@ extension MessageModel {
     func getText() -> String {
         var text = self.content.getText()
         if let model = self.metadata?.model, model.lowercased().contains("claude") {
-            var anthropicMessage: AnthropicMessage? {
+            var anthropicMessage: Anthropic.AnthropicMessage? {
                 guard let payload = self.metadata?.payload else {
                     return nil
                 }
@@ -155,7 +157,7 @@ extension MessageModel {
         }
         if text.isEmpty {
             if let model = self.metadata?.model, model.lowercased().contains("claude") {
-                var anthropicMessage: AnthropicMessage? {
+                var anthropicMessage: Anthropic.AnthropicMessage? {
                     guard let payload = self.metadata?.payload else {
                         return nil
                     }
@@ -247,7 +249,7 @@ extension MessageModel {
 }
 
 extension ContentDetail: Equatable {
-    static func == (lhs: ContentDetail, rhs: ContentDetail) -> Bool {
+    public static func == (lhs: ContentDetail, rhs: ContentDetail) -> Bool {
         switch (lhs, rhs) {
         case (.string(let lhsValue), .string(let rhsValue)):
             return lhsValue == rhsValue

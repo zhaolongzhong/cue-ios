@@ -20,12 +20,16 @@ final class AssistantSelectionManager: ObservableObject {
     }
 
     func restoreSelection(from assistants: [Assistant]) {
+        guard assistants.isEmpty == false else {
+            return
+        }
+
         if let lastSelectedId = userDefaults.lastSelectedAssistantId,
            let lastSelected = assistants.first(where: { $0.id == lastSelectedId }) {
             selectAssistant(lastSelected)
         } else if let primaryAssistant = assistants.first(where: { $0.isPrimary }) {
             selectAssistant(primaryAssistant)
-        } else if !assistants.isEmpty {
+        } else {
             selectAssistant(assistants.first)
         }
     }

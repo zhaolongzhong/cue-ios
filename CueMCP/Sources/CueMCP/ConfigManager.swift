@@ -1,7 +1,7 @@
 import Foundation
 
-class ConfigManager {
-    @MainActor static let shared = ConfigManager()
+public class ConfigManager {
+    @MainActor public static let shared = ConfigManager()
 
     private var bundleConfigPath: String {
         let paths = Bundle.main.paths(forResourcesOfType: "json", inDirectory: nil)
@@ -11,8 +11,8 @@ class ConfigManager {
         return ""
     }
 
-    init() {
-        print("📱 Initializing ConfigManager")
+    public init() {
+        print("📱 Initializing MCP ConfigManager")
         validateBundleConfig()
     }
 
@@ -34,11 +34,11 @@ class ConfigManager {
         }
     }
 
-    func getConfigPath() -> String? {
+    public func getConfigPath() -> String? {
         return bundleConfigPath.isEmpty ? nil : bundleConfigPath
     }
 
-    func getConfig() -> MCPServersConfig {
+    public func getConfig() -> MCPServersConfig {
         // If we have a valid bundle config, try to use it
         if !bundleConfigPath.isEmpty {
             do {
@@ -54,7 +54,7 @@ class ConfigManager {
         return MCPServersConfig(mcpServers: [:])
     }
 
-    func createDefaultConfig(at url: URL) {
+    public func createDefaultConfig(at url: URL) {
         let config = MCPServersConfig(mcpServers: [:])
         if let data = try? JSONEncoder().encode(config) {
             try? data.write(to: url)

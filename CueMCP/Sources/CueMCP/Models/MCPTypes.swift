@@ -1,24 +1,24 @@
 import Foundation
 
 // MARK: - Models
-struct MCPServerConfig: Codable, Sendable {
-    let command: String
-    let args: [String]
-    let env: [String: String]?
+public struct MCPServerConfig: Codable, Sendable {
+    public let command: String
+    public let args: [String]
+    public let env: [String: String]?
 }
 
-struct MCPServersConfig: Codable, Sendable {
-    let mcpServers: [String: MCPServerConfig]
+public struct MCPServersConfig: Codable, Sendable {
+    public let mcpServers: [String: MCPServerConfig]
 }
 
 // MARK: - Error Types
-enum MCPServerError: LocalizedError, Sendable {
+public enum MCPServerError: LocalizedError, Sendable {
     case configNotFound(String)
     case invalidConfig(String)
     case serverInitializationFailed(String, Error?)
     case serverNotFound(String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .configNotFound(let path):
             return "Configuration file not found at path: \(path)"

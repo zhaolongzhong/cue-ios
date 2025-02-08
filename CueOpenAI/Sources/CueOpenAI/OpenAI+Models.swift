@@ -30,37 +30,58 @@ extension OpenAI {
         public let audioTokens: Int
         public let acceptedPredictionTokens: Int
         public let reasoningTokens: Int
-    
-        public init(rejectedPredictionTokens: Int, audioTokens: Int, acceptedPredictionTokens: Int, reasoningTokens: Int) {
-            self.rejectedPredictionTokens = rejectedPredictionTokens
-            self.audioTokens = audioTokens
-            self.acceptedPredictionTokens = acceptedPredictionTokens
-            self.reasoningTokens = reasoningTokens
-        }
-    
+
         enum CodingKeys: String, CodingKey {
             case rejectedPredictionTokens = "rejected_prediction_tokens"
             case audioTokens = "audio_tokens"
             case acceptedPredictionTokens = "accepted_prediction_tokens"
             case reasoningTokens = "reasoning_tokens"
         }
-    }
-    
-    public struct PromptTokenDetails: Codable, Sendable {
-        public let cachedTokens: Int
-        public let audioTokens: Int
-    
-        public init(cachedTokens: Int, audioTokens: Int) {
-            self.cachedTokens = cachedTokens
+
+        public init(
+            rejectedPredictionTokens: Int,
+            audioTokens: Int,
+            acceptedPredictionTokens: Int,
+            reasoningTokens: Int
+        ) {
+            self.rejectedPredictionTokens = rejectedPredictionTokens
             self.audioTokens = audioTokens
+            self.acceptedPredictionTokens = acceptedPredictionTokens
+            self.reasoningTokens = reasoningTokens
         }
-    
-        enum CodingKeys: String, CodingKey {
-            case cachedTokens = "cached_tokens"
-            case audioTokens = "audio_tokens"
+
+        // Custom decoding initializer that handles missing keys
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let presentKeys = container.allKeys.map { $0.stringValue }
+            print("TokenDetails present keys: \(presentKeys)")
+
+            self.rejectedPredictionTokens = try container.decodeIfPresent(Int.self, forKey: .rejectedPredictionTokens) ?? 0
+            self.audioTokens = try container.decodeIfPresent(Int.self, forKey: .audioTokens) ?? 0
+            self.acceptedPredictionTokens = try container.decodeIfPresent(Int.self, forKey: .acceptedPredictionTokens) ?? 0
+            self.reasoningTokens = try container.decodeIfPresent(Int.self, forKey: .reasoningTokens) ?? 0
         }
     }
 
+
+    public struct PromptTokenDetails: Codable, Sendable {
+        public let cachedTokens: Int
+        enum CodingKeys: String, CodingKey {
+            case cachedTokens = "cached_tokens"
+        }
+        
+        public init(cachedTokens: Int) {
+            self.cachedTokens = cachedTokens
+        }
+    }
+
+    public struct CompletionTokenDetails: Codable, Sendable {
+        public let reasoningTokens: Int
+        enum CodingKeys: String, CodingKey {
+            case reasoningTokens = "reasoning_tokens"
+        }
+    }
+    
     // MARK: - Choice and Message
     public struct Choice: Codable, Sendable {
         public let finishReason: String

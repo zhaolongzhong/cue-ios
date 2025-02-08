@@ -1,4 +1,5 @@
 import Foundation
+import CueCommon
 
 struct AssistantCreate: Codable {
     let name: String

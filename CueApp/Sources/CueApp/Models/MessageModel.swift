@@ -1,7 +1,8 @@
 import Foundation
+import CueCommon
 import CueOpenAI
 
-struct Author: Codable, Sendable {
+public struct Author: Codable, Sendable {
     let role: String
     let name: String?
     let metadata: JSONValue?
@@ -13,12 +14,12 @@ struct Author: Codable, Sendable {
     }
 }
 
-enum ContentDetail: Codable, Sendable {
+public enum ContentDetail: Codable, Sendable {
     case string(String)
     case array([JSONValue])
     case dictionary([String: JSONValue])
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if let stringValue = try? container.decode(String.self) {
@@ -32,7 +33,7 @@ enum ContentDetail: Codable, Sendable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
 
         switch self {

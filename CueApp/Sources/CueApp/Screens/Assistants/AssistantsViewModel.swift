@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Dependencies
+import CueCommon
 
 @MainActor
 final class AssistantsViewModel: ObservableObject {

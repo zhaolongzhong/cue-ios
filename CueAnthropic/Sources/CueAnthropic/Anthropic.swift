@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import CueCommon
 
 public let log = Logger(subsystem: "anthropic", category: "anthropic")
 
@@ -136,13 +137,24 @@ public struct Anthropic {
                 return message.content[0].content[0].text
             }
         }
+        
+        public var id: String {
+            switch self {
+            case .userMessage(let message):
+                return "user_\(message)"
+            case .assistantMessage(let message):
+                return "assistant_\(message)"
+            case .toolMessage(let message):
+                return "tool_\(message)"
+            }
+        }
     }
 
     public struct MessageRequest: Codable {
         public let model: String
         public let maxTokens: Int
         public let messages: [ChatMessage]
-        public let tools: [MCPTool]?
+        public let tools: [JSONValue]?
         public let toolChoice: [String: String]?
 
         enum CodingKeys: String, CodingKey {
@@ -157,7 +169,7 @@ public struct Anthropic {
             model: String,
             maxTokens: Int,
             messages: [ChatMessage],
-            tools: [Tool]? = nil,
+            tools: [JSONValue]? = nil,
             toolChoice: [String: String]? = nil
         ) {
             self.model = model
@@ -167,9 +179,6 @@ public struct Anthropic {
             self.toolChoice = toolChoice
         }
     }
-
-    // MARK: - Tool Types (alias to OpenAI types)
-    public typealias Tool = MCPTool
 
     // MARK: - Public Interface
     public let messages: MessagesAPI
@@ -194,9 +203,9 @@ public struct MessagesAPI {
         model: String = "claude-3-opus-20240229",
         maxTokens: Int = 1024,
         messages: [Anthropic.ChatMessage],
-        tools: [MCPTool]? = nil,
+        tools: [JSONValue]? = nil,
         toolChoice: [String: String]? = nil
-    ) async throws -> AnthropicMessage {
+    ) async throws -> Anthropic.AnthropicMessage {
         let request = Anthropic.MessageRequest(
             model: model,
             maxTokens: maxTokens,

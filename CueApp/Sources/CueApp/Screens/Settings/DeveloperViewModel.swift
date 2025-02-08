@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 import Combine
 import CueOpenAI
+import CueAnthropic
+import CueMCP
 
 @MainActor
 class DeveloperViewModel: ObservableObject {

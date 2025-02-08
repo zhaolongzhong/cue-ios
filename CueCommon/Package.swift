@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "CueOpenAI",
+    name: "CueCommon",
     platforms: [
         .iOS(.v17),
         .macOS(.v14)
@@ -12,20 +12,17 @@ let package = Package(
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "CueOpenAI",
-            targets: ["CueOpenAI"]),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/stasel/WebRTC.git", branch: "latest"),
+            name: "CueCommon",
+            targets: ["CueCommon"]),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "CueOpenAI", dependencies: ["WebRTC"]),
+            name: "CueCommon"),
         .testTarget(
-            name: "CueOpenAITests",
-            dependencies: ["CueOpenAI"]
+            name: "CueCommonTests",
+            dependencies: ["CueCommon"]
         ),
     ]
 )

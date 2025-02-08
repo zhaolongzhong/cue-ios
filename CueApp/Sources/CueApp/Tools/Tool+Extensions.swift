@@ -1,14 +1,6 @@
 import CueOpenAI
-
-extension InputSchema {
-    public init(type: String, properties: [String: PropertyDetails]?, required: [String]?, additionalProperties: Bool? = nil, schema: String? = nil) {
-        self.type = type
-        self.properties = properties
-        self.required = required
-        self.additionalProperties = additionalProperties
-        self.schema = schema
-    }
-}
+import CueAnthropic
+import CueMCP
 
 extension Tool {
     public func toMCPTool() -> MCPTool {
@@ -57,5 +49,55 @@ extension Tool {
         }
 
         return mcpProperties
+    }
+}
+
+extension MCPTool {
+    func toOpenAITool() -> Tool {
+        let parameters = Parameters(
+            type: inputSchema.type,
+            properties: convertProperties(),
+            required: inputSchema.required ?? []
+        )
+
+        return Tool(
+            function: FunctionDefinition(
+                name: name,
+                description: description,
+                parameters: parameters
+            )
+        )
+    }
+
+    private func convertProperties() -> [String: Property] {
+        guard let mcpProperties = inputSchema.properties else {
+            return [:]
+        }
+
+        var properties: [String: Property] = [:]
+
+        for (key, mcpProperty) in mcpProperties {
+            if let type = mcpProperty.type {
+                if type == "array" {
+                    // Use the new array property initializer
+                    properties[key] = Property.array(
+                        description: mcpProperty.title,
+                        itemType: mcpProperty.items?.type ?? "string"
+                    )
+                } else {
+                    properties[key] = Property(
+                        type: type,
+                        description: mcpProperty.title
+                    )
+                }
+            } else if let anyOf = mcpProperty.anyOf {
+                properties[key] = Property(
+                    type: anyOf.first?.type ?? "string",
+                    description: mcpProperty.title
+                )
+            }
+        }
+
+        return properties
     }
 }

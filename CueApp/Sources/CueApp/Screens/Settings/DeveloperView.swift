@@ -1,7 +1,10 @@
 import SwiftUI
 import CueOpenAI
+import CueMCP
 
 #if os(macOS)
+import CueAnthropic
+
 struct DeveloperView: View {
     @StateObject private var viewModel = DeveloperViewModel()
     @Environment(\.openURL) private var openURL
@@ -72,7 +75,6 @@ struct DeveloperView: View {
         }
     }
 }
-#endif
 
 private struct ServerItemView: View {
     let serverName: String
@@ -102,7 +104,9 @@ private struct ServerItemView: View {
     }
 }
 
-private  enum SheetType: Identifiable {
+#endif
+
+private enum SheetType: Identifiable {
     case tools(serverName: String, tools: [Tool])
 
     var id: String {

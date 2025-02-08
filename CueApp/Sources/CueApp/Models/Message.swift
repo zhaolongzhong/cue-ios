@@ -1,7 +1,7 @@
 import Foundation
 
-struct Message: Identifiable, Equatable {
-    let id: String
+public struct Message: Identifiable, Equatable {
+    public let id: String
     let assistantId: String?
     let conversationId: String?
     let content: String

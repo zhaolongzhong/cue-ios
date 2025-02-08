@@ -1,9 +1,10 @@
 import Foundation
+import CueCommon
 
 #if os(macOS)
 extension MCPServerManager {
 
-    func callTool(server: String, request: [String: Any], timeout: UInt64 = 5_000_000_000) async throws -> SendableJSON {
+    func callTool(server: String, request: [String: Any], timeout: UInt64 = 5_000_000_000) async throws -> JSONValue {
         guard let serverContext = servers[server] else {
             throw MCPServerError.serverNotFound(server)
         }
@@ -25,7 +26,7 @@ extension MCPServerManager {
                     buffer = String(buffer[range...])
                 }
 
-                func tryResume(with continuation: CheckedContinuation<SendableJSON, Error>, result: Result<SendableJSON, Error>) -> Bool {
+                func tryResume(with continuation: CheckedContinuation<JSONValue, Error>, result: Result<JSONValue, Error>) -> Bool {
                     if !hasResumed {
                         hasResumed = true
                         switch result {
@@ -64,19 +65,19 @@ extension MCPServerManager {
                                let jsonData = currentBuffer[..<range.lowerBound].data(using: .utf8) {
                                 do {
                                     let response = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                                    // print("📥 Parsed response: \(String(describing: response))")
+                                     print("📥 Parsed response: \(String(describing: response))")
 
                                     if let result = response?["result"] {
-                                        let sendableResult = SendableJSON(result)
-                                        let didResume = await state.tryResume(with: continuation, result: .success(sendableResult))
+                                        let jsonResult = JSONValue(any: result)
+                                        let didResume = await state.tryResume(with: continuation, result: .success(jsonResult))
                                         if didResume {
                                             Task { @MainActor in
                                                 serverContext.outputPipe.fileHandleForReading.readabilityHandler = nil
                                             }
                                         }
                                     } else if let error = response?["error"] {
-                                        let errorResult = SendableJSON(error)
-                                        let didResume = await state.tryResume(with: continuation, result: .failure(MCPServerError.invalidConfig("Server error: \(errorResult)")))
+                                        let jsonError = JSONValue(any: error)
+                                        let didResume = await state.tryResume(with: continuation, result: .failure(MCPServerError.invalidConfig("Server error: \(jsonError)")))
                                         if didResume {
                                             Task { @MainActor in
                                                 serverContext.outputPipe.fileHandleForReading.readabilityHandler = nil
@@ -86,7 +87,13 @@ extension MCPServerManager {
 
                                     await state.updateBuffer(from: range.upperBound)
                                 } catch {
-                                    print("❌ JSON parse error: \(error)")
+                                    self.logger.error("❌ JSON parse error: \(error)")
+                                    let didResume = await state.tryResume(with: continuation, result: .failure(MCPServerError.invalidConfig("JSON parse error: \(error.localizedDescription)")))
+                                    if didResume {
+                                        Task { @MainActor in
+                                            serverContext.outputPipe.fileHandleForReading.readabilityHandler = nil
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -127,29 +134,16 @@ extension MCPServerManager {
         ] as [String: Any]
 
         let result = try await callTool(server: server, request: request)
+
         if isDebug {
             print("📊 Raw result: \(result)")
         }
+        
+        // Directly encode the JSONValue to Data
+        let jsonData = try JSONEncoder().encode(result)
 
-        // Convert SendableJSON to dictionary
-        let dict = convertToDict(result)
-        if isDebug {
-            print("🔄 Converted dict: \(dict)")
-        }
-
-        // Only extract the "tools" array from the result
-        guard let resultDict = dict as? [String: Any],
-              let toolsArray = resultDict["tools"] as? [[String: Any]] else {
-            throw MCPServerError.invalidConfig("Invalid tools response structure")
-        }
-
-        // Convert to JSON data
-        let jsonData = try JSONSerialization.data(withJSONObject: ["tools": toolsArray])
-
-        if isDebug {
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print("📝 JSON to decode: \(jsonString)")
-            }
+        if isDebug, let jsonString = String(data: jsonData, encoding: .utf8) {
+            print("📝 JSON to decode: \(jsonString)")
         }
 
         // Decode with custom error handling

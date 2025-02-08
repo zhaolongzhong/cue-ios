@@ -1,6 +1,8 @@
 import Foundation
 import Combine
+import CueCommon
 import CueOpenAI
+import CueAnthropic
 
 @MainActor
 final class AnthropicChatViewModel: ObservableObject {
@@ -38,7 +40,7 @@ final class AnthropicChatViewModel: ObservableObject {
 
     func sendMessage() async {
         let userMessage = Anthropic.ChatMessage.userMessage(
-            Anthropic.MessageParam(role: "user", content: [ContentBlock(content: newMessage)])
+            Anthropic.MessageParam(role: "user", content: [Anthropic.ContentBlock(content: newMessage)])
         )
         messages.append(userMessage)
 
@@ -46,12 +48,14 @@ final class AnthropicChatViewModel: ObservableObject {
         newMessage = ""
 
         do {
-            let tools = toolManager.getMCPTools()
+            let mcpTools = toolManager.getMCPTools()
+            let jsonValues = try mcpTools.map { try JSONValue(encodable: $0) }
+
             let response = try await anthropic.messages.create(
                 model: self.model,
                 maxTokens: 1024,
                 messages: messages,
-                tools: tools,
+                tools: jsonValues,
                 toolChoice: [
                     "type": "auto"
                 ]
@@ -65,22 +69,22 @@ final class AnthropicChatViewModel: ObservableObject {
                 case .text(let textBlock):
                     // Add assistant's text response
                     let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                        Anthropic.MessageParam(role: "assistant", content: [ContentBlock(content: textBlock.text)])
+                        Anthropic.MessageParam(role: "assistant", content: [Anthropic.ContentBlock(content: textBlock.text)])
                     )
                     messages.append(assistantMessage)
                 case .toolUse(let toolBlock):
                     // Handle tool use
                     let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                        Anthropic.MessageParam(role: "assistant", content: [ContentBlock(toolUseBlock: toolBlock)])
+                        Anthropic.MessageParam(role: "assistant", content: [Anthropic.ContentBlock(toolUseBlock: toolBlock)])
                     )
                     messages.append(assistantMessage)
                     let toolResult = await handleToolUse(toolBlock)
                     // Add tool response
-                    let result = ToolResultContent(
+                    let result = Anthropic.ToolResultContent(
                         isError: false,
                         toolUseId: toolBlock.id,
                         type: "tool_result",
-                        content: [ContentBlock(content: toolResult)]
+                        content: [Anthropic.ContentBlock(content: toolResult)]
                     )
 
                     let toolResultMessage = Anthropic.ChatMessage.toolMessage(Anthropic.ToolResultMessage(role: "user", content: [result]))
@@ -91,7 +95,7 @@ final class AnthropicChatViewModel: ObservableObject {
                         model: self.model,
                         maxTokens: 1024,
                         messages: messages,
-                        tools: tools,
+                        tools: jsonValues,
                         toolChoice: [
                             "type": "auto"
                         ]
@@ -101,7 +105,7 @@ final class AnthropicChatViewModel: ObservableObject {
                     for followUpBlock in followUpResponse.content {
                         if case .text(let textBlock) = followUpBlock {
                             let assistantMessage = Anthropic.ChatMessage.assistantMessage(
-                                Anthropic.MessageParam(role: "assistant", content: [ContentBlock(content: textBlock.text)])
+                                Anthropic.MessageParam(role: "assistant", content: [Anthropic.ContentBlock(content: textBlock.text)])
                             )
                             messages.append(assistantMessage)
                         }
@@ -126,7 +130,7 @@ final class AnthropicChatViewModel: ObservableObject {
         isLoading = false
     }
 
-    private func handleToolUse(_ toolBlock: ToolUseBlock) async -> String {
+    private func handleToolUse(_ toolBlock: Anthropic.ToolUseBlock) async -> String {
         do {
             // Convert tool input to [String: Any]
             var arguments: [String: Any] = [:]

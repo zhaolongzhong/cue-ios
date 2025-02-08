@@ -1,4 +1,5 @@
 import SwiftUI
+import CueAnthropic
 
 public struct AnthropicChatView: View {
     @EnvironmentObject private var coordinator: AppCoordinator

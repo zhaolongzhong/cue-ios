@@ -1,8 +1,12 @@
 import Foundation
+import OSLog
+
+public struct MCP {}
 
 #if os(macOS)
 // MARK: - Server Context
-@MainActor class ServerContext {
+@MainActor
+public class ServerContext {
     let process: Process
     let serverName: String
     let inputPipe: Pipe
@@ -23,19 +27,20 @@ import Foundation
 }
 
 // MARK: - Server Manager
-@MainActor @Observable class MCPServerManager {
+@MainActor @Observable public class MCPServerManager {
     public var serverTools: [String: [MCPTool]] = [:]
     public private(set) var servers: [String: ServerContext] = [:]
     public private(set) var serverStatuses: [String: Bool] = [:]
     private var isInitialized = false
     private let configManager: ConfigManager
+    let logger = Logger(subsystem: "MCP", category: "mcp")
 
     let configPath: String
 
-    init() {
+    public init() {
         self.configManager = ConfigManager.shared
         self.configPath = configManager.getConfigPath() ?? ""
-        AppLog.mcp.debug("📱 MCPServerManager initialized with config path: \(self.configPath)")
+        logger.debug("📱 MCPServerManager initialized with config path: \(self.configPath)")
     }
 
     private func initializeServer(_ serverContext: ServerContext) async throws {
@@ -83,9 +88,9 @@ import Foundation
     }
 
     private func startServer(_ serverName: String, config: MCPServerConfig) throws {
-        print("\n📱 Starting server: \(serverName)")
-        print("   🔹 Command: \(config.command)")
-        print("   🔹 Args: \(config.args)")
+        logger.debug("\n📱 Starting server: \(serverName)")
+        logger.debug("   🔹 Command: \(config.command)")
+        logger.debug("   🔹 Args: \(config.args)")
 
         let process = Process()
 
@@ -196,7 +201,7 @@ import Foundation
         }
     }
 
-    func startAll() async throws {
+    public func startAll() async throws {
         print("\n📱 Starting all servers...")
 
         if isInitialized {
@@ -222,7 +227,7 @@ import Foundation
         print("✅ All servers started")
     }
 
-    func stopAll() {
+    public func stopAll() {
         print("\n📱 Stopping all servers...")
         for (serverName, context) in servers {
             print("📱 Stopping server: \(serverName)")

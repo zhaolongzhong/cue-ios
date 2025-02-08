@@ -12,17 +12,23 @@ public struct OpenAIChatView: View {
     @State private var selectedApp: AccessibleApplication = .textEdit
 
     private let apiKey: String
+    private let showAXapp: Bool
 
     public init(apiKey: String) {
         self.apiKey = apiKey
         _viewModel = StateObject(wrappedValue: OpenAIChatViewModel(apiKey: apiKey))
+        #if os(macOS)
+        self.showAXapp = true
+        #else
+        self.showAXapp = false
+        #endif
     }
 
     public var body: some View {
         VStack {
             messageList
             observedAppView
-            RichTextField(showVoiceChat: true, showAXapp: true, onShowTools: {
+            RichTextField(showVoiceChat: true, showAXapp: showAXapp, onShowTools: {
                 showingToolsList = true
             }, onOpenVoiceChat: {
                 #if os(macOS)
