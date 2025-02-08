@@ -3,6 +3,7 @@ import SwiftUI
 private enum SettingsRoute: Hashable {
     case providerAPIKeys
     case assistantAPIKeys
+    case connectedApps
     #if os(macOS)
     case developer
     #endif
@@ -63,6 +64,8 @@ private struct SettingsContentView: View {
                     APIKeysProviderView(apiKeysProviderViewModel: apiKeysProviderViewModel)
                 case .assistantAPIKeys:
                     APIKeysView()
+                case .connectedApps:
+                    ConnectedAppsView()
                 #if os(macOS)
                 case .developer:
                     DeveloperView()
@@ -111,6 +114,21 @@ private struct SettingsList: View {
                 SettingsHeader(title: "API Keys")
             }
             .listSectionSpacing(.compact)
+
+            Section {
+                NavigationLink {
+                    ConnectedAppsView()
+                } label: {
+                    SettingsRow(
+                        systemName: "shield.checkerboard",
+                        title: "Google Apps",
+                        value: "",
+                        showChevron: true
+                    )
+                }
+            } header: {
+                SettingsHeader(title: "Connected Apps")
+            }
 
             Section {
                 SettingsRow(

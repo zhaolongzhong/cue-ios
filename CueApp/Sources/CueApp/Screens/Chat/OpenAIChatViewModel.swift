@@ -83,9 +83,9 @@ final class OpenAIChatViewModel: ObservableObject {
                 OpenAI.MessageParam(role: Role.assistant.rawValue, content: context)
             )
             messageParams.append(contextMessage)
-
         }
         #endif
+
         let userMessage = OpenAI.ChatMessage.userMessage(
             OpenAI.MessageParam(role: Role.user.rawValue, content: newMessage)
         )
@@ -97,52 +97,41 @@ final class OpenAIChatViewModel: ObservableObject {
 
         do {
             let tools = toolManager.getTools()
+            var currentMessages = messageParams
+            var iteration = 0
+            let maxIterations = 20
 
-            let response = try await openAI.chat.completions.create(
-                model: self.model,
-                messages: messageParams,
-                tools: tools,
-                toolChoice: "auto"
-            )
-
-            AppLog.log.debug("response: \(String(describing: response))")
-
-            guard let assistantResponse = response.choices.first?.message else {
-                return
-            }
-
-            if let toolCalls = assistantResponse.toolCalls {
-                let toolMessages = await callTools(toolCalls)
-
-                let assistantMessage = OpenAI.ChatMessage.assistantMessage(
-                    assistantResponse
-                )
-                messages.append(assistantMessage)
-                for toolMessage in toolMessages {
-                    messages.append(OpenAI.ChatMessage.toolMessage(toolMessage))
-                }
-
-                // Get the final response with tool results
-                let finalResponse = try await openAI.chat.completions.create(
+            repeat {
+                let response = try await openAI.chat.completions.create(
                     model: self.model,
-                    messages: messages,
+                    messages: currentMessages,
                     tools: tools,
                     toolChoice: "auto"
                 )
+                guard let message = response.choices.first?.message else { break }
 
-                if let finalMessage = finalResponse.choices.first?.message {
-                    let assistantMessage = OpenAI.ChatMessage.assistantMessage(
-                        finalMessage
-                    )
-                    self.messages.append(assistantMessage)
+                if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+                    // Append the assistant message triggering the tool calls.
+                    let assistantMsg = OpenAI.ChatMessage.assistantMessage(message)
+                    messages.append(assistantMsg)
+                    currentMessages.append(assistantMsg)
+
+                    // Process tool calls.
+                    let toolMessages = await callTools(toolCalls)
+                    for toolMessage in toolMessages {
+                        let msg = OpenAI.ChatMessage.toolMessage(toolMessage)
+                        messages.append(msg)
+                        currentMessages.append(msg)
+                    }
+                } else {
+                    // Final assistant response with no tool calls.
+                    let assistantMsg = OpenAI.ChatMessage.assistantMessage(message)
+                    messages.append(assistantMsg)
+                    break
                 }
-            } else {
-                // Normal message without tool calls
-                let assistantMessage = OpenAI.ChatMessage.assistantMessage(
-                    assistantResponse
-                )
-                self.messages.append(assistantMessage)
-            }
+                iteration += 1
+            } while iteration < maxIterations
+
         } catch let error as OpenAI.Error {
             let chatError: ChatError
             switch error {

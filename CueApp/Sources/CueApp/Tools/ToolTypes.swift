@@ -15,21 +15,37 @@ protocol LocalTool: Sendable {
     func call(_ args: ToolArguments) async throws -> String
 }
 
-struct ToolArguments: Sendable {
-    private let storage: [String: String]
+struct ToolArguments {
+    private let storage: [String: Any]
 
     init(_ dictionary: [String: Any]) {
-        self.storage = dictionary.mapValues { String(describing: $0) }
+        self.storage = dictionary
     }
 
     func getString(_ key: String) -> String? {
-        return storage[key]
+        storage[key] as? String
+    }
+
+    func getInt(_ key: String) -> Int? {
+        if let intValue = storage[key] as? Int {
+            return intValue
+        } else if let strValue = storage[key] as? String, let intValue = Int(strValue) {
+            return intValue
+        }
+        return nil
+    }
+
+    func getArray(_ key: String) -> [Any]? {
+        storage[key] as? [Any]
     }
 
     func toDictionary() -> [String: Any] {
-        return storage as [String: Any]
+        storage
     }
 }
+
+// Declare @unchecked Sendable conformance in an extension.
+extension ToolArguments: @unchecked Sendable {}
 
 enum ToolError: LocalizedError {
     case toolNotFound(String)

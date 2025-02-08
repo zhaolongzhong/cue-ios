@@ -190,11 +190,11 @@ extension OpenAI {
         public var id: String {
             switch self {
             case .userMessage(let message):
-                return "user_\(message.content)"
+                return "user_\(message)"
             case .assistantMessage(let message):
                 return "assistant_\(message)"
             case .toolMessage(let message):
-                return "tool_\(message.content)"
+                return "tool_\(message)"
             }
         }
         

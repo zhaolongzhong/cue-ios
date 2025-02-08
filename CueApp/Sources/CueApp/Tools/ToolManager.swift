@@ -18,6 +18,7 @@ class ToolManager {
         self.localTools.append(ScreenshotTool())
         self.mcpManager = MCPServerManager()
         #endif
+        self.localTools.append(GmailTool())
     }
     func startMcpServer() async {
         #if os(macOS)
