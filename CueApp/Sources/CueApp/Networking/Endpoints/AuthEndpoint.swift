@@ -6,6 +6,7 @@ enum AuthEndpoint {
     case refreshToken(token: String)
     case logout
     case me
+    case signInWithGoogle(idToken: String)
 }
 
 extension AuthEndpoint: Endpoint {
@@ -21,6 +22,8 @@ extension AuthEndpoint: Endpoint {
             return "/accounts/logout"
         case .me:
             return "/accounts/me"
+        case .signInWithGoogle:
+            return "/accounts/social/google"
         }
     }
 
@@ -34,6 +37,8 @@ extension AuthEndpoint: Endpoint {
             return .post
         case .me:
             return .get
+        case .signInWithGoogle:
+            return .post
         }
     }
 
@@ -79,12 +84,15 @@ extension AuthEndpoint: Endpoint {
             return try? JSONSerialization.data(withJSONObject: params)
         case .logout, .me:
             return nil
+        case let .signInWithGoogle(idToken):
+            let params: [String: String] = ["id_token": idToken]
+            return try? JSONSerialization.data(withJSONObject: params)
         }
     }
 
     var requiresAuth: Bool {
         switch self {
-        case .login, .signup, .refreshToken:
+        case .login, .signup, .refreshToken, .signInWithGoogle:
             return false
         case .logout, .me:
             return true

@@ -3,6 +3,7 @@
 #if os(macOS)
 import CueApp
 import SwiftUI
+import GoogleSignIn
 
 class MacAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var mainWindow: NSWindow?
@@ -18,7 +19,22 @@ class MacAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NotificationCenter.default.post(name: .appWillEnterForeground, object: nil)
     }
 
-    func applicationDidFinishLaunching(_: Notification) {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Register for GetURL events.
+        let appleEventManager = NSAppleEventManager.shared()
+        appleEventManager.setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(event:replyEvent:)),  // Changed to #selector
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
+
+    @objc func handleGetURLEvent(event: NSAppleEventDescriptor?, replyEvent: NSAppleEventDescriptor?) {
+        if let urlString = event?.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
+           let url = URL(string: urlString) {  // Changed from NSURL to URL
+            GIDSignIn.sharedInstance.handle(url)
+        }
     }
 
     func applicationWillTerminate(_: Notification) {

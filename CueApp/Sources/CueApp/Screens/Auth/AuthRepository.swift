@@ -67,6 +67,13 @@ protocol AuthRepositoryProtocol: Sendable {
     func signup(email: String, password: String, inviteCode: String?) async -> AuthResult<Void>
     func logout() async
     func fetchUserProfile() async -> AuthResult<User>
+    func signInWithGoogle(
+        idToken: String,
+        email: String?,
+        fullName: String?,
+        givenName: String?,
+        familyName: String?
+    ) async -> AuthResult<Void>
 }
 
 actor AuthRepository: AuthRepositoryProtocol {
@@ -185,6 +192,41 @@ actor AuthRepository: AuthRepositoryProtocol {
             return .failure(error)
         } catch {
             return .failure(.networkError)
+        }
+    }
+
+    func signInWithGoogle(
+        idToken: String,
+        email: String?,
+        fullName: String?,
+        givenName: String?,
+        familyName: String?
+    ) async -> AuthResult<Void> {
+        do {
+            let response = try await authService.signInWithGoogle(
+                idToken: idToken,
+                email: email,
+                fullName: fullName,
+                givenName: givenName,
+                familyName: familyName
+            )
+            await TokenManager.shared.saveTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
+            await updateAuthState(true)
+
+            switch await fetchUserProfile() {
+            case .success(let user):
+                await updateUser(user)
+                return .success(())
+            case .failure(let error):
+                return .failure(error)
+            }
+        } catch let error as AuthError {
+            return .failure(error)
+        } catch {
+            return .failure(.unknown)
         }
     }
 }

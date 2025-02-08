@@ -1,4 +1,6 @@
 import SwiftUI
+import GoogleSignIn
+import GoogleSignInSwift
 
 public struct AuthenticatedView: View {
     @EnvironmentObject private var dependencies: AppDependencies
@@ -57,7 +59,13 @@ private struct AuthenticatedContent: View {
             }
         }
         .withCoordinatorAlert()
+        .onOpenURL { url in
+            GIDSignIn.sharedInstance.handle(url)
+        }
         .onAppear {
+            GIDSignIn.sharedInstance.restorePreviousSignIn { user, error in
+                AppLog.log.debug("restorePreviousSignIn user: \(String(describing: user)), error: \(String(describing: error))")
+            }
             AppLog.log.debug("AuthenticatedContent onAppear isAuthenticated: \(viewModel.state.isAuthenticated)")
         }
     }

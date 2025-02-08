@@ -11,7 +11,6 @@
 		3A2098D32CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D42CB74CC400FEB48E /* CueApp in Resources */ = {isa = PBXBuildFile; fileRef = 3A2098D12CB74CC400FEB48E /* CueApp */; };
 		3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */ = {isa = PBXBuildFile; productRef = 3A2098D62CB74D0800FEB48E /* CueApp */; };
-		3A9B9F0F2D376D6300105029 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 3A9B9F0E2D376D6300105029 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,7 +74,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3A9B9F0F2D376D6300105029 /* Sparkle in Frameworks */,
 				3A2098D72CB74D0800FEB48E /* CueApp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -150,7 +148,6 @@
 				3A2098D62CB74D0800FEB48E /* CueApp */,
 				3A59BFDE2D042C9600EF209A /* CueOpenAI */,
 				3A368F722D0432B1000F8D8B /* CueOpenAI */,
-				3A9B9F0E2D376D6300105029 /* Sparkle */,
 			);
 			productName = Cue;
 			productReference = 3A2098612CB7392900FEB48E /* Cue.app */;
@@ -236,7 +233,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				3A2098D02CB74BD700FEB48E /* XCLocalSwiftPackageReference "CueApp" */,
-				3A9B9F0D2D376D6300105029 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3A2098622CB7392900FEB48E /* Products */;
@@ -665,17 +661,6 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		3A9B9F0D2D376D6300105029 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.6.4;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		3A2098D62CB74D0800FEB48E /* CueApp */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -689,11 +674,6 @@
 		3A59BFDE2D042C9600EF209A /* CueOpenAI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CueOpenAI;
-		};
-		3A9B9F0E2D376D6300105029 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3A9B9F0D2D376D6300105029 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

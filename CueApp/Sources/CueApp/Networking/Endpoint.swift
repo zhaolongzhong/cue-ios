@@ -16,7 +16,15 @@ extension Endpoint {
     }
 
     var headers: [String: String]? {
-        ["Content-Type": "application/json"]
+        var platform = "ios"
+        #if os(macOS)
+            platform = "macos"
+        #endif
+
+        return [
+            "Content-Type": "application/json",
+            "platform": platform
+        ]
     }
 
     var parameters: [String: Any]? {

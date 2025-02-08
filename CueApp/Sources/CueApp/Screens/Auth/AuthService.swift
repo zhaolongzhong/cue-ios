@@ -17,6 +17,13 @@ protocol AuthServiceProtocol: Sendable {
     func login(email: String, password: String) async throws -> TokenResponse
     func signup(email: String, password: String, inviteCode: String?) async throws -> User
     func fetchUserProfile() async throws -> User
+    func signInWithGoogle(
+        idToken: String,
+        email: String?,
+        fullName: String?,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> TokenResponse
 }
 
 final class AuthService: AuthServiceProtocol {
@@ -74,6 +81,27 @@ final class AuthService: AuthServiceProtocol {
             throw AuthError.forbidden(message: message)
         } catch {
             logger.error("Fetch user profile error: \(error.localizedDescription)")
+            throw AuthError.networkError
+        }
+    }
+
+    func signInWithGoogle(
+        idToken: String,
+        email: String?,
+        fullName: String?,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> TokenResponse {
+        do {
+            return try await networkClient.request(
+                AuthEndpoint.signInWithGoogle(idToken: idToken)
+            )
+        } catch NetworkError.unauthorized {
+            throw AuthError.invalidCredentials
+        } catch NetworkError.httpError(let code, _) where code == 409 {
+            throw AuthError.emailAlreadyExists
+        } catch {
+            logger.error("Login error: \(error.localizedDescription)")
             throw AuthError.networkError
         }
     }

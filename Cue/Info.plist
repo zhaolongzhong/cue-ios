@@ -27,5 +27,16 @@
     <string>Allow camera access to take photos</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Allow access to photo library to select photos</string>
+    <key>GIDClientID</key>
+    <string>317182542550-3bdem6r507g9t0jsm913272tvmoi492c.apps.googleusercontent.com</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.317182542550-3bdem6r507g9t0jsm913272tvmoi492c</string>
+        </array>
+      </dict>
+    </array>
 </dict>
 </plist>

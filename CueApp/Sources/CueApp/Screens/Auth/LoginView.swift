@@ -1,4 +1,6 @@
 import SwiftUI
+import GoogleSignIn
+import GoogleSignInSwift
 
 struct LoginView: View {
     @EnvironmentObject private var dependencies: AppDependencies
@@ -74,18 +76,23 @@ struct LoginView: View {
 
                     Spacer()
 
-                    HStack(spacing: 4) {
-                        Text("Don't have an account?")
-                            .foregroundColor(Color.primary.opacity(0.6))
-                        Button("Sign up") {
-                            focusedField = nil
-                            showSignUp = true
+                    VStack(spacing: 16) {
+                        GoogleSignInButton(style: .wide, action: handleSignInButton)
+                            .frame(maxWidth: 280)
+
+                        HStack(spacing: 4) {
+                            Text("Don't have an account?")
+                                .foregroundColor(Color.primary.opacity(0.6))
+                            Button("Sign up") {
+                                focusedField = nil
+                                showSignUp = true
+                            }
+                            .foregroundColor(Color.primary)
+                            #if os(macOS)
+                            .buttonStyle(.plain)
+                            .controlSize(.small)
+                            #endif
                         }
-                        .foregroundColor(Color.primary)
-                        #if os(macOS)
-                        .buttonStyle(.plain)
-                        .controlSize(.small)
-                        #endif
                     }
                     .padding(.bottom, 32)
                 }
@@ -101,5 +108,40 @@ struct LoginView: View {
             }
         }
         .tint(Color.primary.opacity(0.8))
+    }
+
+    func handleSignInButton() {
+        #if os(iOS)
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            return
+        }
+
+        GIDSignIn.sharedInstance.signIn(
+            withPresenting: rootViewController) { signInResult, error in
+                guard let result = signInResult else {
+                    viewModel.handleGoogleSignInError(error)
+                    return
+                }
+                Task {
+                    await viewModel.handleGoogleSignIn(result)
+                }
+            }
+        #elseif os(macOS)
+        guard let window = NSApplication.shared.windows.first else {
+            return
+        }
+
+        GIDSignIn.sharedInstance.signIn(
+            withPresenting: window) { signInResult, error in
+                guard let result = signInResult else {
+                    viewModel.handleGoogleSignInError(error)
+                    return
+                }
+                Task {
+                    await viewModel.handleGoogleSignIn(result)
+                }
+            }
+        #endif
     }
 }
