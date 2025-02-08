@@ -1,8 +1,9 @@
 import CueApp
 import SwiftUI
-import Sparkle
 
 #if os(macOS)
+import Sparkle
+
 @main
 struct macOSApp: App {
 

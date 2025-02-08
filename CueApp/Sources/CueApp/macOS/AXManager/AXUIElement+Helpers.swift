@@ -1,3 +1,4 @@
+#if os(macOS)
 import Cocoa
 
 struct LineRange {
@@ -138,3 +139,4 @@ extension AXUIElement {
         return LineRange(startLine: startLine, endLine: endLine)
     }
 }
+#endif

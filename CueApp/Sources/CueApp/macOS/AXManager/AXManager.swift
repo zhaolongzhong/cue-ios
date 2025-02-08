@@ -1,4 +1,6 @@
 import Accessibility
+
+#if os(macOS)
 import AppKit
 import os
 
@@ -136,3 +138,4 @@ extension AXManager {
         startObservingSelectionChanges()
     }
 }
+#endif

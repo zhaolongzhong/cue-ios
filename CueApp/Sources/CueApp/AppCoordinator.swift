@@ -1,5 +1,8 @@
 import SwiftUI
+
+#if os(macOS)
 import Sparkle
+#endif
 
 @MainActor
 public class AppCoordinator: ObservableObject {
@@ -16,6 +19,8 @@ public class AppCoordinator: ObservableObject {
     @Published public var activeAlert: AlertType?
     @Published public var showSettings = false
     @Published public var showLiveChat = false
+
+    #if os(macOS)
     private let updater: SPUUpdater?
     private let dynamicDelegate: DynamicFeedUpdaterDelegate?
 
@@ -30,6 +35,10 @@ public class AppCoordinator: ObservableObject {
         }
         updater?.checkForUpdates()
     }
+    #else
+    public init () {
+    }
+    #endif
 
     func showSettingsSheet() {
         showSettings = true

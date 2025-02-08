@@ -13,7 +13,6 @@ struct RichTextField: View {
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
-    @StateObject private var axManager = AXManager()
 
     init(
         isEnabled: Bool = true,

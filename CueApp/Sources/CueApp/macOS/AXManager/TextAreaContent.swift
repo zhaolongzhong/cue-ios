@@ -1,5 +1,6 @@
 import Foundation
 
+#if os(macOS)
 struct TextAreaContent {
     let id: Int
     let content: String
@@ -8,3 +9,4 @@ struct TextAreaContent {
     let selectionLines: [String]
     let selectionLinesRange: LineRange?
 }
+#endif

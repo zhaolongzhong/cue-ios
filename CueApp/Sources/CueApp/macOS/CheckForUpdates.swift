@@ -1,4 +1,6 @@
 import SwiftUI
+
+#if os(macOS)
 import Sparkle
 
 public class DynamicFeedUpdaterDelegate: NSObject, SPUUpdaterDelegate {
@@ -37,3 +39,4 @@ public struct CheckForUpdatesView: View {
             .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
     }
 }
+#endif

@@ -6,7 +6,9 @@ import Combine
 final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
     private let toolManager: ToolManager
+    #if os(macOS)
     private let axManager: AXManager
+    #endif
     private let model: String = "gpt-4o-mini"
     private var cancellables = Set<AnyCancellable>()
 
@@ -16,13 +18,17 @@ final class OpenAIChatViewModel: ObservableObject {
     @Published var availableTools: [Tool] = []
     @Published var error: ChatError?
     @Published var observedApp: AccessibleApplication?
+    #if os(macOS)
     private var textAreaContent: TextAreaContent?
+    #endif
     @Published var focusedLines: String?
 
     init(apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
+        #if os(macOS)
         self.axManager = AXManager()
+        #endif
         self.availableTools = toolManager.getTools()
         setupToolsSubscription()
         setupTextAreaContentSubscription()
@@ -38,6 +44,7 @@ final class OpenAIChatViewModel: ObservableObject {
     }
 
     private func setupTextAreaContentSubscription() {
+        #if os(macOS)
         axManager.$textAreaContentList
             .sink { [weak self] newValue in
                 guard let self = self else { return }
@@ -45,6 +52,7 @@ final class OpenAIChatViewModel: ObservableObject {
                 self.focusedLines = self.textAreaContent?.focusedLines
             }
             .store(in: &cancellables)
+        #endif
     }
 
     func startServer() async {
@@ -52,18 +60,23 @@ final class OpenAIChatViewModel: ObservableObject {
     }
 
     func updateObservedApplication(to newApp: AccessibleApplication) {
+        #if os(macOS)
         self.axManager.updateObservedApplication(to: newApp)
+        #endif
         self.observedApp = newApp
     }
 
     func stopObserveApp() {
+        #if os(macOS)
         self.axManager.stopObserving()
         self.observedApp = nil
         self.textAreaContent = nil
+        #endif
     }
 
     func sendMessage() async {
         var messageParams = Array(self.messages.suffix(10))
+        #if os(macOS)
         if let textAreaContent = self.axManager.textAreaContentList.first {
             let context = textAreaContent.getTextAreaContext()
             let contextMessage = OpenAI.ChatMessage.userMessage(
@@ -72,6 +85,7 @@ final class OpenAIChatViewModel: ObservableObject {
             messageParams.append(contextMessage)
 
         }
+        #endif
         let userMessage = OpenAI.ChatMessage.userMessage(
             OpenAI.MessageParam(role: Role.user.rawValue, content: newMessage)
         )
@@ -183,6 +197,7 @@ final class OpenAIChatViewModel: ObservableObject {
     }
 }
 
+#if os(macOS)
 extension TextAreaContent {
     func getTextAreaContext() -> String {
         let selectionLinesXML = self.selectionLines.joined(separator: "\n")
@@ -201,3 +216,4 @@ extension TextAreaContent {
         }
     }
 }
+#endif
