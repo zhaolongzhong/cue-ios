@@ -22,6 +22,10 @@ struct ToolArguments {
         self.storage = dictionary
     }
 
+    func getBool(_ key: String) -> Bool? {
+        storage[key] as? Bool
+    }
+
     func getString(_ key: String) -> String? {
         storage[key] as? String
     }

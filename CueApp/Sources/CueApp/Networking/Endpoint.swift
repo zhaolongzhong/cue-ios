@@ -39,7 +39,7 @@ extension Endpoint {
         true
     }
 
-    func urlRequest(with token: String?) throws -> URLRequest {
+    func urlRequest(with token: String?, includeAdditionalHeaders: Bool = false) throws -> URLRequest {
         guard var urlComponents = URLComponents(string: baseURL) else {
             throw NetworkError.invalidURL
         }
@@ -67,7 +67,9 @@ extension Endpoint {
             finalHeaders["Authorization"] = "Bearer \(token)"
         }
 
-        finalHeaders["platform"] = "macos"
+        if includeAdditionalHeaders {
+            finalHeaders["platform"] = "macos"
+        }
 
         finalHeaders.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         return request
