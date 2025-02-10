@@ -1,4 +1,5 @@
 import SwiftUI
+import Dependencies
 
 private enum SettingsRoute: Hashable {
     case providerAPIKeys
@@ -7,6 +8,7 @@ private enum SettingsRoute: Hashable {
     #if os(macOS)
     case developer
     #endif
+    case featureFlags
 }
 
 public struct SettingsView: View {
@@ -70,6 +72,8 @@ private struct SettingsContentView: View {
                 case .developer:
                     DeveloperView()
                 #endif
+                case .featureFlags:
+                    FeatureFlagsView()
                 }
             }
         }
@@ -84,6 +88,7 @@ enum ColorSchemeOption: String, CaseIterable {
 
 private struct SettingsList: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
@@ -104,9 +109,11 @@ private struct SettingsList: View {
             .listSectionSpacing(.compact)
 
             Section {
-                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
-                    navigationPath.append(SettingsRoute.providerAPIKeys)
-                })
+                if featureFlags.enableThirdPartyProvider {
+                    APIKeysButton(title: "3rd Party Provider API Keys", horizontal: true, onTap: {
+                        navigationPath.append(SettingsRoute.providerAPIKeys)
+                    })
+                }
                 APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
                     navigationPath.append(SettingsRoute.assistantAPIKeys)
                 })
@@ -149,7 +156,6 @@ private struct SettingsList: View {
                         .tint(Color.secondary)
                     )
                 )
-                #if os(iOS)
                 SettingsRow(
                     systemName: "iphone.radiowaves.left.and.right",
                     title: "Haptic Feedback",
@@ -164,11 +170,23 @@ private struct SettingsList: View {
 
                     )
                 )
-                #endif
             } header: {
                 SettingsHeader(title: "Appearance")
             }
             .listSectionSpacing(.compact)
+            Section {
+                NavigationLink {
+                    FeatureFlagsView()
+                } label: {
+                    SettingsRow(
+                        systemName: "flag",
+                        title: "Feature Flags",
+                        value: ""
+                    )
+                }
+            } header: {
+                SettingsHeader(title: "Development")
+            }
             Section {
                 Button(action: {}) {
                     SettingsRow(
@@ -239,6 +257,21 @@ private struct SettingsList: View {
                             SettingsRow(
                                 systemName: "hammer",
                                 title: "Developer",
+                                showChevron: true
+                            ).padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Section {
+                    GroupBox {
+                        Button {
+                            navigationPath.append(SettingsRoute.featureFlags)
+                        } label: {
+                            SettingsRow(
+                                systemName: "flag.fill",
+                                title: "Features",
                                 showChevron: true
                             ).padding(.horizontal, 6)
                         }

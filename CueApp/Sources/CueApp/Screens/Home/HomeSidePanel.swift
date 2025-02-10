@@ -47,6 +47,7 @@ final class SidePanelState: ObservableObject {
 struct HomeSidePanel: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @ObservedObject var sidePanelState: SidePanelState
     @ObservedObject var assistantsViewModel: AssistantsViewModel
     @Binding var navigationPath: NavigationPath
@@ -78,11 +79,12 @@ struct HomeSidePanel: View {
             VStack(spacing: 16) {
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        cueRow
-                        if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
-                            providersSection
-                        }
                         assistantsSection
+                        if featureFlags.enableThirdPartyProvider {
+                            if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
+                                providersSection
+                            }
+                        }
                     }
                 }
 
@@ -110,12 +112,6 @@ struct HomeSidePanel: View {
             .onAppear {
                 Task {
                     await assistantsViewModel.fetchAssistants()
-                    if sidePanelState.selectedAssistant == nil {
-                        sidePanelState.restoreSelection(from: assistantsViewModel.assistants)
-                    }
-                    if let assistant = sidePanelState.selectedAssistant {
-                        onSelectAssistant(assistant)
-                    }
                 }
             }
         }
@@ -161,7 +157,7 @@ struct HomeSidePanel: View {
 
     private var providersHeader: some View {
         HStack {
-            Text("Providers")
+            Text("3rd Party Providers")
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity, alignment: .leading)

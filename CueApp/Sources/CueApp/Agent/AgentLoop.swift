@@ -6,10 +6,10 @@ import CueAnthropic
 @MainActor
 final class AgentLoop<Client: ChatClientProtocol> {
     private let chatClient: Client
-    private let toolManager: ToolManager
+    private let toolManager: ToolManager?
     private let model: String
 
-    init(chatClient: Client, toolManager: ToolManager, model: String) {
+    init(chatClient: Client, toolManager: ToolManager? = nil, model: String) {
         self.chatClient = chatClient
         self.toolManager = toolManager
         self.model = model
@@ -114,6 +114,9 @@ final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Processes a list of ToolCall objects (used for OpenAI messages).
     private func handleToolCall(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
+        guard let toolManager = self.toolManager else {
+            return []
+        }
         var results: [OpenAI.ToolMessage] = []
         for toolCall in toolCalls {
             if let data = toolCall.function.arguments.data(using: .utf8),
@@ -131,6 +134,9 @@ final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Processes a tool use block from an Anthropic message.
     private func handleToolUse(_ toolBlock: Anthropic.ToolUseBlock) async -> String {
+        guard let toolManager = self.toolManager else {
+            return ""
+        }
         do {
             var arguments: [String: Any] = [:]
             for (key, value) in toolBlock.input {

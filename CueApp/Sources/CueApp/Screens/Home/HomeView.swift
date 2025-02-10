@@ -56,9 +56,6 @@ struct HomeView: View {
             Task {
                 await viewModel.initialize()
                 await assistantsViewModel.fetchAssistants()
-                if sidePanelState.selectedAssistant == nil {
-                    sidePanelState.restoreSelection(from: assistantsViewModel.assistants)
-                }
             }
         }
         #if os(iOS)
@@ -87,7 +84,7 @@ private extension HomeView {
                         )
                         .id(assistant.id)
                     } else {
-                        HomeDefaultView(sidePanelState: sidePanelState)
+                        HomeDefaultView(sidePanelState: sidePanelState, viewModel: viewModel)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -262,20 +259,6 @@ struct CommonNavigationBarModifier: ViewModifier {
 extension View {
     func withCommonNavigationBar() -> some View {
         modifier(CommonNavigationBarModifier())
-    }
-}
-
-struct HomeDefaultView: View {
-    let sidePanelState: SidePanelState
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Welcome to Cue")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-
-            Text("Select an assistant from the menu to start chatting")
-                .foregroundColor(.secondary)
-        }.padding()
     }
 }
 
