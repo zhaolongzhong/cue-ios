@@ -43,13 +43,21 @@ extension AuthEndpoint: Endpoint {
     }
 
     var headers: [String: String]? {
-            switch self {
-            case .login:
-                return ["Content-Type": "application/x-www-form-urlencoded"]
-            default:
-                return ["Content-Type": "application/json"]
-            }
+        var platform = "ios"
+        #if os(macOS)
+        platform = "macos"
+        #endif
+        switch self {
+        case .login:
+            return ["Content-Type": "application/x-www-form-urlencoded"]
+        default:
+            return [
+                "Content-Type": "application/json",
+                "platform": platform
+            ]
         }
+    }
+
     var body: Data? {
         switch self {
         case let .login(email, password):

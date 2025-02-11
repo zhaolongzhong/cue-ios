@@ -22,6 +22,7 @@ protocol URLConfiguration: Sendable {
 }
 
 final class EnvironmentConfig: URLConfiguration, Sendable {
+    private let baseURLValue: String
     private let baseAPIURLValue: String
     private let baseWebSocketURLValue: String
     private let clientIdKey = "CLIENT_ID"
@@ -36,6 +37,7 @@ final class EnvironmentConfig: URLConfiguration, Sendable {
             : domain
 
         // Construct the base URLs
+        self.baseURLValue = "\(scheme)://\(normalizedDomain)"
         self.baseAPIURLValue = "\(scheme)://\(normalizedDomain)/api/v1"
         self.baseWebSocketURLValue = "\(wsScheme)://\(normalizedDomain)/api/v1/ws"
 
@@ -49,6 +51,7 @@ final class EnvironmentConfig: URLConfiguration, Sendable {
         }
     }
 
+    var baseURL: String { baseURLValue }
     var baseAPIURL: String { baseAPIURLValue }
     var baseWebSocketURL: String { baseWebSocketURLValue }
 

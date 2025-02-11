@@ -1,6 +1,11 @@
 import SwiftUI
 import GoogleSignIn
-import GoogleSignInSwift
+
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 struct LoginView: View {
     @EnvironmentObject private var dependencies: AppDependencies
@@ -65,6 +70,12 @@ struct LoginView: View {
                             PlatformButton(
                                 action: {
                                     focusedField = nil
+                                    let url = URL(string: "\(EnvironmentConfig.shared.baseURL)/forgot-password")!
+                                    #if os(iOS)
+                                    UIApplication.shared.open(url)
+                                    #elseif os(macOS)
+                                    NSWorkspace.shared.open(url)
+                                    #endif
                                 },
                                 style: .secondary
                             ) {
@@ -77,8 +88,8 @@ struct LoginView: View {
                     Spacer()
 
                     VStack(spacing: 16) {
-                        GoogleSignInButton(style: .wide, action: handleSignInButton)
-                            .frame(maxWidth: 280)
+                        LabelButton(text: "Continue with Google", style: .wide, action: handleSignInButton)
+                            .frame(maxWidth: 220)
 
                         HStack(spacing: 4) {
                             Text("Don't have an account?")

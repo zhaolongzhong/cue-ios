@@ -48,6 +48,9 @@ final class LoginViewModel: ObservableObject {
 
     func handleGoogleSignInError(_ error: Error?) {
         if let error = error {
+            if error.localizedDescription.lowercased().contains("user canceled") {
+                return
+            }
             self.error = "Google sign in failed: \(error.localizedDescription)"
         } else {
             self.error = "Google sign in failed: Unknown error"

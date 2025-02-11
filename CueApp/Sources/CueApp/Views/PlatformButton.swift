@@ -89,3 +89,46 @@ extension View {
         modification(self)
     }
 }
+
+struct LabelButton: View {
+    enum Style {
+        case standard
+        case wide
+    }
+
+    let text: String
+    let style: Style
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(text: String, style: Style = .standard, action: @escaping () -> Void) {
+        self.text = text
+        self.style = style
+        self.action = action
+    }
+
+    private var backgroundColor: Color {
+        colorScheme == .dark ? .white : .black
+    }
+
+    private var textColor: Color {
+        colorScheme == .dark ? .black : .white
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(text)
+                .fontWeight(.semibold)
+                .foregroundColor(textColor)
+                .frame(maxWidth: style == .wide ? .infinity : nil)
+                .padding(.vertical, 10)
+                .padding(.horizontal, style == .wide ? 16 : 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(backgroundColor)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
