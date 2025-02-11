@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsMenu: View {
     @EnvironmentObject var apiKeysProviderViewModel: APIKeysProviderViewModel
+    let currentUser: User?
     let onOpenAIChat: () -> Void
     let onAnthropicChat: () -> Void
     let onOpenSettings: () -> Void
@@ -32,8 +33,13 @@ struct SettingsMenu: View {
             }
         } label: {
             HStack(alignment: .center) {
-                Text("Settings")
+                if let user = currentUser {
+                    Text(user.displayName)
+                } else {
+                    Text("Settings")
+                }
             }
+            .frame(maxHeight: 32)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)

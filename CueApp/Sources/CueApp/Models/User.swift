@@ -17,3 +17,9 @@ struct User: Codable, Equatable, Identifiable {
         self.name = name
     }
 }
+
+extension User {
+    var displayName: String {
+        name ?? email
+    }
+}

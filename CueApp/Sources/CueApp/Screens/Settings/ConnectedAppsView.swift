@@ -8,41 +8,80 @@ import AppKit
 struct ConnectedAppsView: View {
     @State private var gmailGranted = false
     @State private var inboxMessages: [String] = []
+    @State private var isLoading = false
+    @State private var showingRemoveAlert = false
+
     private let gmailReadScope = "https://www.googleapis.com/auth/gmail.readonly"
     private let gmailSendScope = "https://www.googleapis.com/auth/gmail.send"
     private let gmailModifyScope = "https://www.googleapis.com/auth/gmail.modify"
 
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Gmail Access")) {
-                    HStack {
-                        Text("Status")
-                        Spacer()
-                        Text(gmailGranted ? "Granted" : "Not Granted")
-                            .foregroundColor(gmailGranted ? .green : .red)
-                    }
-                    if !gmailGranted {
-                        Button("Grant Gmail Access") {
-                            requestGmailAccess()
-                        }
-                    } else {
-                        Button("Fetch Inbox Messages") {
-                            fetchInboxMessages()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                googleSection
+            }
+            .padding()
+        }
+        #if os(macOS)
+        .frame(minWidth: 500, minHeight: 300)
+        #endif
+        .navigationTitle("Connected Apps")
+        .onAppear(perform: checkGmailAccess)
+    }
+
+    private var googleSection: some View {
+        GroupBox(label: Text("Google Account").bold()) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label(
+                        title: { Text("Gmail Access") },
+                        icon: { Image(systemName: "envelope.fill") }
+                    )
+                    Spacer()
+                    HStack(spacing: 8) {
+                        statusView
+                        if gmailGranted {
+                            Button(action: { showingRemoveAlert = true }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                                    .imageScale(.medium)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Remove Gmail Access")
                         }
                     }
                 }
 
-                Section(header: Text("Inbox Messages")) {
-                    ForEach(inboxMessages, id: \.self) { messageID in
-                        NavigationLink(destination: EmailPreviewView(messageID: messageID)) {
-                            Text(messageID)
-                        }
+                if !gmailGranted {
+                    Button(action: requestGmailAccess) {
+                        Label(
+                            title: { Text("Grant Gmail Access") },
+                            icon: { Image(systemName: "lock.open.fill") }
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .navigationTitle("Google Permissions")
-            .onAppear(perform: checkGmailAccess)
+            .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .alert("Remove Gmail Access", isPresented: $showingRemoveAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                removeGmailAccess()
+            }
+        } message: {
+            Text("Are you sure you want to remove Gmail access? You'll need to grant access again to use Gmail features.")
+        }
+    }
+
+    private var statusView: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(gmailGranted ? Color.green : Color.red)
+                .frame(width: 8, height: 8)
+            Text(gmailGranted ? "Connected" : "Not Connected")
+                .foregroundColor(gmailGranted ? .green : .red)
         }
     }
 
@@ -58,20 +97,61 @@ struct ConnectedAppsView: View {
         }
     }
 
+    private func removeGmailAccess() {
+        isLoading = true
+        GIDSignIn.sharedInstance.signOut()
+        isLoading = false
+        checkGmailAccess()
+    }
+
     #if os(iOS)
     private func requestGmailAccess() {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootViewController = windowScene.windows.first?.rootViewController else {
+        // Get the current window scene and root view controller more reliably
+        guard let windowScene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let rootViewController = windowScene.keyWindow?.rootViewController else {
             AppLog.log.error("Could not get rootViewController on iOS")
             return
         }
-        GIDSignIn.sharedInstance.currentUser?.addScopes([gmailReadScope, gmailSendScope, gmailModifyScope],
-                                                          presenting: rootViewController) { _, error in
-            if let error = error {
-                AppLog.log.error("Error requesting Gmail scope: \(error.localizedDescription)")
-                return
+        
+        isLoading = true
+
+        // Check if user is already signed in
+        if GIDSignIn.sharedInstance.currentUser == nil {
+            // If no user is signed in, start with sign in
+            GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { signInResult, error in
+                if let error = error {
+                    isLoading = false
+                    AppLog.log.error("Error signing in: \(error.localizedDescription)")
+                    return
+                }
+                
+                // After successful sign in, request additional scopes
+                signInResult?.user.addScopes(
+                    [gmailReadScope, gmailSendScope, gmailModifyScope],
+                    presenting: rootViewController
+                ) { _, scopeError in
+                    isLoading = false
+                    if let scopeError = scopeError {
+                        AppLog.log.error("Error requesting Gmail scope: \(scopeError.localizedDescription)")
+                        return
+                    }
+                    checkGmailAccess()
+                }
             }
-            checkGmailAccess()
+        } else {
+            // User is already signed in, just request additional scopes
+            GIDSignIn.sharedInstance.currentUser?.addScopes(
+                [gmailReadScope, gmailSendScope, gmailModifyScope],
+                presenting: rootViewController
+            ) { _, error in
+                isLoading = false
+                if let error = error {
+                    AppLog.log.error("Error requesting Gmail scope: \(error.localizedDescription)")
+                    return
+                }
+                checkGmailAccess()
+            }
         }
     }
     #elseif os(macOS)
@@ -80,58 +160,45 @@ struct ConnectedAppsView: View {
             AppLog.log.error("Could not get window on macOS")
             return
         }
-        // Pass the window instead of the contentViewController
-        GIDSignIn.sharedInstance.currentUser?.addScopes([gmailReadScope, gmailSendScope, gmailModifyScope],
-                                                          presenting: window) { _, error in
-            if let error = error {
-                AppLog.log.error("Error requesting Gmail scope: \(error.localizedDescription)")
-                return
+        
+        isLoading = true
+
+        // If no user is signed in, start with sign in
+        if GIDSignIn.sharedInstance.currentUser == nil {
+            GIDSignIn.sharedInstance.signIn(withPresenting: window) { signInResult, error in
+                if let error = error {
+                    isLoading = false
+                    AppLog.log.error("Error signing in: \(error.localizedDescription)")
+                    return
+                }
+
+                // After successful sign in, request additional scopes
+                signInResult?.user.addScopes(
+                    [gmailReadScope, gmailSendScope, gmailModifyScope],
+                    presenting: window
+                ) { _, scopeError in
+                    isLoading = false
+                    if let scopeError = scopeError {
+                        AppLog.log.error("Error requesting Gmail scope: \(scopeError.localizedDescription)")
+                        return
+                    }
+                    checkGmailAccess()
+                }
             }
-            checkGmailAccess()
+        } else {
+            // User is already signed in, just request additional scopes
+            GIDSignIn.sharedInstance.currentUser?.addScopes(
+                [gmailReadScope, gmailSendScope, gmailModifyScope],
+                presenting: window
+            ) { _, error in
+                isLoading = false
+                if let error = error {
+                    AppLog.log.error("Error requesting Gmail scope: \(error.localizedDescription)")
+                    return
+                }
+                checkGmailAccess()
+            }
         }
     }
     #endif
-
-    private func fetchInboxMessages() {
-        guard let currentUser = GIDSignIn.sharedInstance.currentUser,
-              let url = URL(string: "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX")
-        else {
-            AppLog.log.error("No user or invalid URL")
-            return
-        }
-        let accessToken = currentUser.accessToken.tokenString
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                AppLog.log.error("Error fetching messages: \(error.localizedDescription)")
-                return
-            }
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200,
-                  let data = data
-            else {
-                AppLog.log.error("Invalid response or no data")
-                return
-            }
-
-            do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let messages = json["messages"] as? [[String: Any]] {
-                    // Extract message IDs
-                    let ids = messages.compactMap { $0["id"] as? String }
-                    DispatchQueue.main.async {
-                        self.inboxMessages = ids
-                    }
-                } else {
-                    AppLog.log.debug("No messages found")
-                }
-            } catch {
-                AppLog.log.error("Error parsing JSON: \(error.localizedDescription)")
-            }
-        }.resume()
-    }
 }

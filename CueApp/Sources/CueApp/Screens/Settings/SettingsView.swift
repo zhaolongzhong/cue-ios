@@ -252,6 +252,23 @@ private struct SettingsList: View {
                 Section {
                     GroupBox {
                         Button {
+                            navigationPath.append(SettingsRoute.connectedApps)
+                        } label: {
+                            SettingsRow(
+                                systemName: "shield.checkerboard",
+                                title: "Google Apps",
+                                showChevron: true
+                            ).padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    SettingsHeader(title: "Connected Apps")
+                }
+
+                Section {
+                    GroupBox {
+                        Button {
                             navigationPath.append(SettingsRoute.developer)
                         } label: {
                             SettingsRow(

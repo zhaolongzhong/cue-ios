@@ -53,9 +53,11 @@ public struct CueChatView: View {
                         Text(viewModel.model.displayName)
                             .font(.callout)
                             .fontWeight(.semibold)
+                        #if os(iOS)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
+                        #endif
                     }
                     .foregroundColor(.primary)
                     #if os(macOS)

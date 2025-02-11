@@ -1,4 +1,5 @@
 import SwiftUI
+import Dependencies
 
 struct SidebarAssistantActions: AssistantActions {
     var assistantsViewModel: AssistantsViewModel
@@ -23,6 +24,7 @@ struct SidebarAssistantActions: AssistantActions {
 }
 
 struct Sidebar: View {
+    @Dependency(\.authRepository) var authRepository
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
@@ -30,6 +32,7 @@ struct Sidebar: View {
     @State private var isShowingNewAssistantSheet = false
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
+    private let onOpenHome: () -> Void
 
     private var showDeleteAlert: Binding<Bool> {
         Binding(
@@ -38,13 +41,19 @@ struct Sidebar: View {
         )
     }
 
-    init(assistantsViewModel: AssistantsViewModel, selectedAssistant: Binding<Assistant?>) {
+    init(assistantsViewModel: AssistantsViewModel, onOpenHome: @escaping () -> Void, selectedAssistant: Binding<Assistant?>) {
         self.assistantsViewModel = assistantsViewModel
+        self.onOpenHome = onOpenHome
         self._selectedAssistant = selectedAssistant
     }
 
     var body: some View {
         VStack {
+            Button(action: onOpenHome) {
+                Text("Cue")
+                    .font(.title)
+            }
+            .buttonStyle(.plain)
             ScrollView {
                 LazyVStack {
                     ForEach(assistantsViewModel.assistants) { assistant in
@@ -71,13 +80,11 @@ struct Sidebar: View {
                         .tag(assistant)
                     }
                     .scrollContentBackground(.hidden)
-                    .onChange(of: selectedAssistant) { _, _ in
-                        self.onSelectedAssistantUpdate()
-                    }
                 }
             }
             Spacer()
             SettingsMenu(
+                currentUser: authRepository.currentUser,
                 onOpenAIChat: handleOpenAIChat,
                 onAnthropicChat: handleAnthropicChat,
                 onOpenSettings: handleOpenSettings

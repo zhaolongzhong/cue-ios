@@ -2,8 +2,8 @@ import SwiftUI
 import Dependencies
 
 struct HomeDefaultView: View {
-    let sidePanelState: SidePanelState
     @ObservedObject var viewModel: HomeViewModel
+    let onNewSession: () -> Void
 
     @State private var animateGreeting = false
     @State private var animateQuote = false
@@ -36,10 +36,7 @@ struct HomeDefaultView: View {
                     .scaleEffect(0.8)
                     .padding()
             }
-
-            Button(action: {
-                viewModel.navigateToDestination(.cue)
-            }) {
+            Button(action: onNewSession) {
                 Text("Start session")
                     .font(.headline)
                     .foregroundColor(.white)
@@ -55,6 +52,7 @@ struct HomeDefaultView: View {
                     .cornerRadius(20)
                     .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
             }
+            .buttonStyle(.plain)
             .padding(.top, 20)
             .offset(x: animateButton ? 0 : 100)
             .opacity(animateButton ? 1 : 0)

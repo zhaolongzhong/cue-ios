@@ -84,7 +84,9 @@ private extension HomeView {
                         )
                         .id(assistant.id)
                     } else {
-                        HomeDefaultView(sidePanelState: sidePanelState, viewModel: viewModel)
+                        HomeDefaultView(viewModel: viewModel, onNewSession: {
+                            viewModel.navigateToDestination(.cue)
+                        })
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)

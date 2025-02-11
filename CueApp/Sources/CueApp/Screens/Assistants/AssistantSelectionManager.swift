@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - AssistantSelectionManager
 @MainActor
 final class AssistantSelectionManager: ObservableObject {
+    @Published var currentView: DetailViewType = .home
     @Published private(set) var selectedAssistant: Assistant?
     private let userDefaults: UserDefaults
 
@@ -14,8 +15,10 @@ final class AssistantSelectionManager: ObservableObject {
         selectedAssistant = assistant
         if let assistant = assistant {
             userDefaults.lastSelectedAssistantId = assistant.id
+            currentView = .assistant(assistant)
         } else {
             userDefaults.lastSelectedAssistantId = nil
+            currentView = .home
         }
     }
 
@@ -32,6 +35,10 @@ final class AssistantSelectionManager: ObservableObject {
         } else {
             selectAssistant(assistants.first)
         }
+    }
+
+    func showChat() {
+        currentView = .chat
     }
 }
 
