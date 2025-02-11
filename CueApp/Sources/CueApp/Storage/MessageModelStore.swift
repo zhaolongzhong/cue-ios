@@ -61,7 +61,7 @@ actor MessageModelStore {
 
     init() throws {
         let fileManager = FileManager.default
-        let folderURL = try fileManager.url(for: .documentDirectory,
+        let folderURL = try fileManager.url(for: .applicationSupportDirectory,
                                           in: .userDomainMask,
                                           appropriateFor: nil,
                                           create: true)

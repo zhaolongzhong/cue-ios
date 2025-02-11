@@ -38,7 +38,7 @@ class MessageStore {
         // Get the database file path in the app's documents directory
 
         let fileManager = FileManager.default
-        let folderURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let folderURL = try fileManager.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
 
         let dbPath = folderURL.appendingPathComponent(databaseFileName).path
 

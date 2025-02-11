@@ -113,7 +113,7 @@ struct ConnectedAppsView: View {
             AppLog.log.error("Could not get rootViewController on iOS")
             return
         }
-        
+
         isLoading = true
 
         // Check if user is already signed in
@@ -125,7 +125,7 @@ struct ConnectedAppsView: View {
                     AppLog.log.error("Error signing in: \(error.localizedDescription)")
                     return
                 }
-                
+
                 // After successful sign in, request additional scopes
                 signInResult?.user.addScopes(
                     [gmailReadScope, gmailSendScope, gmailModifyScope],
@@ -160,7 +160,7 @@ struct ConnectedAppsView: View {
             AppLog.log.error("Could not get window on macOS")
             return
         }
-        
+
         isLoading = true
 
         // If no user is signed in, start with sign in

@@ -152,8 +152,6 @@
 			name = Cue;
 			packageProductDependencies = (
 				3A2098D62CB74D0800FEB48E /* CueApp */,
-				3A59BFDE2D042C9600EF209A /* CueOpenAI */,
-				3A368F722D0432B1000F8D8B /* CueOpenAI */,
 			);
 			productName = Cue;
 			productReference = 3A2098612CB7392900FEB48E /* Cue.app */;
@@ -672,14 +670,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 3A2098D02CB74BD700FEB48E /* XCLocalSwiftPackageReference "CueApp" */;
 			productName = CueApp;
-		};
-		3A368F722D0432B1000F8D8B /* CueOpenAI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = CueOpenAI;
-		};
-		3A59BFDE2D042C9600EF209A /* CueOpenAI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = CueOpenAI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
