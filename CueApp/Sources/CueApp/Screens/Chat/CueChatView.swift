@@ -12,8 +12,42 @@ public struct CueChatView: View {
     public init() {}
 
     public var body: some View {
-        VStack {
-            messageList
+        VStack(spacing: 0) {
+            #if os(macOS)
+            Rectangle()
+                .fill(AppTheme.Colors.separator.opacity(0.5))
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
+            #endif
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        ForEach(viewModel.messages) { message in
+                            MessageBubble(
+                                role: message.role,
+                                content: message.content
+                            )
+                        }
+                        Color.clear
+                            .frame(height: 1)
+                            .id(bottomID)
+                    }
+                    .padding()
+                }
+                #if os(iOS)
+                .simultaneousGesture(DragGesture().onChanged { _ in
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                 to: nil, from: nil, for: nil)
+                })
+                #endif
+                .onChange(of: viewModel.messages.count) { _, _ in
+                    withAnimation {
+                        proxy.scrollTo(bottomID, anchor: .bottom)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
 
             RichTextField(
                 showVoiceChat: true,
@@ -40,8 +74,11 @@ public struct CueChatView: View {
             )
             .padding(.all, 8)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .defaultNavigationBar(showCustomBackButton: false, title: "")
         .toolbar {
             ToolbarItem(placement: .principal) {
+                #if os(iOS)
                 Menu {
                     Picker("Model", selection: $viewModel.model) {
                         ForEach(ChatModel.allCases, id: \.self) { model in
@@ -51,21 +88,39 @@ public struct CueChatView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(viewModel.model.displayName)
-                            .font(.callout)
-                            .fontWeight(.semibold)
-                        #if os(iOS)
+                            .font(.headline)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
-                        #endif
                     }
                     .foregroundColor(.primary)
-                    #if os(macOS)
-                    .frame(width: 120)
-                    #endif
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
+                #else
+                Menu {
+                    ForEach(ChatModel.allCases, id: \.self) { model in
+                        Button {
+                            viewModel.model = model
+                        } label: {
+                            if viewModel.model == model {
+                                Label(model.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(model.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(viewModel.model.displayName)
+                            .font(.headline)
+                    }
+                    .frame(width: 120)
+                    .foregroundColor(.primary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                #endif
             }
         }
         .onAppear {
@@ -97,36 +152,5 @@ public struct CueChatView: View {
                 }
         )
         #endif
-    }
-
-    private var messageList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(viewModel.messages) { message in
-                        MessageBubble(
-                            role: message.role,
-                            content: message.content
-                        )
-                    }
-                    // Invisible marker view at bottom
-                    Color.clear
-                        .frame(height: 1)
-                        .id(bottomID)
-                }
-                .padding()
-            }
-            #if os(iOS)
-           .simultaneousGesture(DragGesture().onChanged { _ in
-               UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                            to: nil, from: nil, for: nil)
-           })
-           #endif
-            .onChange(of: viewModel.messages.count) { _, _ in
-                withAnimation {
-                    proxy.scrollTo(bottomID, anchor: .bottom)
-                }
-            }
-        }
     }
 }

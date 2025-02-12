@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Navigation
 enum HomeDestination: Hashable {
+    case home
     case cue
     case openai
     case anthropic
@@ -13,8 +14,8 @@ struct HomeView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
-    @StateObject private var viewModel: HomeViewModel
-    @StateObject private var assistantsViewModel: AssistantsViewModel = AssistantsViewModel()
+    @StateObject private var homeViewModel = HomeViewModel()
+    @StateObject private var assistantsViewModel = AssistantsViewModel()
     @StateObject private var sidePanelState = SidePanelState()
     @State private var dragOffset: CGFloat = 0
 
@@ -25,11 +26,6 @@ struct HomeView: View {
     private let animationDuration: Double = 0.3
     private let springStiffness: Double = 300
     private let springDamping: Double = 30
-
-    init(userId: String) {
-        let homeViewModel = HomeViewModel(userId: userId)
-        _viewModel = StateObject(wrappedValue: homeViewModel)
-    }
 
     var body: some View {
         ZStack {
@@ -54,8 +50,14 @@ struct HomeView: View {
         .background(AppTheme.Colors.secondaryBackground.opacity(0.2))
         .onAppear {
             Task {
-                await viewModel.initialize()
                 await assistantsViewModel.fetchAssistants()
+            }
+        }
+        .onChange(of: appStateViewModel.state.currentUser) { _, user in
+            if user != nil {
+                Task {
+                    await homeViewModel.initialize()
+                }
             }
         }
         #if os(iOS)
@@ -73,21 +75,11 @@ struct HomeView: View {
 // MARK: - Home View Components
 private extension HomeView {
     var mainContent: some View {
-        NavigationStack(path: $viewModel.navigationPath) {
+        NavigationStack(path: $homeViewModel.navigationPath) {
                 Group {
-                    if let assistant = sidePanelState.selectedAssistant {
-                        ChatView(
-                            assistant: assistant,
-                            chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
-                            assistantsViewModel: assistantsViewModel,
-                            tag: "home"
-                        )
-                        .id(assistant.id)
-                    } else {
-                        HomeDefaultView(viewModel: viewModel, onNewSession: {
-                            viewModel.navigateToDestination(.cue)
-                        })
-                    }
+                    HomeDefaultView(viewModel: homeViewModel, onNewSession: {
+                        homeViewModel.navigateToDestination(.cue)
+                    })
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .background(AppTheme.Colors.secondaryBackground)
@@ -131,7 +123,7 @@ private extension HomeView {
             HomeSidePanel(
                 sidePanelState: sidePanelState,
                 assistantsViewModel: assistantsViewModel,
-                navigationPath: $viewModel.navigationPath,
+                navigationPath: $homeViewModel.navigationPath,
                 onSelectAssistant: handleAssistantSelection
             )
             .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
@@ -153,6 +145,10 @@ private extension HomeView {
     func destinationView(for destination: HomeDestination) -> some View {
         Group {
             switch destination {
+            case .home:
+                HomeDefaultView(viewModel: homeViewModel, onNewSession: {
+                    homeViewModel.navigateToDestination(.cue)
+                })
             case .cue:
                 CueChatView()
             case .openai:
@@ -175,8 +171,13 @@ private extension HomeView {
 
 // MARK: - Home View Event Handlers
 private extension HomeView {
-    func handleAssistantSelection(_ assistant: Assistant) {
-        viewModel.navigateToDestination(.chat(assistant))
+    func handleAssistantSelection(_ assistant: Assistant?) {
+        if let assistant = assistant {
+            homeViewModel.navigateToDestination(.chat(assistant))
+        } else {
+            homeViewModel.navigateToDestination(.home)
+        }
+
         sidePanelState.hidePanel()
     }
 

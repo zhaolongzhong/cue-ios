@@ -9,9 +9,11 @@ struct DetailContent: View {
         ZStack {
             #if os(macOS)
             VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
-                .opacity(0.3)
                 .ignoresSafeArea()
             #endif
+            AppTheme.Colors.background
+                .opacity(0.8)
+                .ignoresSafeArea()
             if let assistant = selectedAssistant {
                 ChatView(
                     assistant: assistant,

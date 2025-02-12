@@ -27,19 +27,12 @@ private struct AuthenticatedContent: View {
             if !viewModel.state.isAuthenticated {
                 LoginView(loginViewModelFactory: dependencies.viewModelFactory.makeLoginViewModel)
                     .authWindowSize()
-            } else if viewModel.state.isAuthenticated, let user = viewModel.state.currentUser {
-                #if os(iOS)
-                HomeView(userId: user.id)
-                #else
-                MainWindowView(userId: user.id, viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
-                    .frame(minWidth: 600, minHeight: 220)
-                #endif
             } else {
                 #if os(iOS)
-                ProgressView()
-                    .progressViewStyle(.circular)
+                HomeView()
                 #else
-                ProgressView("Loading...")
+                MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
+                    .frame(minWidth: 600, minHeight: 220)
                 #endif
             }
         }
@@ -63,9 +56,6 @@ private struct AuthenticatedContent: View {
             GIDSignIn.sharedInstance.handle(url)
         }
         .onAppear {
-            GIDSignIn.sharedInstance.restorePreviousSignIn { user, error in
-                AppLog.log.debug("restorePreviousSignIn user: \(String(describing: user)), error: \(String(describing: error))")
-            }
             AppLog.log.debug("AuthenticatedContent onAppear isAuthenticated: \(viewModel.state.isAuthenticated)")
         }
     }

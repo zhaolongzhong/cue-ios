@@ -13,22 +13,18 @@ public struct MainWindowView: View {
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
-    @StateObject private var homeViewModel: HomeViewModel
+    @StateObject private var homeViewModel = HomeViewModel()
     @State private var selectedAssistant: Assistant?
     @StateObject private var selectionManager = AssistantSelectionManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var lastStatusUpdate: Date = Date()
-    private let userId: String
 
     #if os(macOS)
     @State private var windowDelegate: WindowDelegate?
     #endif
 
-    init(userId: String, viewModelFactory: @escaping () -> AssistantsViewModel) {
-        self.userId = userId
+    init(viewModelFactory: @escaping () -> AssistantsViewModel) {
         self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
-        let homeViewModel = HomeViewModel(userId: userId)
-        _homeViewModel = StateObject(wrappedValue: homeViewModel)
     }
 
     public var body: some View {
@@ -40,7 +36,9 @@ public struct MainWindowView: View {
                 },
                 selectedAssistant: Binding(
                     get: { selectionManager.selectedAssistant },
-                    set: { selectionManager.selectAssistant($0) }
+                    set: {
+                        selectionManager.selectAssistant($0)
+                    }
                 )
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 300, max: 400)
@@ -67,9 +65,11 @@ public struct MainWindowView: View {
         .onReceive(assistantsViewModel.$clientStatuses) { _ in
             lastStatusUpdate = Date()
         }
-        .onAppear {
-            Task {
-                await homeViewModel.initialize()
+        .onChange(of: appStateViewModel.state.currentUser) { _, user in
+            if user != nil {
+                Task {
+                    await homeViewModel.initialize()
+                }
             }
         }
         #if os(macOS)

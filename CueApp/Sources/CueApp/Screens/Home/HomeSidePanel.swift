@@ -51,7 +51,7 @@ struct HomeSidePanel: View {
     @ObservedObject var sidePanelState: SidePanelState
     @ObservedObject var assistantsViewModel: AssistantsViewModel
     @Binding var navigationPath: NavigationPath
-    let onSelectAssistant: (Assistant) -> Void
+    let onSelectAssistant: (Assistant?) -> Void
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
 
@@ -59,7 +59,7 @@ struct HomeSidePanel: View {
         sidePanelState: SidePanelState,
         assistantsViewModel: AssistantsViewModel,
         navigationPath: Binding<NavigationPath>,
-        onSelectAssistant: @escaping (Assistant) -> Void
+        onSelectAssistant: @escaping (Assistant?) -> Void
     ) {
         self.sidePanelState = sidePanelState
         self.assistantsViewModel = assistantsViewModel
@@ -94,8 +94,12 @@ struct HomeSidePanel: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Cue")
-                        .font(.title2)
+                    Button {
+                        onSelectAssistant(nil)
+                    } label: {
+                        Text("Cue")
+                            .font(.title2)
+                    }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {

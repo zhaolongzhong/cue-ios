@@ -134,13 +134,6 @@ struct Sidebar: View {
             Task {
                 await assistantsViewModel.fetchAssistants()
             }
-            self.onSelectedAssistantUpdate()
-        }
-    }
-
-    private func onSelectedAssistantUpdate() {
-        if selectedAssistant == nil && !assistantsViewModel.assistants.isEmpty {
-            selectedAssistant = assistantsViewModel.assistants[0]
         }
     }
 
