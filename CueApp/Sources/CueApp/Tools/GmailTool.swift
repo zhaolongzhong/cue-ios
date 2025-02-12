@@ -62,7 +62,8 @@ struct GmailTool: LocalTool, Sendable {
         switch action {
         case "readInbox":
             let maxCount = args.getInt("maxCount") ?? 20
-            return try await GmailService.readInbox(maxCount: maxCount)
+            let inboxResponse = try await GmailService.readInbox(maxCount: maxCount)
+            return inboxResponse.map { $0.toString() }.joined(separator: "\n---\n")
         case "getEmailDetails":
             guard let messageId = args.getString("messageId") else {
                 throw ToolError.invalidArguments("Missing messageId")

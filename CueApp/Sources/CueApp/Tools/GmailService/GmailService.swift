@@ -22,7 +22,7 @@ struct GmailService {
         return request
     }
 
-    static func readInbox(maxCount: Int = 20) async throws -> String {
+    static func readInbox(maxCount: Int = 20) async throws -> [CleanGmailMessage] {
         let request = try buildRequest(for: GmailEndpoint.listInbox(maxResults: maxCount))
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
@@ -47,10 +47,10 @@ struct GmailService {
             // Sort messages by date, latest first
             return results.sorted { $0.messageDate > $1.messageDate }
         }
-        var output = ""
+        var output: [CleanGmailMessage] = []
         for message in detailedMessages {
             let cleanMessage = CleanGmailMessage(from: message)
-            output.append(cleanMessage.toString())
+            output.append(cleanMessage)
         }
         return output
     }

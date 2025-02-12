@@ -6,6 +6,7 @@ final class AssistantSelectionManager: ObservableObject {
     @Published var currentView: DetailViewType = .home
     @Published private(set) var selectedAssistant: Assistant?
     private let userDefaults: UserDefaults
+    @Published var isEmailViewPresented = false
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -39,6 +40,10 @@ final class AssistantSelectionManager: ObservableObject {
 
     func showChat() {
         currentView = .chat
+    }
+
+    func showEmail() {
+        isEmailViewPresented = true
     }
 }
 
