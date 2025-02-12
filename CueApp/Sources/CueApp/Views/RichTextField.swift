@@ -1,6 +1,8 @@
 import SwiftUI
+import Dependencies
 
 struct RichTextField: View {
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @Environment(\.colorScheme) private var colorScheme
     let isEnabled: Bool
     let showVoiceChat: Bool
@@ -60,33 +62,35 @@ struct RichTextField: View {
             }
 
             HStack {
-                Menu {
-                    Button(action: {
-                        // Handle attach photos
-                    }) {
-                        Label("Attach Photos", systemImage: "photo")
-                    }
+                if featureFlags.enableMediaOption {
+                    Menu {
+                        Button(action: {
+                            // Handle attach photos
+                        }) {
+                            Label("Attach Photos", systemImage: "photo")
+                        }
 
-                    Button(action: {
-                        // Handle take photo
-                    }) {
-                        Label("Take Photo", systemImage: "camera")
-                    }
+                        Button(action: {
+                            // Handle take photo
+                        }) {
+                            Label("Take Photo", systemImage: "camera")
+                        }
 
-                    Button(action: {
-                        // Handle attach files
-                    }) {
-                        Label("Attach Files", systemImage: "folder")
+                        Button(action: {
+                            // Handle attach files
+                        }) {
+                            Label("Attach Files", systemImage: "folder")
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color.secondary)
+                            .frame(width: 30, height: 30)
                     }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color.secondary)
-                        .frame(width: 30, height: 30)
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
                 Text("Type a message ...")
                     .foregroundColor(.secondary.opacity(0.6))
                     .opacity(isTextFieldVisible ? 0 : 1)

@@ -108,19 +108,21 @@ private struct SettingsList: View {
             .padding(.trailing, 0)
             .listSectionSpacing(.compact)
 
-            Section {
-                if featureFlags.enableThirdPartyProvider {
-                    APIKeysButton(title: "3rd Party Provider API Keys", horizontal: true, onTap: {
-                        navigationPath.append(SettingsRoute.providerAPIKeys)
+            if featureFlags.enableAssistants {
+                Section {
+                    if featureFlags.enableThirdPartyProvider {
+                        APIKeysButton(title: "3rd Party Provider API Keys", horizontal: true, onTap: {
+                            navigationPath.append(SettingsRoute.providerAPIKeys)
+                        })
+                    }
+                    APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
+                        navigationPath.append(SettingsRoute.assistantAPIKeys)
                     })
+                } header: {
+                    SettingsHeader(title: "API Keys")
                 }
-                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                    navigationPath.append(SettingsRoute.assistantAPIKeys)
-                })
-            } header: {
-                SettingsHeader(title: "API Keys")
+                .listSectionSpacing(.compact)
             }
-            .listSectionSpacing(.compact)
 
             Section {
                 NavigationLink {
@@ -233,20 +235,26 @@ private struct SettingsList: View {
                     SettingsHeader(title: "Account")
                 }
 
-                Section {
-                    GroupBox {
-                        APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
-                            navigationPath.append(SettingsRoute.providerAPIKeys)
-                        })
-                            .padding(.horizontal, 6)
-                        Divider()
-                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                            navigationPath.append(SettingsRoute.assistantAPIKeys)
-                        })
-                            .padding(.horizontal, 6)
+                if featureFlags.enableAssistants || featureFlags.enableOpenAIChat || featureFlags.enableAnthropicChat {
+                    Section {
+                        GroupBox {
+                            if featureFlags.enableOpenAIChat || featureFlags.enableAnthropicChat {
+                                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
+                                    navigationPath.append(SettingsRoute.providerAPIKeys)
+                                })
+                                .padding(.horizontal, 6)
+                            }
+                            if featureFlags.enableAssistants {
+                                Divider()
+                                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
+                                    navigationPath.append(SettingsRoute.assistantAPIKeys)
+                                })
+                                .padding(.horizontal, 6)
+                            }
+                        }
+                    } header: {
+                        SettingsHeader(title: "API Keys")
                     }
-                } header: {
-                    SettingsHeader(title: "API Keys")
                 }
 
                 Section {
@@ -287,8 +295,8 @@ private struct SettingsList: View {
                             navigationPath.append(SettingsRoute.featureFlags)
                         } label: {
                             SettingsRow(
-                                systemName: "flag.fill",
-                                title: "Features",
+                                systemName: "flag",
+                                title: "Feature Flags",
                                 showChevron: true
                             ).padding(.horizontal, 6)
                         }

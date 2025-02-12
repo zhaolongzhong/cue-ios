@@ -7,6 +7,7 @@ enum HomeDestination: Hashable {
     case openai
     case anthropic
     case chat(Assistant)
+    case email
 }
 
 struct HomeView: View {
@@ -34,13 +35,6 @@ struct HomeView: View {
             overlayLayer
             sidePanel
                 .gesture(sidePanelDragGesture)
-            LiveIndicatorView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .padding(.bottom, 72)
-                .padding(.horizontal, 8)
-                .onTapGesture {
-                    coordinator.showLiveChatSheet()
-                }
         }
         .modifier(LeftEdgeGesture(
             edgeWidth: edgeWidth,
@@ -78,7 +72,7 @@ private extension HomeView {
         NavigationStack(path: $homeViewModel.navigationPath) {
                 Group {
                     HomeDefaultView(viewModel: homeViewModel, onNewSession: {
-                        homeViewModel.navigateToDestination(.cue)
+                        homeViewModel.navigateToDestination(.email)
                     })
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -147,7 +141,7 @@ private extension HomeView {
             switch destination {
             case .home:
                 HomeDefaultView(viewModel: homeViewModel, onNewSession: {
-                    homeViewModel.navigateToDestination(.cue)
+                    homeViewModel.navigateToDestination(.email)
                 })
             case .cue:
                 CueChatView()
@@ -163,6 +157,12 @@ private extension HomeView {
                     tag: "home"
                 )
                 .id(assistant.id)
+            case .email:
+                #if os(iOS)
+                EmailScreen(apiKey: apiKeysProviderViewModel.openAIKey, onClose: {
+                    homeViewModel.navigateToDestination(.home)
+                })
+                #endif
             }
         }
         .withCommonNavigationBar()

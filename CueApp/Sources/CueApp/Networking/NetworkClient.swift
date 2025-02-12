@@ -24,7 +24,7 @@ actor NetworkClient: NetworkClientProtocol {
 
     private init() {
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForRequest = 60
         configuration.timeoutIntervalForResource = 300
 
         self.session = URLSession(configuration: configuration)

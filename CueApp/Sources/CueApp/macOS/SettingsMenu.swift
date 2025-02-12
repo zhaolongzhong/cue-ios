@@ -1,6 +1,8 @@
 import SwiftUI
+import Dependencies
 
 struct SettingsMenu: View {
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @EnvironmentObject var apiKeysProviderViewModel: APIKeysProviderViewModel
     let currentUser: User?
     let onOpenAIChat: () -> Void
@@ -9,7 +11,7 @@ struct SettingsMenu: View {
 
     var body: some View {
         Menu {
-            if !apiKeysProviderViewModel.openAIKey.isEmpty {
+            if !apiKeysProviderViewModel.openAIKey.isEmpty && featureFlags.enableOpenAIChat {
                 Button(action: onOpenAIChat) {
                     Text("OpenAI")
                         .frame(minWidth: 200, alignment: .leading)
@@ -18,7 +20,7 @@ struct SettingsMenu: View {
                 Divider()
             }
 
-            if !apiKeysProviderViewModel.anthropicKey.isEmpty {
+            if !apiKeysProviderViewModel.anthropicKey.isEmpty && featureFlags.enableAnthropicChat {
                 Button(action: onAnthropicChat) {
                     Text("Anthropic")
                         .frame(minWidth: 200, alignment: .leading)

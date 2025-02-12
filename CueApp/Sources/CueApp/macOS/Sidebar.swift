@@ -25,6 +25,7 @@ struct SidebarAssistantActions: AssistantActions {
 
 struct Sidebar: View {
     @Dependency(\.authRepository) var authRepository
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
@@ -33,6 +34,7 @@ struct Sidebar: View {
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
     private let onOpenHome: () -> Void
+    private let onOpenCueChat: () -> Void
 
     private var showDeleteAlert: Binding<Bool> {
         Binding(
@@ -41,47 +43,28 @@ struct Sidebar: View {
         )
     }
 
-    init(assistantsViewModel: AssistantsViewModel, onOpenHome: @escaping () -> Void, selectedAssistant: Binding<Assistant?>) {
+    init(
+        assistantsViewModel: 
+        AssistantsViewModel, onOpenHome: @escaping () -> Void, 
+        onOpenCueChat: @escaping () -> Void, 
+        selectedAssistant: Binding<Assistant?>
+    ) {
         self.assistantsViewModel = assistantsViewModel
         self.onOpenHome = onOpenHome
+        self.onOpenCueChat = onOpenCueChat
         self._selectedAssistant = selectedAssistant
     }
 
     var body: some View {
         VStack {
-            Button(action: onOpenHome) {
-                Text("Cue")
-                    .font(.title)
-            }
-            .buttonStyle(.plain)
-            ScrollView {
-                LazyVStack {
-                    ForEach(assistantsViewModel.assistants) { assistant in
-                        AssistantRow(
-                            assistant: assistant,
-                            status: assistantsViewModel.getClientStatus(for: assistant),
-                            actions: SidebarAssistantActions(
-                                assistantsViewModel: assistantsViewModel,
-                                setAssistantToDelete: { assistant in
-                                    assistantToDelete = assistant
-                                },
-                                onDetailsPressed: { _ in
-                                    assistantForDetails = assistant
-                                }
-                            )
-                        )
-                        .padding(.horizontal, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
-                        )
-                        .padding(.horizontal, 8)
-                        .onTapGesture { selectedAssistant = assistant }
-                        .tag(assistant)
-                    }
-                    .scrollContentBackground(.hidden)
+            List {
+                if featureFlags.enableCueChat {
+                    cueRow
+                    Divider()
                 }
+                emailRow
             }
+            contentList
             Spacer()
             SettingsMenu(
                 currentUser: authRepository.currentUser,
@@ -101,11 +84,6 @@ struct Sidebar: View {
         )
         #endif
         .navigationTitle("Cue")
-        .toolbar {
-            ToolbarItem {
-                NewAssistantButton(action: { isShowingNewAssistantSheet = true })
-            }
-        }
         .alert("Delete Assistant", isPresented: showDeleteAlert, presenting: assistantToDelete) { assistant in
             Button("Delete", role: .destructive) {
                 Task {
@@ -136,6 +114,37 @@ struct Sidebar: View {
             }
         }
     }
+    
+    private var contentList: some View {
+        ScrollView {
+            LazyVStack {
+                ForEach(assistantsViewModel.assistants) { assistant in
+                    AssistantRow(
+                        assistant: assistant,
+                        status: assistantsViewModel.getClientStatus(for: assistant),
+                        actions: SidebarAssistantActions(
+                            assistantsViewModel: assistantsViewModel,
+                            setAssistantToDelete: { assistant in
+                                assistantToDelete = assistant
+                            },
+                            onDetailsPressed: { _ in
+                                assistantForDetails = assistant
+                            }
+                        )
+                    )
+                    .padding(.horizontal, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
+                    )
+                    .padding(.horizontal, 8)
+                    .onTapGesture { selectedAssistant = assistant }
+                    .tag(assistant)
+                }
+                .scrollContentBackground(.hidden)
+            }
+        }
+    }
 
     private func handleOpenAIChat() {
         #if os(macOS)
@@ -153,5 +162,21 @@ struct Sidebar: View {
         #if os(macOS)
         openWindow(id: "settings-window")
         #endif
+    }
+    
+    private var cueRow: some View {
+        SidebarRowButton(
+            title: "Cue",
+            icon: .custom("~"),
+            action: onOpenCueChat
+        )
+    }
+
+    private var emailRow: some View {
+        SidebarRowButton(
+            title: "Email",
+            icon: .system("envelope"),
+            action: onOpenHome
+        )
     }
 }

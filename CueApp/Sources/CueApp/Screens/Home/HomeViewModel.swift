@@ -29,26 +29,11 @@ final class HomeViewModel: ObservableObject {
             timeBasedGreeting = "Good evening"
         }
 
-        if let displayName = extractDisplayName(from: user) {
+        if let displayName = user.name {
             greeting = "\(timeBasedGreeting), \(displayName)"
         } else {
             greeting = timeBasedGreeting
         }
-    }
-
-    private func extractDisplayName(from user: User) -> String? {
-        if let fullName = user.name,
-           let firstName = fullName.split(separator: " ").first {
-            return String(firstName)
-        }
-
-        // If no name is available, process the email
-        let emailParts = user.email.split(separator: "@")
-        if let username = emailParts.first, username.count >= 2 {
-            return String(username.prefix(2).uppercased())
-        }
-
-        return nil
     }
 
     func navigateToDestination(_ destination: HomeDestination) {

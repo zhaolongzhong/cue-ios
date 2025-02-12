@@ -21,7 +21,7 @@ struct iOSApp: App {
             AuthenticatedView()
                 .environmentObject(dependencies)
                 .environmentObject(appCoordinator)
-                .tint(.primary)
+                .tint(.secondary)
         }
     }
 }

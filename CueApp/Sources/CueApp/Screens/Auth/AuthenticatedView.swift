@@ -32,7 +32,6 @@ private struct AuthenticatedContent: View {
                 HomeView()
                 #else
                 MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
-                    .frame(minWidth: 600, minHeight: 220)
                 #endif
             }
         }

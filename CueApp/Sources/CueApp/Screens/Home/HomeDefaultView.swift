@@ -12,22 +12,10 @@ struct HomeDefaultView: View {
 
     var body: some View {
         ZStack {
-            backgroundView
+            BackgroundContainer()
             contentView
         }
         .onAppear(perform: startAnimations)
-    }
-
-    private var backgroundView: some View {
-        Group {
-            #if os(macOS)
-            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-            #endif
-            AppTheme.Colors.background
-                .opacity(0.5)
-                .ignoresSafeArea()
-        }
     }
 
     private var contentView: some View {

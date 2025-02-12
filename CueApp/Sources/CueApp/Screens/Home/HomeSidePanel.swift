@@ -6,16 +6,15 @@ final class SidePanelState: ObservableObject {
     @Published var isShowing = false
     @Published var isShowingNewAssistant = false
 
-    private let selectionManager: AssistantSelectionManager
+    private let navigationManager: HomeNavigationManager
 
-    // Forward the selectedAssistant from the manager
     var selectedAssistant: Assistant? {
-        get { selectionManager.selectedAssistant }
-        set { selectionManager.selectAssistant(newValue) }
+        get { navigationManager.selectedAssistant }
+        set { navigationManager.selectDetailContent(.assistant(newValue)) }
     }
 
-    init(selectionManager: AssistantSelectionManager = AssistantSelectionManager()) {
-        self.selectionManager = selectionManager
+    init(navigationManager: HomeNavigationManager = HomeNavigationManager()) {
+        self.navigationManager = navigationManager
     }
 
     func togglePanel() {
@@ -34,13 +33,8 @@ final class SidePanelState: ObservableObject {
         isShowing = true
     }
 
-    // Forward selection methods to the manager
     func selectAssistant(_ assistant: Assistant?) {
-        selectionManager.selectAssistant(assistant)
-    }
-
-    func restoreSelection(from assistants: [Assistant]) {
-        selectionManager.restoreSelection(from: assistants)
+        navigationManager.selectDetailContent(.assistant(assistant))
     }
 }
 
@@ -48,10 +42,10 @@ struct HomeSidePanel: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
     @Dependency(\.featureFlagsViewModel) private var featureFlags
-    @ObservedObject var sidePanelState: SidePanelState
-    @ObservedObject var assistantsViewModel: AssistantsViewModel
-    @Binding var navigationPath: NavigationPath
-    let onSelectAssistant: (Assistant?) -> Void
+    @ObservedObject private var sidePanelState: SidePanelState
+    @ObservedObject private var assistantsViewModel: AssistantsViewModel
+    @Binding private var navigationPath: NavigationPath
+    private let onSelectAssistant: (Assistant?) -> Void
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
 
@@ -76,48 +70,26 @@ struct HomeSidePanel: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        assistantsSection
-                        if featureFlags.enableThirdPartyProvider {
-                            if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
-                                providersSection
-                            }
+            contentList
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Button {
+                            onSelectAssistant(nil)
+                        } label: {
+                            Text("Cue")
+                                .font(.title2)
                         }
                     }
                 }
-
-                settingsRow
-            }
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Button {
-                        onSelectAssistant(nil)
-                    } label: {
-                        Text("Cue")
-                            .font(.title2)
+                #endif
+                .background(AppTheme.Colors.secondaryBackground)
+                .onAppear {
+                    Task {
+                        await assistantsViewModel.fetchAssistants()
                     }
                 }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        sidePanelState.isShowingNewAssistant = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
-            #endif
-            .padding(.horizontal, 16)
-            .background(AppTheme.Colors.secondaryBackground)
-            .onAppear {
-                Task {
-                    await assistantsViewModel.fetchAssistants()
-                }
-            }
         }
         .sheet(item: $assistantForDetails) { assistant in
             AssistantDetailView(
@@ -145,12 +117,57 @@ struct HomeSidePanel: View {
         }
     }
 
+    private var contentList: some View {
+        VStack(spacing: 16) {
+            ScrollView {
+                LazyVStack {
+                    if featureFlags.enableCueChat {
+                        cueRow
+                        Divider()
+                    }
+                    emailRow
+                    if featureFlags.enableThirdPartyProvider {
+                        if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
+                            providersSection
+                        }
+                    }
+                    if featureFlags.enableAssistants {
+                        Divider()
+                        assistantsRow
+                        Divider().padding(.vertical, 8)
+                        ForEach(assistantsViewModel.assistants) { assistant in
+                            AssistantRow(
+                                assistant: assistant,
+                                status: assistantsViewModel.getClientStatus(for: assistant),
+                                actions: SidebarAssistantActions(
+                                    assistantsViewModel: assistantsViewModel,
+                                    setAssistantToDelete: { assistant in
+                                        assistantToDelete = assistant
+                                    },
+                                    onDetailsPressed: { _ in
+                                        assistantForDetails = assistant
+                                    }
+                                )
+                            )
+                            .onTapGesture {
+                                sidePanelState.selectAssistant(assistant)
+                                onSelectAssistant(assistant)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+            }
+            settingsRow
+        }
+    }
+
     private var providersSection: some View {
         Section(header: providersHeader) {
-            if !apiKeyProviderViewModel.openAIKey.isEmpty {
+            if !apiKeyProviderViewModel.openAIKey.isEmpty && featureFlags.enableOpenAIChat {
                 openAIRow
             }
-            if !apiKeyProviderViewModel.anthropicKey.isEmpty {
+            if !apiKeyProviderViewModel.anthropicKey.isEmpty && featureFlags.enableAnthropicChat {
                 anthropicRow
             }
         }
@@ -169,43 +186,34 @@ struct HomeSidePanel: View {
         }
     }
 
-    private var assistantsSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Assistants")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-            Divider()
-            ForEach(assistantsViewModel.assistants) { assistant in
-                AssistantRow(
-                    assistant: assistant,
-                    status: assistantsViewModel.getClientStatus(for: assistant),
-                    actions: SidebarAssistantActions(
-                        assistantsViewModel: assistantsViewModel,
-                        setAssistantToDelete: { assistant in
-                            assistantToDelete = assistant
-                        },
-                        onDetailsPressed: { _ in
-                            assistantForDetails = assistant
-                        }
-                    )
-                )
-                .onTapGesture {
-                    sidePanelState.selectAssistant(assistant)
-                    onSelectAssistant(assistant)
-                }
+    private var cueRow: some View {
+        SidebarRowButton(
+            title: "Cue",
+            icon: .custom("~"),
+            action: {
+                sidePanelState.togglePanel()
+                navigationPath.append(HomeDestination.cue)
             }
-        }
+        )
     }
 
-    private var cueRow: some View {
-        IconRow(
-            title: "Cue",
+    private var emailRow: some View {
+        SidebarRowButton(
+            title: "Email",
+            icon: .system("envelope"),
             action: {
-                navigationPath.append(HomeDestination.cue)
-                sidePanelState.hidePanel()
-            },
-            iconName: ""
+                sidePanelState.togglePanel()
+                navigationPath.append(HomeDestination.email)
+            }
+        )
+    }
+
+    private var assistantsRow: some View {
+        SidebarRowButton(
+            title: "Assistants",
+            icon: .system("sparkles"),
+            trailingIcon: .system("plus"),
+            trailingAction: { sidePanelState.isShowingNewAssistant = true }
         )
     }
 

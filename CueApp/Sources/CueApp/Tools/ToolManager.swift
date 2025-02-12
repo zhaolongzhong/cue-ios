@@ -147,6 +147,37 @@ class ToolManager {
 
         throw ToolError.toolNotFound(name)
     }
+    
+    func callTools(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
+        var results: [OpenAI.ToolMessage] = []
+
+        for toolCall in toolCalls {
+            if let data = toolCall.function.arguments.data(using: .utf8),
+               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                do {
+                    let result = try await self.callTool(
+                        name: toolCall.function.name,
+                        arguments: args
+                    )
+                    results.append(OpenAI.ToolMessage(
+                        role: "tool",
+                        content: result,
+                        toolCallId: toolCall.id
+                    ))
+                } catch {
+                    let toolError = ChatError.toolError(error.localizedDescription)
+                    ErrorLogger.log(toolError)
+                    results.append(OpenAI.ToolMessage(
+                        role: "tool",
+                        content: "Error: \(error.localizedDescription)",
+                        toolCallId: toolCall.id
+                    ))
+                }
+            }
+        }
+
+        return results
+    }
 }
 
 #if os(macOS)

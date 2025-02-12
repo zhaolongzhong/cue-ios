@@ -125,6 +125,11 @@ public final class AppStateViewModel: ObservableObject {
             state.error = nil
         }
         await delegate?.onLogout()
+
+        UserDefaultsKeys.allWindowKeys.forEach { key in
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        GmailService.clearTokens()
     }
 
     private func updateState(_ mutation: (inout AppState) -> Void) {

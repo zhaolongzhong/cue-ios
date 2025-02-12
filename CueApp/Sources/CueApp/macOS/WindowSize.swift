@@ -4,6 +4,17 @@ public enum WindowSize {
     public static let defaultWidth: CGFloat = 600
     public static let defaultHeight: CGFloat = 400
 
+    public static let miniWidth: CGFloat = 600
+    public static let miniHeight: CGFloat = 220
+    public static let sidebarMiniWidth: CGFloat = 200
+    public static let sidebarIdealWidth: CGFloat = 250
+    public static let sidebarMaxWidth: CGFloat = 400
+
+    public struct small {
+        public static let width: CGFloat = 720
+        public static let height: CGFloat = 500
+    }
+
     public struct Auth {
         public static let width: CGFloat = 340
         public static let height: CGFloat = 480

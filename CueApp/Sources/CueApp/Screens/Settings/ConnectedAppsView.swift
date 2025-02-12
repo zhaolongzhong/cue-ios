@@ -86,119 +86,27 @@ struct ConnectedAppsView: View {
     }
 
     private func checkGmailAccess() {
-        if let currentUser = GIDSignIn.sharedInstance.currentUser,
-           let scopes = currentUser.grantedScopes,
-           scopes.contains(gmailReadScope) &&
-           scopes.contains(gmailSendScope) &&
-           scopes.contains(gmailModifyScope) {
-            gmailGranted = true
-        } else {
-            gmailGranted = false
-        }
+        gmailGranted = GmailAuthHelper.shared.checkGmailAccessScopes()
     }
 
     private func removeGmailAccess() {
         isLoading = true
-        GIDSignIn.sharedInstance.signOut()
+        GmailAuthHelper.shared.signOut()
         isLoading = false
         checkGmailAccess()
     }
 
-    #if os(iOS)
+    @MainActor
     private func requestGmailAccess() {
-        // Get the current window scene and root view controller more reliably
-        guard let windowScene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let rootViewController = windowScene.keyWindow?.rootViewController else {
-            AppLog.log.error("Could not get rootViewController on iOS")
-            return
-        }
-
         isLoading = true
-
-        // Check if user is already signed in
-        if GIDSignIn.sharedInstance.currentUser == nil {
-            // If no user is signed in, start with sign in
-            GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { signInResult, error in
-                if let error = error {
-                    isLoading = false
-                    AppLog.log.error("Error signing in: \(error.localizedDescription)")
-                    return
-                }
-
-                // After successful sign in, request additional scopes
-                signInResult?.user.addScopes(
-                    [gmailReadScope, gmailSendScope, gmailModifyScope],
-                    presenting: rootViewController
-                ) { _, scopeError in
-                    isLoading = false
-                    if let scopeError = scopeError {
-                        AppLog.log.error("Error requesting Gmail scope: \(scopeError.localizedDescription)")
-                        return
-                    }
-                    checkGmailAccess()
-                }
-            }
-        } else {
-            // User is already signed in, just request additional scopes
-            GIDSignIn.sharedInstance.currentUser?.addScopes(
-                [gmailReadScope, gmailSendScope, gmailModifyScope],
-                presenting: rootViewController
-            ) { _, error in
+        Task {
+            do {
+                _ = try await GmailAuthHelper.shared.requestGmailAccess()
                 isLoading = false
-                if let error = error {
-                    AppLog.log.error("Error requesting Gmail scope: \(error.localizedDescription)")
-                    return
-                }
                 checkGmailAccess()
+            } catch {
+                isLoading = false
             }
         }
     }
-    #elseif os(macOS)
-    private func requestGmailAccess() {
-        guard let window = NSApplication.shared.windows.first else {
-            AppLog.log.error("Could not get window on macOS")
-            return
-        }
-
-        isLoading = true
-
-        // If no user is signed in, start with sign in
-        if GIDSignIn.sharedInstance.currentUser == nil {
-            GIDSignIn.sharedInstance.signIn(withPresenting: window) { signInResult, error in
-                if let error = error {
-                    isLoading = false
-                    AppLog.log.error("Error signing in: \(error.localizedDescription)")
-                    return
-                }
-
-                // After successful sign in, request additional scopes
-                signInResult?.user.addScopes(
-                    [gmailReadScope, gmailSendScope, gmailModifyScope],
-                    presenting: window
-                ) { _, scopeError in
-                    isLoading = false
-                    if let scopeError = scopeError {
-                        AppLog.log.error("Error requesting Gmail scope: \(scopeError.localizedDescription)")
-                        return
-                    }
-                    checkGmailAccess()
-                }
-            }
-        } else {
-            // User is already signed in, just request additional scopes
-            GIDSignIn.sharedInstance.currentUser?.addScopes(
-                [gmailReadScope, gmailSendScope, gmailModifyScope],
-                presenting: window
-            ) { _, error in
-                isLoading = false
-                if let error = error {
-                    AppLog.log.error("Error requesting Gmail scope: \(error.localizedDescription)")
-                    return
-                }
-                checkGmailAccess()
-            }
-        }
-    }
-    #endif
 }

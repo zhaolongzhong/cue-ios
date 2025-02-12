@@ -84,6 +84,12 @@ final class LoginViewModel: ObservableObject {
             familyName: familyName
         ) {
         case .success:
+            do {
+                // Store Google access token
+                _ = try await GmailService.getAccessToken()
+            } catch {
+                AppLog.log.error("Access token fetch failed: \(error)")
+            }
             error = nil
         case .failure(.networkError):
             error = "Network error occurred. Please try again."

@@ -81,7 +81,7 @@ struct CommonWindowGroup<Content: View>: Scene {
         }
         .windowToolbarStyle(.unified(showsTitle: true))
         .windowStyle(.titleBar)
-        .defaultSize(width: 600, height: 400)
+        .defaultSize(width: WindowSize.small.width, height: WindowSize.small.height)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
     }
