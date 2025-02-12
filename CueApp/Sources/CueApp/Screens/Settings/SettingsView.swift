@@ -100,7 +100,7 @@ private struct SettingsList: View {
         List {
             Section {
                 if let user = viewModel.currentUser {
-                    UserInfoView(email: user.email)
+                    UserInfoView(viewModel: viewModel, email: user.email)
                 }
             } header: {
                 SettingsHeader(title: "Account")
@@ -225,7 +225,7 @@ private struct SettingsList: View {
                 Section {
                     GroupBox {
                         if let user = viewModel.currentUser {
-                            UserInfoView(email: user.email)
+                            UserInfoView(viewModel: viewModel, email: user.email)
                                 .padding(.horizontal, 6)
                         }
                     }
@@ -355,15 +355,41 @@ private struct SettingsHeader: View {
 }
 
 private struct UserInfoView: View {
+    @ObservedObject var viewModel: SettingsViewModel
     let email: String
-
+    
     var body: some View {
+        VStack(spacing: 0) {
+            Button(action: {
+                viewModel.showingNameEdit = true
+            }) {
+                SettingsRow(
+                    systemName: "person",
+                    title: "Name",
+                    value: viewModel.currentUser?.displayName ?? "",
+                    showChevron: true
+                )
+            }
+            .buttonStyle(.plain)
+            
             SettingsRow(
                 systemName: "envelope",
                 title: "Email",
                 value: email,
                 showChevron: false
             )
+        }
+        .inputAlert(
+            title: "Update Name",
+            message: "Enter your name",
+            text: $viewModel.newName,
+            isPresented: $viewModel.showingNameEdit,
+            onSave: { _ in
+                Task {
+                    await viewModel.updateName()
+                }
+            }
+        )
     }
 }
 
