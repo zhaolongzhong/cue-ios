@@ -7,7 +7,8 @@ extension FeatureFlagsViewModel {
         case enableCueChat
         case enableOpenAIChat
         case enableAnthropicChat
-        case enableMediaOption
+        case enableGeminiChat
+        case enableMediaOptions
         case enableAssistants
 
         var key: String { rawValue }
@@ -41,8 +42,11 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
     @Published var enableAnthropicChat: Bool {
         didSet { UserDefaults.standard.set(enableAnthropicChat, forKey: Keys.enableAnthropicChat.key) }
     }
-    @Published var enableMediaOption: Bool {
-        didSet { UserDefaults.standard.set(enableMediaOption, forKey: Keys.enableMediaOption.key) }
+    @Published var enableGeminiChat: Bool {
+        didSet { UserDefaults.standard.set(enableGeminiChat, forKey: Keys.enableGeminiChat.key) }
+    }
+    @Published var enableMediaOptions: Bool {
+        didSet { UserDefaults.standard.set(enableMediaOptions, forKey: Keys.enableMediaOptions.key) }
     }
     @Published var enableAssistants: Bool {
         didSet { UserDefaults.standard.set(enableAssistants, forKey: Keys.enableAssistants.key) }
@@ -53,7 +57,8 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
         enableCueChat = UserDefaults.standard.bool(forKey: Keys.enableCueChat.key)
         enableOpenAIChat = UserDefaults.standard.bool(forKey: Keys.enableOpenAIChat.key)
         enableAnthropicChat = UserDefaults.standard.bool(forKey: Keys.enableAnthropicChat.key)
-        enableMediaOption = UserDefaults.standard.bool(forKey: Keys.enableMediaOption.key)
+        enableGeminiChat = UserDefaults.standard.bool(forKey: Keys.enableGeminiChat.key)
+        enableMediaOptions = UserDefaults.standard.bool(forKey: Keys.enableMediaOptions.key)
         enableAssistants = UserDefaults.standard.bool(forKey: Keys.enableAssistants.key)
     }
 }

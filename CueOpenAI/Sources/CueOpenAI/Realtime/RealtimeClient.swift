@@ -173,6 +173,7 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
         audioManager?.stopAudioEngine()
         self.connection?.close()
         self.connection = nil
+        state = .idle
     }
     
     @MainActor public func pauseChat() {

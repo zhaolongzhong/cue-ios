@@ -211,21 +211,4 @@ public struct RealtimeChatScreen: View {
             return false
         }
     }
-
-    // Platform-specific sizes
-    private var platformButtonSize: CGFloat {
-        #if os(iOS)
-        44
-        #else
-        36
-        #endif
-    }
-
-    private var platformButtonFontSize: CGFloat {
-        #if os(iOS)
-        16
-        #else
-        14
-        #endif
-    }
 }

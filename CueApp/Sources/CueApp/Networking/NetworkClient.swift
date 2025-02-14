@@ -71,8 +71,6 @@ actor NetworkClient: NetworkClientProtocol {
             throw NetworkError.invalidResponse
         }
 
-        logger.debug("HTTP status code: \(httpResponse.statusCode)")
-
         switch httpResponse.statusCode {
         case 200...299:
             #if DEBUG
@@ -81,7 +79,6 @@ actor NetworkClient: NetworkClientProtocol {
             }
             #endif
             do {
-                logger.debug("Attempting default decoding")
                 return try decoder.decode(T.self, from: data)
             } catch {
                 logger.debug("Default decoding failed: \(error)")

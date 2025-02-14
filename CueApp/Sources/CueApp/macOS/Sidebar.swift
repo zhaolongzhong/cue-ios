@@ -44,9 +44,9 @@ struct Sidebar: View {
     }
 
     init(
-        assistantsViewModel: 
-        AssistantsViewModel, onOpenHome: @escaping () -> Void, 
-        onOpenCueChat: @escaping () -> Void, 
+        assistantsViewModel: AssistantsViewModel,
+        onOpenHome: @escaping () -> Void,
+        onOpenCueChat: @escaping () -> Void,
         selectedAssistant: Binding<Assistant?>
     ) {
         self.assistantsViewModel = assistantsViewModel
@@ -57,19 +57,21 @@ struct Sidebar: View {
 
     var body: some View {
         VStack {
-            List {
+            Group {
                 if featureFlags.enableCueChat {
                     cueRow
                     Divider()
                 }
                 emailRow
             }
+            .padding(.horizontal, 16)
             contentList
             Spacer()
             SettingsMenu(
                 currentUser: authRepository.currentUser,
                 onOpenAIChat: handleOpenAIChat,
                 onAnthropicChat: handleAnthropicChat,
+                onOpenGemini: handleGeminiChat,
                 onOpenSettings: handleOpenSettings
             )
             .padding(.all, 4)
@@ -114,10 +116,12 @@ struct Sidebar: View {
             }
         }
     }
-    
+
     private var contentList: some View {
         ScrollView {
             LazyVStack {
+                assistantsRow
+                    .padding(.horizontal, 16)
                 ForEach(assistantsViewModel.assistants) { assistant in
                     AssistantRow(
                         assistant: assistant,
@@ -158,12 +162,18 @@ struct Sidebar: View {
         #endif
     }
 
+    private func handleGeminiChat() {
+        #if os(macOS)
+        openWindow(id: "gemini-chat-window")
+        #endif
+    }
+
     private func handleOpenSettings() {
         #if os(macOS)
         openWindow(id: "settings-window")
         #endif
     }
-    
+
     private var cueRow: some View {
         SidebarRowButton(
             title: "Cue",
@@ -177,6 +187,14 @@ struct Sidebar: View {
             title: "Email",
             icon: .system("envelope"),
             action: onOpenHome
+        )
+    }
+    
+    private var assistantsRow: some View {
+        SectionHeader(
+            title: "Assistants",
+            trailingIcon: .system("plus"),
+            trailingAction: { isShowingNewAssistantSheet = true }
         )
     }
 }

@@ -4,7 +4,7 @@ enum GmailServiceError: LocalizedError {
     case authenticationError
     case permissionDenied
     case networkError(Error)
-    case invalidResponse
+    case invalidResponse(String)
     case tokenStorageError
     case tokenRefreshError
     case unknown(Error)
@@ -17,8 +17,8 @@ enum GmailServiceError: LocalizedError {
             return "Gmail access denied"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
-        case .invalidResponse:
-            return "Invalid response from Gmail"
+        case .invalidResponse(let error):
+            return "Invalid response from Gmail: \(error)"
         case .tokenStorageError:
             return "Error storing Gmail access token"
         case .tokenRefreshError:

@@ -17,7 +17,8 @@ struct FeatureFlagsView: View {
                 Toggle("Enable Cue Chat", isOn: $featureFlags.enableCueChat)
                 Toggle("Enable OpenAI Chat", isOn: $featureFlags.enableOpenAIChat)
                 Toggle("Enable Anthropic Chat", isOn: $featureFlags.enableAnthropicChat)
-                Toggle("Enable Media Option", isOn: $featureFlags.enableMediaOption)
+                Toggle("Enable Gemini Chat", isOn: $featureFlags.enableGeminiChat)
+                Toggle("Enable Media Option", isOn: $featureFlags.enableMediaOptions)
                 Toggle("Enable Assistants", isOn: $featureFlags.enableAssistants)
             }
             .padding()

@@ -26,7 +26,9 @@ final class AnthropicChatViewModel: ObservableObject {
         self.anthropic = Anthropic(apiKey: apiKey)
         self.toolManager = ToolManager()
         self.availableTools = toolManager.getTools()
+        #if os(macOS)
         setupToolsSubscription()
+        #endif
     }
 
     private func updateTools() {
@@ -44,7 +46,9 @@ final class AnthropicChatViewModel: ObservableObject {
     }
 
     func startServer() async {
+        #if os(macOS)
         await self.toolManager.startMcpServer()
+        #endif
     }
 
     func sendMessage() async {

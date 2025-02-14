@@ -220,7 +220,7 @@ extension MessageModel {
     }
 
     func isToolMessage() -> Bool {
-        if let _ = self.metadata?.payload?.toToolResponse() {
+        if self.metadata?.payload?.toToolResponse() != nil {
             return true
         }
         switch self.content.content {

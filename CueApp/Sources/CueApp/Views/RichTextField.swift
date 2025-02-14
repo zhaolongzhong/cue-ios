@@ -62,7 +62,7 @@ struct RichTextField: View {
             }
 
             HStack {
-                if featureFlags.enableMediaOption {
+                if featureFlags.enableMediaOptions {
                     Menu {
                         Button(action: {
                             // Handle attach photos
@@ -152,7 +152,6 @@ struct RichTextField: View {
                 }
             }
         )
-        .padding(.vertical, 8)
         .onChange(of: isFocused) { _, newValue in
             if !newValue {
                 checkAndUpdateTextFieldVisibility()

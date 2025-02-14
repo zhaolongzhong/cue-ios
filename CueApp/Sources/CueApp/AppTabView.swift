@@ -63,7 +63,7 @@ public struct AppTabView: View {
     }
 
     private func initialize(userId: String?) {
-        guard let _ = userId else {
+        guard userId != nil else {
             return
         }
         Task {

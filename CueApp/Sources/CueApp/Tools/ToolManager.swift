@@ -7,9 +7,9 @@ import CueMCP
 
 @MainActor
 class ToolManager {
-    private var localTools: [LocalTool] = []
+    var localTools: [LocalTool] = []
     #if os(macOS)
-    private let mcpManager: MCPServerManager?
+    let mcpManager: MCPServerManager?
     #endif
     private let mcpToolsSubject = CurrentValueSubject<[MCPTool], Never>([])
     var mcpToolsPublisher: AnyPublisher<[MCPTool], Never> {
@@ -101,7 +101,7 @@ class ToolManager {
         }
 
         #if os(macOS)
-        if let mcpTools = mcpManager?.getToolsJSON() {
+        if let mcpTools = mcpManager?.getOpenAITools() {
             tools.append(contentsOf: mcpTools)
         }
         #endif
@@ -135,6 +135,7 @@ class ToolManager {
     func callTool(name: String, arguments: [String: Any]) async throws -> String {
         let safeArgs = ToolArguments(arguments)
         if let tool = localTools.first(where: { $0.name == name }) {
+            AppLog.log.debug("callTool, local tool: \(name), args: \(String(describing: safeArgs))")
             return try await tool.call(safeArgs)
         }
 
@@ -147,7 +148,7 @@ class ToolManager {
 
         throw ToolError.toolNotFound(name)
     }
-    
+
     func callTools(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
         var results: [OpenAI.ToolMessage] = []
 
@@ -182,7 +183,7 @@ class ToolManager {
 
 #if os(macOS)
 extension MCPServerManager {
-    func getToolsJSON() -> [Tool] {
+    func getOpenAITools() -> [Tool] {
         return serverTools.flatMap { (_, tools) in
             tools.map { tool in
                 return tool.toOpenAITool()

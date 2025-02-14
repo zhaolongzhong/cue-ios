@@ -23,7 +23,7 @@ public final class RealtimeChatViewModel: ObservableObject {
     @Published private(set) var chatError: ChatError?
     @Published private(set) var state: VoiceChatState = .idle {
         didSet {
-            logger.debug("OpenAIVoiceChatViewModel Voice state change to \(self.state.description)")
+            logger.debug("Voice state change to \(self.state.description)")
             switch state {
             case .error(let message):
                 chatError = .sessionError(message)

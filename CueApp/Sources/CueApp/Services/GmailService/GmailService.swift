@@ -8,6 +8,8 @@ struct GmailService {
     static let refreshTokenKey = "gmail_refresh_token"
     static let tokenExpirationKey = "gmail_token_expiration"
 
+    static let logger = Logger(subsystem: "GmailService", category: "GmailTool")
+
     private static var clientId: String {
         guard let clientId = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String else {
             fatalError("GIDClientID not found in Info.plist")
@@ -61,7 +63,7 @@ struct GmailService {
             }
 
             guard let url = URL(string: "https://oauth2.googleapis.com/token") else {
-                throw GmailServiceError.invalidResponse
+                throw GmailServiceError.authenticationError
             }
 
             var request = URLRequest(url: url)
@@ -85,7 +87,7 @@ struct GmailService {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw GmailServiceError.invalidResponse
+                throw GmailServiceError.invalidResponse("Not an HTTPURLResponse")
             }
 
             if httpResponse.statusCode != 200 {
@@ -118,10 +120,11 @@ struct GmailService {
     static func readInbox(maxCount: Int = 20) async throws -> [CleanGmailMessage] {
         let request = try await buildRequest(for: GmailEndpoint.listInbox(maxResults: maxCount))
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200,
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200,
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let messages = json["messages"] as? [[String: Any]] else {
-            throw GmailServiceError.invalidResponse
+            logger.error("Invalid response from Gmail API, status code: \(String(describing: (response as? HTTPURLResponse)?.statusCode)). json: \(String(data: data, encoding: .utf8) ?? "No JSON")")
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API, status code: \(String(describing: (response as? HTTPURLResponse)?.statusCode))")
         }
 
         // Fetch full details concurrently for each message to get snippets
@@ -152,7 +155,7 @@ struct GmailService {
         let request = try await buildRequest(for: GmailEndpoint.getMessageDetails(id: messageId))
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw GmailServiceError.invalidResponse
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API, status code: \(String(describing: (response as? HTTPURLResponse)?.statusCode))")
         }
         return try JSONDecoder().decode(GmailMessage.self, from: data)
     }
@@ -164,11 +167,11 @@ struct GmailService {
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
             let responseString = String(data: data, encoding: .utf8) ?? "No response body"
             AppLog.log.error("Error sending email. Status code: \(httpResponse.statusCode), response: \(responseString)")
-            throw GmailServiceError.invalidResponse
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API, status code: \(String(describing: (response as? HTTPURLResponse)?.statusCode))")
         }
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = json["id"] as? String else {
-            throw GmailServiceError.invalidResponse
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API.")
         }
         return "Email sent successfully. Message ID: \(id)"
     }
@@ -179,7 +182,7 @@ struct GmailService {
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let labels = json["labels"] as? [[String: Any]] else {
-            throw GmailServiceError.invalidResponse
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API.")
         }
 
         let labelList = labels.compactMap { label -> String? in
@@ -199,9 +202,8 @@ struct GmailService {
         let request = try await buildRequest(for: GmailEndpoint.modifyMessage(id: messageId, addLabels: addLabelIds, removeLabels: removeLabelIds))
         let (_, response) = try await URLSession.shared.data(for: request)
 
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-            AppLog.log.error("HTTP Status code: \(httpResponse.statusCode)")
-            throw GmailServiceError.invalidResponse
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API, status code: \(String(describing: (response as? HTTPURLResponse)?.statusCode)). messageId: \(messageId), addLabelIds: \(addLabelIds), removeLabelIds: \(removeLabelIds).")
         }
 
         return "Email \(messageId) modified successfully."
@@ -212,7 +214,7 @@ struct GmailService {
                                   removeLabelIds: [String] = []) async throws -> String {
         let token = try await getAccessToken()
         guard let url = URL(string: "https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify") else {
-            throw GmailServiceError.invalidResponse
+            throw GmailServiceError.invalidResponse("Invalid URL")
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -227,10 +229,10 @@ struct GmailService {
         request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
 
         let (_, response) = try await URLSession.shared.data(for: request)
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-            AppLog.log.error("HTTP Status code: \(httpResponse.statusCode)")
-            throw GmailServiceError.invalidResponse
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw GmailServiceError.invalidResponse("Invalid response from Gmail API, status code: \(String(describing: (response as? HTTPURLResponse)?.statusCode)). messageIds: \(messageIds), addLabelIds: \(addLabelIds), removeLabelIds: \(removeLabelIds).")
         }
+
         return "Batch modification successful for emails: \(messageIds.joined(separator: ", "))"
     }
 }

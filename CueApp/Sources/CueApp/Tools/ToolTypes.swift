@@ -3,7 +3,7 @@ import CueOpenAI
 
 // Base protocol for tool parameters
 protocol ToolParameters: Sendable {
-    var schema: [String: Property] { get }
+    var schema: [String: OpenAIParametersProperty] { get }
     var required: [String] { get }
 }
 
@@ -16,35 +16,38 @@ protocol LocalTool: Sendable {
 }
 
 struct ToolArguments {
-    private let storage: [String: Any]
+    private let args: [String: Any]
 
     init(_ dictionary: [String: Any]) {
-        self.storage = dictionary
+        self.args = dictionary
     }
 
     func getBool(_ key: String) -> Bool? {
-        storage[key] as? Bool
+        args[key] as? Bool
     }
 
     func getString(_ key: String) -> String? {
-        storage[key] as? String
+        args[key] as? String
     }
 
     func getInt(_ key: String) -> Int? {
-        if let intValue = storage[key] as? Int {
+        if let intValue = args[key] as? Int {
             return intValue
-        } else if let strValue = storage[key] as? String, let intValue = Int(strValue) {
+        } else if let doubleValue = args[key] as? Double {
+            let intValue = Int(doubleValue)
+            return intValue
+        } else if let strValue = args[key] as? String, let intValue = Int(strValue) {
             return intValue
         }
         return nil
     }
 
     func getArray(_ key: String) -> [Any]? {
-        storage[key] as? [Any]
+        args[key] as? [Any]
     }
 
     func toDictionary() -> [String: Any] {
-        storage
+        args
     }
 }
 

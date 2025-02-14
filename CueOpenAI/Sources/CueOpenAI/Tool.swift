@@ -16,6 +16,8 @@ public struct Tool: Codable, Equatable, Sendable {
     }
 }
 
+public typealias OpenAITool = Tool
+
 public struct RealtimeTool: Codable, Equatable, Sendable {
     public let type: String
     public let name: String
@@ -54,6 +56,8 @@ public struct Parameters: Codable, Equatable, Sendable {
         self.required = required
     }
 }
+
+public typealias OpenAIParametersProperty = Property
 
 public struct Property: Codable, Equatable, Sendable {
     public let type: String
