@@ -3,6 +3,8 @@ enum ChatModel: String, CaseIterable {
     case o3Mini = "o3-mini"
     case claude35Sonnet = "claude-3-5-sonnet-20241022"
     case claude35Haiku = "claude-3-5-haiku-20241022"
+    case gemini20Pro = "gemini-2.0-pro-exp-02-05"
+    case gemini20Flash = "gemini-2.0-flash-001"
 
     var id: String {
         return self.rawValue
@@ -14,6 +16,8 @@ enum ChatModel: String, CaseIterable {
         case .o3Mini: return "O3 Mini"
         case .claude35Sonnet: return "Claude 3.5 Sonnet"
         case .claude35Haiku: return "Claude 3.5 Haiku"
+        case .gemini20Pro: return "Gemini 2.0 Pro"
+        case .gemini20Flash: return "Gemini 2.0 Flash"
         }
     }
 }

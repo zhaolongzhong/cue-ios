@@ -41,11 +41,11 @@ struct ConnectedAppsView: View {
                     HStack(spacing: 8) {
                         statusView
                         if gmailGranted {
-                            Button(action: { showingRemoveAlert = true }) {
+                            Button(action: { showingRemoveAlert = true }, label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.secondary)
                                     .imageScale(.medium)
-                            }
+                            })
                             .buttonStyle(.plain)
                             .help("Remove Gmail Access")
                         }

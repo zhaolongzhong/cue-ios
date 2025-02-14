@@ -127,33 +127,15 @@ struct HomeSidePanel: View {
                     }
                     emailRow
                     if featureFlags.enableThirdPartyProvider {
-                        if !apiKeyProviderViewModel.openAIKey.isEmpty || !apiKeyProviderViewModel.anthropicKey.isEmpty {
+                        if !apiKeyProviderViewModel.openAIKey.isEmpty
+                            || !apiKeyProviderViewModel.anthropicKey.isEmpty
+                            || !apiKeyProviderViewModel.geminiKey.isEmpty {
+                            Divider()
                             providersSection
                         }
                     }
                     if featureFlags.enableAssistants {
-                        Divider()
-                        assistantsRow
-                        Divider().padding(.vertical, 8)
-                        ForEach(assistantsViewModel.assistants) { assistant in
-                            AssistantRow(
-                                assistant: assistant,
-                                status: assistantsViewModel.getClientStatus(for: assistant),
-                                actions: SidebarAssistantActions(
-                                    assistantsViewModel: assistantsViewModel,
-                                    setAssistantToDelete: { assistant in
-                                        assistantToDelete = assistant
-                                    },
-                                    onDetailsPressed: { _ in
-                                        assistantForDetails = assistant
-                                    }
-                                )
-                            )
-                            .onTapGesture {
-                                sidePanelState.selectAssistant(assistant)
-                                onSelectAssistant(assistant)
-                            }
-                        }
+                        assistantsSection
                     }
                 }
                 .padding(.horizontal, 8)
@@ -170,6 +152,9 @@ struct HomeSidePanel: View {
             if !apiKeyProviderViewModel.anthropicKey.isEmpty && featureFlags.enableAnthropicChat {
                 anthropicRow
             }
+            if !apiKeyProviderViewModel.geminiKey.isEmpty && featureFlags.enableGeminiChat {
+                geminiRow
+            }
         }
         #if os(iOS)
         .listSectionSpacing(.compact)
@@ -178,12 +163,39 @@ struct HomeSidePanel: View {
 
     private var providersHeader: some View {
         HStack {
-            Text("3rd Party Providers")
+            Text("Third Party Providers")
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundColor(.secondary)
         }
+    }
+
+    private var assistantsSection: some View {
+        Section(header: assistantsRow) {
+            ForEach(assistantsViewModel.assistants) { assistant in
+                AssistantRow(
+                    assistant: assistant,
+                    status: assistantsViewModel.getClientStatus(for: assistant),
+                    actions: SidebarAssistantActions(
+                        assistantsViewModel: assistantsViewModel,
+                        setAssistantToDelete: { assistant in
+                            assistantToDelete = assistant
+                        },
+                        onDetailsPressed: { _ in
+                            assistantForDetails = assistant
+                        }
+                    )
+                )
+                .onTapGesture {
+                    sidePanelState.selectAssistant(assistant)
+                    onSelectAssistant(assistant)
+                }
+            }
+        }
+        #if os(iOS)
+        .listSectionSpacing(.compact)
+        #endif
     }
 
     private var cueRow: some View {
@@ -209,9 +221,8 @@ struct HomeSidePanel: View {
     }
 
     private var assistantsRow: some View {
-        SidebarRowButton(
+        SectionHeader(
             title: "Assistants",
-            icon: .system("sparkles"),
             trailingIcon: .system("plus"),
             trailingAction: { sidePanelState.isShowingNewAssistant = true }
         )
@@ -236,6 +247,18 @@ struct HomeSidePanel: View {
                 sidePanelState.hidePanel()
             },
             iconName: "anthropic"
+        )
+    }
+
+    private var geminiRow: some View {
+        IconRow(
+            title: "Gemini",
+            action: {
+                navigationPath.append(HomeDestination.gemini)
+                sidePanelState.hidePanel()
+            },
+            iconName: "sparkle",
+            isSystemImage: true
         )
     }
 

@@ -13,10 +13,11 @@ let package = Package(
             targets: ["CueApp"])
     ],
     dependencies: [
+        .package(path: "../CueCommon"),
         .package(path: "../CueOpenAI"),
         .package(path: "../CueAnthropic"),
         .package(path: "../CueMCP"),
-        .package(path: "../CueCommon"),
+        .package(path: "../CueGemini"),
         .package(url: "https://github.com/groue/GRDB.swift", from: "6.29.1"),
         .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.4"),
@@ -29,6 +30,7 @@ let package = Package(
                 .product(name: "CueCommon", package: "CueCommon"),
                 .product(name: "CueOpenAI", package: "CueOpenAI"),
                 .product(name: "CueAnthropic", package: "CueAnthropic"),
+                .product(name: "CueGemini", package: "CueGemini"),
                 .product(name: "CueMCP", package: "CueMCP"),
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Dependencies", package: "swift-dependencies"),

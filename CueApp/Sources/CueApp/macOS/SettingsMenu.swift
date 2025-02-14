@@ -7,6 +7,7 @@ struct SettingsMenu: View {
     let currentUser: User?
     let onOpenAIChat: () -> Void
     let onAnthropicChat: () -> Void
+    let onOpenGemini: () -> Void
     let onOpenSettings: () -> Void
 
     var body: some View {
@@ -26,6 +27,14 @@ struct SettingsMenu: View {
                         .frame(minWidth: 200, alignment: .leading)
                 }
 
+                Divider()
+            }
+
+            if !apiKeysProviderViewModel.geminiKey.isEmpty && featureFlags.enableGeminiChat {
+                Button(action: onOpenGemini) {
+                    Text("Gemini")
+                        .frame(minWidth: 200, alignment: .leading)
+                }
                 Divider()
             }
 

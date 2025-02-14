@@ -147,7 +147,7 @@ class ToolManager {
 
         throw ToolError.toolNotFound(name)
     }
-    
+
     func callTools(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
         var results: [OpenAI.ToolMessage] = []
 

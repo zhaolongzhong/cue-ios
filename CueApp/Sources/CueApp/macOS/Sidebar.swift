@@ -44,9 +44,9 @@ struct Sidebar: View {
     }
 
     init(
-        assistantsViewModel: 
-        AssistantsViewModel, onOpenHome: @escaping () -> Void, 
-        onOpenCueChat: @escaping () -> Void, 
+        assistantsViewModel: AssistantsViewModel,
+        onOpenHome: @escaping () -> Void,
+        onOpenCueChat: @escaping () -> Void,
         selectedAssistant: Binding<Assistant?>
     ) {
         self.assistantsViewModel = assistantsViewModel
@@ -70,6 +70,7 @@ struct Sidebar: View {
                 currentUser: authRepository.currentUser,
                 onOpenAIChat: handleOpenAIChat,
                 onAnthropicChat: handleAnthropicChat,
+                onOpenGemini: handleGeminiChat,
                 onOpenSettings: handleOpenSettings
             )
             .padding(.all, 4)
@@ -114,7 +115,7 @@ struct Sidebar: View {
             }
         }
     }
-    
+
     private var contentList: some View {
         ScrollView {
             LazyVStack {
@@ -158,12 +159,18 @@ struct Sidebar: View {
         #endif
     }
 
+    private func handleGeminiChat() {
+        #if os(macOS)
+        openWindow(id: "gemini-chat-window")
+        #endif
+    }
+
     private func handleOpenSettings() {
         #if os(macOS)
         openWindow(id: "settings-window")
         #endif
     }
-    
+
     private var cueRow: some View {
         SidebarRowButton(
             title: "Cue",

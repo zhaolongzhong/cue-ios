@@ -7,29 +7,35 @@ struct SidebarRowButton: View {
     }
 
     let title: String
-    let icon: IconType
+    let icon: IconType?
     let action: (() -> Void)?
     let trailingIcon: IconType?
     let trailingAction: (() -> Void)?
+    let spacing: CGFloat
 
     init(
         title: String,
-        icon: IconType,
+        icon: IconType? = nil,
         trailingIcon: IconType? = nil,
         action: (() -> Void)? = nil,
-        trailingAction: (() -> Void)? = nil
+        trailingAction: (() -> Void)? = nil,
+        spacing: CGFloat = 12
     ) {
         self.title = title
         self.icon = icon
         self.trailingIcon = trailingIcon
         self.action = action
         self.trailingAction = trailingAction
+        self.spacing = spacing
     }
 
     var body: some View {
         Button(action: { action?() }) {
             HStack(spacing: 8) {
-                iconView(for: icon)
+                if let icon = icon {
+                    iconView(for: icon)
+                        .frame(width: 32, height: 32)
+                }
                 Text(title)
                     .padding(.leading, 2)
                 Spacer()

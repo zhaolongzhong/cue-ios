@@ -62,7 +62,7 @@ struct RichTextField: View {
             }
 
             HStack {
-                if featureFlags.enableMediaOption {
+                if featureFlags.enableMediaOptions {
                     Menu {
                         Button(action: {
                             // Handle attach photos

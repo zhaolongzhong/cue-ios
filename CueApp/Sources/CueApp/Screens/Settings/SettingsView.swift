@@ -108,16 +108,18 @@ private struct SettingsList: View {
             .padding(.trailing, 0)
             .listSectionSpacing(.compact)
 
-            if featureFlags.enableAssistants {
+            if featureFlags.enableAssistants || featureFlags.enableThirdPartyProvider {
                 Section {
                     if featureFlags.enableThirdPartyProvider {
-                        APIKeysButton(title: "3rd Party Provider API Keys", horizontal: true, onTap: {
+                        APIKeysButton(title: "Third Party Providers", horizontal: true, onTap: {
                             navigationPath.append(SettingsRoute.providerAPIKeys)
                         })
                     }
-                    APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                        navigationPath.append(SettingsRoute.assistantAPIKeys)
-                    })
+                    if featureFlags.enableAssistants {
+                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
+                            navigationPath.append(SettingsRoute.assistantAPIKeys)
+                        })
+                    }
                 } header: {
                     SettingsHeader(title: "API Keys")
                 }
@@ -235,7 +237,7 @@ private struct SettingsList: View {
                     SettingsHeader(title: "Account")
                 }
 
-                if featureFlags.enableAssistants || featureFlags.enableOpenAIChat || featureFlags.enableAnthropicChat {
+                if featureFlags.enableAssistants || featureFlags.enableThirdPartyProvider {
                     Section {
                         GroupBox {
                             if featureFlags.enableOpenAIChat || featureFlags.enableAnthropicChat {

@@ -4,10 +4,11 @@ import SwiftUI
 enum HomeDestination: Hashable {
     case home
     case cue
-    case openai
-    case anthropic
     case chat(Assistant)
     case email
+    case openai
+    case anthropic
+    case gemini
 }
 
 struct HomeView: View {
@@ -149,6 +150,8 @@ private extension HomeView {
                 OpenAIChatView(apiKey: apiKeysProviderViewModel.openAIKey)
             case .anthropic:
                 AnthropicChatView(apiKey: apiKeysProviderViewModel.anthropicKey)
+            case .gemini:
+                GeminiChatView(apiKey: apiKeysProviderViewModel.geminiKey)
             case .chat(let assistant):
                 ChatView(
                     assistant: assistant,

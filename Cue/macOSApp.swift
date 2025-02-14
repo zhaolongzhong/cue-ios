@@ -51,6 +51,9 @@ struct macOSApp: App {
         CommonWindowGroup(id: "anthropic-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
             AnthropicWindowView()
         }
+        CommonWindowGroup(id: "gemini-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
+            GeminiWindowView()
+        }
     }
 }
 
@@ -140,6 +143,20 @@ struct AnthropicWindowView: View {
             .environmentObject(coordinator)
             .environmentObject(dependencies)
             .navigationTitle("Anthropic")
+            .withCoordinatorAlert()
+    }
+}
+
+struct GeminiWindowView: View {
+    @EnvironmentObject var coordinator: AppCoordinator
+    @EnvironmentObject var dependencies: AppDependencies
+
+    var body: some View {
+        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.gemini)
+        GeminiChatView(apiKey: apiKey)
+            .environmentObject(coordinator)
+            .environmentObject(dependencies)
+            .navigationTitle("Gemini")
             .withCoordinatorAlert()
     }
 }
