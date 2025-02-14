@@ -10,6 +10,7 @@ final class CueChatViewModel: ObservableObject {
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
     private var cancellables = Set<AnyCancellable>()
+    private var conversationId: String?
 
     @Published var model: ChatModel = .gpt4oMini {
         didSet {
@@ -26,9 +27,10 @@ final class CueChatViewModel: ObservableObject {
     }
     @Published var error: ChatError?
 
-    init() {
+    init(conversationId: String? = nil) {
         self.cueClient = CueClient()
         self.toolManager = ToolManager()
+        self.conversationId = conversationId
         self.availableTools = toolManager.getTools()
         updateTools()
         setupToolsSubscription()
@@ -65,7 +67,12 @@ final class CueChatViewModel: ObservableObject {
 
         do {
             let agent = AgentLoop(chatClient: cueClient, toolManager: toolManager, model: model.rawValue)
-            let completionRequest = CompletionRequest(model: model.rawValue, tools: tools, toolChoice: "auto")
+            let completionRequest = CompletionRequest(
+                model: model.rawValue, 
+                tools: tools, 
+                toolChoice: "auto",
+                conversationId: conversationId
+            )
             let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
             messages = updatedMessages
         } catch {
@@ -76,5 +83,13 @@ final class CueChatViewModel: ObservableObject {
 
     func clearError() {
         error = nil
+    }
+    
+    func updateConversationId(_ newId: String?) {
+        self.conversationId = newId
+    }
+    
+    var hasConversationId: Bool {
+        conversationId != nil
     }
 }
