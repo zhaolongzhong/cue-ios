@@ -25,6 +25,53 @@ public struct AnthropicChatView: View {
             .padding(.all, 8)
         }
         .defaultNavigationBar(showCustomBackButton: false, title: "Anthropic")
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                #if os(iOS)
+                Menu {
+                    Picker("Model", selection: $viewModel.model) {
+                        ForEach(AnthropicModel.allCases, id: \.self) { model in
+                            Text(model.displayName).tag(model)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(viewModel.model.displayName)
+                            .font(.headline)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    .foregroundColor(.primary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                #else
+                Menu {
+                    ForEach(AnthropicModel.allCases, id: \.self) { model in
+                        Button {
+                            viewModel.model = model
+                        } label: {
+                            if viewModel.model == model {
+                                Label(model.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(model.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(viewModel.model.displayName)
+                            .font(.headline)
+                    }
+                    .frame(width: 120)
+                    .foregroundColor(.primary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                #endif
+            }
+        }
         .onAppear {
             Task {
                 await viewModel.startServer()

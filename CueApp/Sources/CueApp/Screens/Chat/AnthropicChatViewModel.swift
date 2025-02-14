@@ -7,7 +7,7 @@ import CueAnthropic
 @MainActor
 final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
-    private let model: ChatModel = .claude35Haiku
+    @Published var model: AnthropicModel = .claude3Haiku
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
     private var cancellables = Set<AnyCancellable>()

@@ -6,7 +6,7 @@ import CueOpenAI
 @MainActor
 final class OpenAIChatViewModel: ObservableObject {
     private let openAI: OpenAI
-    private let model: ChatModel = .gpt4oMini
+    @Published var model: ChatModel = .gpt4oMini
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
     #if os(macOS)
