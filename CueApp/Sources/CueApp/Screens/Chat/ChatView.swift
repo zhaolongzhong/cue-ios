@@ -7,7 +7,7 @@ struct ChatView: View {
     @SceneStorage("chatScrollPosition") private var scrollPosition: String?
     @FocusState private var isFocused: Bool
     @State private var scrollProxy: ScrollViewProxy?
-    @State private var selectedMessage: MessageModel?
+    @State private var selectedMessage: CueChatMessage?
 
     init(assistant: Assistant,
          chatViewModel: ChatViewModel,

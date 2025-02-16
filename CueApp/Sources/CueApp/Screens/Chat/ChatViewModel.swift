@@ -10,7 +10,7 @@ final class ChatViewModel: ObservableObject {
     @Dependency(\.webSocketService) public var webSocketService
     @Dependency(\.clientStatusService) public var clientStatusService
 
-    @Published private(set) var messageModels: [MessageModel] = []
+    @Published private(set) var messageModels: [CueChatMessage] = []
     @Published private(set) var assistant: Assistant
     @Published private(set) var isLoading = false
     @Published private(set) var currentConnectionState: ConnectionState = .disconnected
@@ -79,7 +79,7 @@ final class ChatViewModel: ObservableObject {
             for await message in await messageRepository.makeMessageStream(forConversation: conversationId) {
                 guard !Task.isCancelled else { break }
                 withAnimation {
-                    self.messageModels.append(message)
+                    self.messageModels.append(.cue(message))
                 }
             }
         }
@@ -130,7 +130,7 @@ final class ChatViewModel: ObservableObject {
     private func loadCachedMessages(conversationId: String) async {
         switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
         case .success(let messages):
-            self.messageModels = messages
+            self.messageModels = messages.map { .cue($0) }
         case .failure(let error):
             handleError(error, context: "Loading cached messages failed")
         }
@@ -139,7 +139,7 @@ final class ChatViewModel: ObservableObject {
     private func fetchRemoteMessages(conversationId: String) async {
         switch await messageRepository.listMessages(conversationId: conversationId, skip: 0, limit: 50) {
         case .success(let messages):
-            self.messageModels = messages
+            self.messageModels = messages.map { .cue($0) }
             self.messageCount = messages.count
         case .failure(.fetchFailed(let error)):
             handleError(error, context: "Fetching messages failed")
@@ -160,7 +160,7 @@ final class ChatViewModel: ObservableObject {
         }
 
         loadMoreTask?.cancel()
-        loadMoreTask = Task {
+        loadMoreTask = Task<Void, Never> {
             isLoadingMore = true
             defer {
                 isLoadingMore = false
@@ -185,7 +185,7 @@ final class ChatViewModel: ObservableObject {
             case .success(let newMessages):
                 guard !newMessages.isEmpty else { return }
                 let existingMessageIds = Set(messageModels.map { $0.id })
-                let uniqueNewMessages = newMessages.filter { !existingMessageIds.contains($0.id) }
+                let uniqueNewMessages: [CueChatMessage] = newMessages.map { .cue($0) }.filter { !existingMessageIds.contains($0.id) }
                 if !uniqueNewMessages.isEmpty {
                     self.messageModels.insert(contentsOf: uniqueNewMessages, at: 0)
                     self.messageCount += uniqueNewMessages.count

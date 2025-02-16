@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct MessagesListView: View {
-    let messages: [MessageModel]
+    let messages: [CueChatMessage]
     let shouldAutoScroll: Bool
     let onScrollProxyReady: (ScrollViewProxy) -> Void
     let onLoadMore: () async -> Void
-    let onShowMore: (MessageModel?) -> Void
+    let onShowMore: (CueChatMessage) -> Void
 
     @State private var scrollProxy: ScrollViewProxy?
     @State private var hasInitialized = false
@@ -57,7 +57,7 @@ struct MessagesListView: View {
 }
 
 struct MessagesList: View {
-    let messages: [MessageModel]
+    let messages: [CueChatMessage]
     @Binding var scrollProxy: ScrollViewProxy?
     @Binding var showScrollButton: Bool
     let shouldAutoScroll: Bool
@@ -67,7 +67,7 @@ struct MessagesList: View {
     @Binding var hasScrolledToBottom: Bool
     let forceScrollID: UUID
     let onLoadMore: () async -> Void
-    let onShowMore: (MessageModel?) -> Void
+    let onShowMore: (CueChatMessage) -> Void
     @State var previousFirstVisibleIndex: Double = 0
 
     var body: some View {
@@ -77,8 +77,6 @@ struct MessagesList: View {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                         MessageBubble(
                             message: message,
-                            role: message.author.role,
-                            content: message.getText(),
                             onShowMore: onShowMore
                         )
                         .id(message.id)

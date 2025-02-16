@@ -114,6 +114,10 @@ extension OpenAI {
             case role, content
             case toolCalls = "tool_calls"
         }
+
+        public var hasToolCall: Bool {
+            toolCalls?.count ?? 0 > 0
+        }
     }
 
     // MARK: - ChatCompletion
@@ -237,6 +241,23 @@ extension OpenAI {
             case .toolMessage(let message):
                 return message.content
             }
+        }
+
+        public var toolCalls: [ToolCall] {
+            switch self {
+            case .assistantMessage(let message):
+                return message.toolCalls ?? []
+            default:
+                return []
+            }
+        }
+
+        public var toolName: String? {
+            toolCalls.map{ $0.function.name }.joined(separator: ", ")
+        }
+
+        public var toolArgs: String? {
+            toolCalls.map{ $0.function.arguments }.joined(separator: ", ")
         }
     }
     

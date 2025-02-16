@@ -92,6 +92,15 @@ extension Anthropic {
                 return String(describing: toolUse)
             }
         }
+
+        public var isToolUse: Bool {
+            switch self {
+            case .text:
+                return false
+            case .toolUse:
+                return true
+            }
+        }
     }
 
     public enum StopReason: String, Codable {

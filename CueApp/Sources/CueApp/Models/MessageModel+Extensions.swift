@@ -5,7 +5,7 @@ import CueAnthropic
 
 extension MessageModel {
     init(
-        id: String?,
+        id: String,
         conversationId: String,
         author: Author,
         content: MessageContent,
@@ -51,28 +51,118 @@ extension MessageModel {
         self.createdAt = currentDate
         self.updatedAt = currentDate
     }
-}
 
-extension MessageContent {
+    enum Role: String {
+        case user
+        case assistant
+        case tool
+    }
 
-    func getText() -> String {
-        var text = content.getText()
-        if !text.isEmpty {
-            return text
-        }
-        if let toolCalls = toolCalls {
-            var resultText = "Use tool: "
-
-            for toolCall in toolCalls {
-                resultText += toolCall.function.name
-            }
-            text = resultText
-        }
-        return text
+    var role: Role {
+        Role(rawValue: author.role) ?? .assistant
     }
 }
 
-extension ContentDetail {
+extension MessageModel: Equatable {
+    public static func == (lhs: MessageModel, rhs: MessageModel) -> Bool {
+        // Compare all properties
+        return lhs.id == rhs.id &&
+            lhs.conversationId == rhs.conversationId &&
+            lhs.author.role == rhs.author.role &&
+            lhs.author.name == rhs.author.name &&
+            lhs.author.metadata == rhs.author.metadata &&
+            lhs.content.type == rhs.content.type &&
+            lhs.content.content == rhs.content.content &&
+            lhs.content.toolCalls == rhs.content.toolCalls &&
+            lhs.metadata?.model == rhs.metadata?.model &&
+            lhs.metadata?.usage == rhs.metadata?.usage &&
+            lhs.metadata?.payload == rhs.metadata?.payload &&
+            lhs.createdAt == rhs.createdAt &&
+            lhs.updatedAt == rhs.updatedAt
+    }
+
+
+    var isUser: Bool {
+        return self.role == Role.user && !(self.isTool || self.isToolMessage)
+    }
+
+    var isTool: Bool {
+        if let toolCalls = self.content.toolCalls, toolCalls.count > 0 {
+            return true
+        }
+        switch self.content.content {
+        case .array(let array):
+            for item in array {
+                switch item {
+                case .object(let dict):
+                    if dict["type"]?.asString == "tool_use" {
+                        return true
+                    }
+                default:
+                    continue
+                }
+
+            }
+            return false
+        default:
+            return false
+        }
+    }
+
+    var isToolMessage: Bool {
+        if self.metadata?.payload?.toToolResponse() != nil {
+            return true
+        }
+        switch self.content.content {
+        case .array(let array):
+            for item in array {
+                switch item {
+                case .object(let dict):
+                    if dict["type"]?.asString == "tool_result" {
+                        return true
+                    }
+                default:
+                    continue
+                }
+
+            }
+            return false
+        case .object(let dict):
+            if dict["role"]?.asString == "tool" {
+                return true
+            }
+            return false
+        default:
+            return false
+        }
+    }
+}
+
+extension MessageContent {
+    public var text: String {
+        return content.getText()
+    }
+
+    public var toolName: String? {
+        if let toolCalls = toolCalls {
+            return toolCalls.map { $0.function.name }.joined(separator: ", ")
+        } else if let toolUses = toolUses {
+            return toolUses.map { String(describing: $0.name) }.joined(separator: ", ")
+        }
+        return nil
+    }
+
+    public var toolArgs: String? {
+        if let toolCalls = toolCalls {
+            return toolCalls.map { $0.function.arguments }.joined(separator: ", ")
+        } else if let toolUses = toolUses {
+            return toolUses.map { String(describing: $0.input.toNativeDictionary) }.joined(separator: ", ")
+        }
+        return nil
+    }
+}
+
+extension ContentDetail: Equatable {
     init(string: String) {
         // Try to decode as JSON first
         if let data = string.data(using: .utf8),
@@ -92,7 +182,6 @@ extension ContentDetail {
         }
     }
 
-    // Convenience static method to create from string
     static func fromString(_ string: String) -> ContentDetail {
         return ContentDetail(string: string)
     }
@@ -125,130 +214,7 @@ extension ContentDetail {
             return ""
         }
     }
-}
 
-extension MessageModel {
-    static func == (lhs: MessageModel, rhs: MessageModel) -> Bool {
-        // Compare all properties
-        return lhs.id == rhs.id &&
-            lhs.conversationId == rhs.conversationId &&
-            lhs.author.role == rhs.author.role &&
-            lhs.author.name == rhs.author.name &&
-            lhs.author.metadata == rhs.author.metadata &&
-            lhs.content.type == rhs.content.type &&
-            lhs.content.content == rhs.content.content &&
-            lhs.content.toolCalls == rhs.content.toolCalls &&
-            lhs.metadata?.model == rhs.metadata?.model &&
-            lhs.metadata?.usage == rhs.metadata?.usage &&
-            lhs.metadata?.payload == rhs.metadata?.payload &&
-            lhs.createdAt == rhs.createdAt &&
-            lhs.updatedAt == rhs.updatedAt
-    }
-
-    func getText() -> String {
-        var text = self.content.getText()
-        if let model = self.metadata?.model, model.lowercased().contains("claude") {
-            var anthropicMessage: Anthropic.AnthropicMessage? {
-                guard let payload = self.metadata?.payload else {
-                    return nil
-                }
-                return payload.toAnthropicMessage()
-            }
-        }
-        if text.isEmpty {
-            if let model = self.metadata?.model, model.lowercased().contains("claude") {
-                var anthropicMessage: Anthropic.AnthropicMessage? {
-                    guard let payload = self.metadata?.payload else {
-                        return nil
-                    }
-                    return payload.toAnthropicMessage()
-                }
-            } else {
-                var chatCompletion: OpenAI.ChatCompletion? {
-                    guard let payload = self.metadata?.payload else {
-                        return nil
-                    }
-                    return payload.toChatCompletion()
-                }
-                if let toolCalls = chatCompletion?.choices[0].message.toolCalls, toolCalls.count > 0 {
-                    text = "Use tool:"
-                    for toolCall in toolCalls {
-                        text += " " + toolCall.function.name
-                    }
-                }
-            }
-        }
-
-        if text.isEmpty {
-            var toolResponse: ToolResponse? {
-                guard let payload = self.metadata?.payload else {
-                    return nil
-                }
-                return payload.toToolResponse()
-            }
-            if let toolMessages = toolResponse?.payload.toolMessages {
-                text = toolMessages.getText()
-            } else if let toolResultMessage = toolResponse?.payload.toolResultMessage {
-                text = toolResultMessage.getText()
-            }
-
-        }
-        return text
-    }
-
-    func isToolCall() -> Bool {
-        if let toolCalls = self.content.toolCalls, toolCalls.count > 0 {
-            return true
-        }
-        switch self.content.content {
-        case .array(let array):
-            for item in array {
-                switch item {
-                case .object(let dict):
-                    if dict["type"]?.asString == "tool_use" {
-                        return true
-                    }
-                default:
-                    continue
-                }
-
-            }
-            return false
-        default:
-            return false
-        }
-    }
-
-    func isToolMessage() -> Bool {
-        if self.metadata?.payload?.toToolResponse() != nil {
-            return true
-        }
-        switch self.content.content {
-        case .array(let array):
-            for item in array {
-                switch item {
-                case .object(let dict):
-                    if dict["type"]?.asString == "tool_result" {
-                        return true
-                    }
-                default:
-                    continue
-                }
-
-            }
-            return false
-        case .object(let dict):
-            if dict["role"]?.asString == "tool" {
-                return true
-            }
-            return false
-        default:
-            return false
-        }
-    }
-}
-
-extension ContentDetail: Equatable {
     public static func == (lhs: ContentDetail, rhs: ContentDetail) -> Bool {
         switch (lhs, rhs) {
         case (.string(let lhsValue), .string(let rhsValue)):
@@ -260,26 +226,5 @@ extension ContentDetail: Equatable {
         default:
             return false
         }
-    }
-}
-
-extension MessageModel {
-    enum Role: String {
-        case user = "user"
-        case assistant = "assistant"
-        case tool = "tool"
-
-        var isUser: Bool {
-            self == .user
-        }
-    }
-
-    var role: Role {
-        Role(rawValue: author.role) ?? .assistant
-    }
-
-    var isUser: Bool {
-        let res = self.role.isUser && !(self.isToolCall() || self.isToolMessage())
-        return res
     }
 }

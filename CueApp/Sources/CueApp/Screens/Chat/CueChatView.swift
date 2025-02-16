@@ -24,10 +24,7 @@ public struct CueChatView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(viewModel.messages) { message in
-                            MessageBubble(
-                                role: message.role,
-                                content: message.content
-                            )
+                            MessageBubble(message: message)
                         }
                         Color.clear
                             .frame(height: 1)

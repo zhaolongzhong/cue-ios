@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FullMessageView: View {
     @Environment(\.dismiss) var dismiss
-    let message: MessageModel
+    let message: CueChatMessage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -14,8 +14,7 @@ struct FullMessageView: View {
 
             ScrollView {
                 MessageBubble(
-                    role: message.author.role,
-                    content: message.getText(),
+                    message: message,
                     isExpanded: true
                 )
                 .padding()

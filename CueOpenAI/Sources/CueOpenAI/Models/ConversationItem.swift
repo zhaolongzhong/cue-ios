@@ -9,6 +9,7 @@ public enum Role: String, Codable, Sendable {
     case user
     case assistant
     case system
+    case tool
 }
 
 public struct ConversationItem: Codable, Identifiable, Equatable, Sendable {

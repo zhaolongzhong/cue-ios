@@ -49,10 +49,9 @@ extension HomeViewModel {
             let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
 
             let quotes = parseQuotesFromMessage(updatedMessages.last)
-            print("Parsed quotes: \(quotes)")
+            AppLog.log.debug("Parsed quotes: \(quotes)")
             return quotes
         } catch {
-            print("Error: \(error)")
             ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
         }
         return[]
@@ -76,7 +75,7 @@ extension HomeViewModel {
 
     private func parseQuotesFromMessage(_ message: CueChatMessage?) -> [QuoteContent] {
         guard let jsonString = extractJSONFromResponse(message) else {
-            print("Failed to extract JSON from message")
+            AppLog.log.error("Failed to extract JSON from message")
             return []
         }
 

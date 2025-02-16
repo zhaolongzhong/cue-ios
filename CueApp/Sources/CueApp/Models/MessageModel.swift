@@ -1,6 +1,7 @@
 import Foundation
 import CueCommon
 import CueOpenAI
+import CueAnthropic
 
 public struct Author: Codable, Sendable {
     let role: String
@@ -100,6 +101,35 @@ struct MessageContent: Codable, Sendable {
             self.toolCalls = nil
         }
     }
+
+    var toolUses: [Anthropic.ToolUseBlock]? {
+        var toolUseBlocks : [Anthropic.ToolUseBlock] = []
+        switch self.content {
+        case .array(let array):
+            for item in array {
+                switch item {
+                case .object(let dict):
+                    if dict["type"]?.asString == "tool_use" {
+                        if case .object(let inputDict) = dict["input"] {
+                            let toolUseBlock = Anthropic.ToolUseBlock(
+                                type: "tool_use",
+                                id: dict["id"]?.asString ?? "",
+                                input: inputDict,
+                                name: dict["name"]?.asString ?? ""
+                            )
+                            toolUseBlocks.append(toolUseBlock)
+                        }
+                    }
+                default:
+                    break
+                }
+            }
+            break
+        default:
+            break
+        }
+        return toolUseBlocks.count > 0 ? toolUseBlocks : nil
+    }
 }
 
 struct MessageMetadata: Codable, Sendable {
@@ -115,8 +145,8 @@ struct MessageMetadata: Codable, Sendable {
 }
 
 // MARK: - Message Model
-struct MessageModel: Codable, Equatable, Identifiable, Sendable {
-    let id: String?
+public struct MessageModel: Codable, Identifiable, Sendable {
+    public let id: String
     let conversationId: String
     let author: Author
     let content: MessageContent
@@ -134,10 +164,10 @@ struct MessageModel: Codable, Equatable, Identifiable, Sendable {
         case updatedAt = "updated_at"
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        id = try container.decodeIfPresent(String.self, forKey: .id)
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? "uuid_\(UUID().uuidString)"
         conversationId = try container.decodeIfPresent(String.self, forKey: .conversationId) ?? ""
         author = try container.decode(Author.self, forKey: .author)
         content = try container.decode(MessageContent.self, forKey: .content)

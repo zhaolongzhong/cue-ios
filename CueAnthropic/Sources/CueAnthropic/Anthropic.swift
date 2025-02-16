@@ -44,6 +44,10 @@ public struct Anthropic {
             self.role = role
             self.content = content
         }
+        
+        public var hasToolUse: Bool {
+            content.contains { $0.isToolUse }
+        }
     }
 
     public struct ToolResultMessage: Codable, Sendable {
@@ -123,7 +127,7 @@ public struct Anthropic {
             case .assistantMessage:
                 return "assistant"
             case .toolMessage:
-                return "tool"
+                return "user"
             }
         }
 
@@ -147,6 +151,36 @@ public struct Anthropic {
             case .toolMessage(let message):
                 return "tool_\(message)"
             }
+        }
+
+        public var toolUses: [ToolUseBlock] {
+            switch self {
+            case .assistantMessage(let message):
+                let toolUses = message.content.filter { $0.isToolUse }
+                if  toolUses.count > 0 {
+                    return toolUses.compactMap {
+                        if case .toolUse(let toolUse) = $0 {
+                            return toolUse
+                        }
+                        return nil
+                    }
+                }
+                return []
+            default:
+                return []
+            }
+        }
+
+        public var toolName: String? {
+            return toolUses.map {
+                $0.name
+            }.joined(separator: ", ")
+        }
+
+        public var toolArgs: String? {
+            return toolUses.map {
+                String(describing: $0.input)
+            }.joined(separator: ", ")
         }
     }
 

@@ -40,13 +40,13 @@ struct CopyButton: View {
             ZStack {
                 // Copy icon
                 Image(systemName: "doc.on.doc")
-                    .font(.system(size: 14))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary.opacity(showCopiedFeedback ? 0 : 0.6))
                     .scaleEffect(isPressed ? 0.8 : 1.0)
 
                 // Checkmark feedback
                 Image(systemName: "checkmark")
-                    .font(.system(size: 14))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .opacity(showCopiedFeedback ? 1 : 0)
                     .scaleEffect(showCopiedFeedback ? 1 : 0.5)

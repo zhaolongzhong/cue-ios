@@ -9,23 +9,19 @@ import UIKit
 struct MessageBubble: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
-    let message: MessageModel?
-    let role: String
-    let content: String
+    let message: CueChatMessage
+    let isUser: Bool
     let maxCharacters: Int
     let isExpanded: Bool
-    let onShowMore: (MessageModel?) -> Void
+    let onShowMore: (CueChatMessage) -> Void
 
     init(
-        message: MessageModel? = nil,
-        role: String,
-        content: String,
+        message: CueChatMessage,
         isExpanded: Bool = false,
-        onShowMore: @escaping (MessageModel?) -> Void = { _ in }
+        onShowMore: @escaping (CueChatMessage) -> Void = { _ in }
     ) {
         self.message = message
-        self.role = role
-        self.content = content
+        self.isUser = message.isUser
         #if os(iOS)
         self.maxCharacters = 1000
         #else
@@ -33,10 +29,6 @@ struct MessageBubble: View {
         #endif
         self.isExpanded = isExpanded
         self.onShowMore = onShowMore
-    }
-
-    var isUser: Bool {
-        return role == "user"
     }
 
     var bubbleColor: Color {
@@ -49,6 +41,7 @@ struct MessageBubble: View {
                 Spacer()
             } else {
                 avatar.padding(.vertical, 4)
+                    .opacity(message.isToolMessage ? 0 : 1)
             }
             VStack(spacing: 0) {
                 HStack(alignment: .top) {
@@ -57,14 +50,12 @@ struct MessageBubble: View {
                     }
                     MessageBubbleContent(
                         message: message,
-                        role: role,
-                        content: content,
                         maxCharacters: maxCharacters,
                         isExpanded: isExpanded,
                         onShowMore: onShowMore
                     )
                     .padding(.horizontal, getHorizontalPadding())
-                    .padding(.vertical, isUser ? 10 : 4)
+                    .padding(.vertical, isUser ? 10 : 0)
                     .background(isUser ? bubbleColor : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: isUser ? 16 : 0))
                     .padding(.horizontal, getHorizontalPadding())
@@ -73,17 +64,19 @@ struct MessageBubble: View {
                         Spacer()
                     }
                 }
-                HStack(alignment: .top) {
-                    if isUser {
-                        Spacer()
-                    }
-                    CopyButton(content: content, isVisible: isHovering)
-                        .padding(.horizontal, getHorizontalPadding())
-                    if !isUser {
-                        Spacer()
+                if !message.isTool && !message.isToolMessage {
+                    HStack(alignment: .top) {
+                        if isUser {
+                            Spacer()
+                        }
+                        CopyButton(content: message.content, isVisible: isHovering)
+                            .padding(.horizontal, getHorizontalPadding())
+                            .padding(.top, 2)
+                        if !isUser {
+                            Spacer()
+                        }
                     }
                 }
-
             }
             if !isUser {
                 Spacer()
@@ -91,7 +84,6 @@ struct MessageBubble: View {
 
         }
         .padding(.horizontal, 2)
-        .padding(.vertical, 0)
         #if os(macOS)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -120,33 +112,39 @@ struct MessageBubble: View {
 
 struct MessageBubbleContent: View {
     @Environment(\.colorScheme) private var colorScheme
-    let message: MessageModel?
-    let role: String
-    let content: String
+    let message: CueChatMessage
     let maxCharacters: Int
     let isExpanded: Bool
-    let onShowMore: (MessageModel?) -> Void
+    let onShowMore: (CueChatMessage) -> Void
 
     var body: some View {
-        let text = content
+        let text = message.content
         let segments = extractSegments(from: text)
 
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(segments.indices, id: \.self) { index in
-                switch segments[index] {
-                case .text(let content):
-                    StyledTextView(
-                        content: content,
-                        colorScheme: colorScheme,
-                        maxCharacters: maxCharacters,
-                        isExpanded: isExpanded,
-                        onShowMore: {
-                            onShowMore(message)
-                        })
-                case .code(let language, let code):
-                    CodeBlockView(language: language, code: code)
+            if message.isToolMessage {
+                ToolMessageView(message: message)
+            } else {
+                ForEach(segments.indices, id: \.self) { index in
+                    switch segments[index] {
+                    case .text(let content):
+                        StyledTextView(
+                            content: content,
+                            colorScheme: colorScheme,
+                            maxCharacters: maxCharacters,
+                            isExpanded: isExpanded,
+                            onShowMore: {
+                                onShowMore(message)
+                            })
+                    case .code(let language, let code):
+                        CodeBlockView(language: language, code: code)
+                    }
                 }
             }
+            if message.isTool {
+                ToolMessageView(message: message)
+            }
+
         }
     }
 }

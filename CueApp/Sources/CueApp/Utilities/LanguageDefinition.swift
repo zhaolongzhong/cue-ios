@@ -22,7 +22,20 @@ public struct LanguageDefinition: Sendable {
     }
 }
 public struct LanguageDefinitions {
+    public static func getDefinition(for language: String) -> LanguageDefinition {
+        return definitions[language.lowercased()] ?? definitions["plaintext"]!
+    }
+
     public static let definitions: [String: LanguageDefinition] = [
+        "json": LanguageDefinition(
+            keywords: ["true", "false", "null"],
+            commentPattern: "",
+            stringPattern: "['\"](?:[^'\"\\\\]|\\\\.)*['\"]",
+            typePattern: "",
+            numberPattern: "-?\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b",
+            propertyPattern: "['\"][^'\"]+['\"](?=\\s*:)"
+        ),
+
         "python": LanguageDefinition(
             keywords: ["False", "None", "True", "and", "as", "assert", "async", "await", "break", "class",
                       "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global",
@@ -192,8 +205,4 @@ public struct LanguageDefinitions {
             functionPattern: ""
         )
     ]
-
-    public static func getDefinition(for language: String) -> LanguageDefinition {
-        return definitions[language.lowercased()] ?? definitions["plaintext"]!
-    }
 }
