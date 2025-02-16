@@ -4,56 +4,79 @@ import Dependencies
 struct SettingsMenu: View {
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @EnvironmentObject var apiKeysProviderViewModel: APIKeysProviderViewModel
+    @Environment(\.openWindow) private var openWindow
     let currentUser: User?
-    let onOpenAIChat: () -> Void
-    let onAnthropicChat: () -> Void
-    let onOpenGemini: () -> Void
-    let onOpenSettings: () -> Void
 
     var body: some View {
-        Menu {
-            if !apiKeysProviderViewModel.openAIKey.isEmpty && featureFlags.enableOpenAIChat {
-                Button(action: onOpenAIChat) {
-                    Text("OpenAI")
-                        .frame(minWidth: 200, alignment: .leading)
-                }
-
-                Divider()
-            }
-
-            if !apiKeysProviderViewModel.anthropicKey.isEmpty && featureFlags.enableAnthropicChat {
-                Button(action: onAnthropicChat) {
-                    Text("Anthropic")
-                        .frame(minWidth: 200, alignment: .leading)
-                }
-
-                Divider()
-            }
-
-            if !apiKeysProviderViewModel.geminiKey.isEmpty && featureFlags.enableGeminiChat {
-                Button(action: onOpenGemini) {
-                    Text("Gemini")
-                        .frame(minWidth: 200, alignment: .leading)
-                }
-                Divider()
-            }
-
-            Button(action: onOpenSettings) {
-                Text("Settings")
-                    .frame(minWidth: 200, alignment: .leading)
-            }
-        } label: {
+        ZStack {
             HStack(alignment: .center) {
                 if let user = currentUser {
+                    UserAvatar(user: user, size: 28)
                     Text(user.displayName)
                 } else {
                     Text("Settings")
                 }
+                Spacer()
             }
-            .frame(maxHeight: 32)
+            .padding(.vertical, 4)
+            .cornerRadius(6)
+            Menu {
+                if !apiKeysProviderViewModel.openAIKey.isEmpty && featureFlags.enableOpenAIChat {
+                    Button(action: handleOpenAIChat) {
+                        Text("OpenAI")
+                            .frame(minWidth: 200, alignment: .leading)
+                    }
+                    Divider()
+                }
+                if !apiKeysProviderViewModel.anthropicKey.isEmpty && featureFlags.enableAnthropicChat {
+                    Button(action: handleAnthropicChat) {
+                        Text("Anthropic")
+                            .frame(minWidth: 200, alignment: .leading)
+                    }
+                    Divider()
+                }
+                if !apiKeysProviderViewModel.geminiKey.isEmpty && featureFlags.enableGeminiChat {
+                    Button(action: handleGeminiChat) {
+                        Text("Gemini")
+                            .frame(minWidth: 200, alignment: .leading)
+                    }
+                    Divider()
+                }
+                Button(action: handleOpenSettings) {
+                    Text("Settings")
+                        .frame(minWidth: 200, alignment: .leading)
+                }
+            } label: {
+                Rectangle()
+                    .foregroundColor(.clear)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .frame(maxHeight: 32)
+    }
+
+    private func handleOpenAIChat() {
+        #if os(macOS)
+        openWindow(id: "openai-chat-window")
+        #endif
+    }
+
+    private func handleAnthropicChat() {
+        #if os(macOS)
+        openWindow(id: "anthropic-chat-window")
+        #endif
+    }
+
+    private func handleGeminiChat() {
+        #if os(macOS)
+        openWindow(id: "gemini-chat-window")
+        #endif
+    }
+
+    private func handleOpenSettings() {
+        #if os(macOS)
+        openWindow(id: "settings-window")
+        #endif
     }
 }

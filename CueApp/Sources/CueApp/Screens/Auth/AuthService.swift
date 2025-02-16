@@ -21,8 +21,7 @@ protocol AuthServiceProtocol: Sendable {
         idToken: String,
         email: String?,
         fullName: String?,
-        givenName: String?,
-        familyName: String?
+        avatarURL: String?
     ) async throws -> TokenResponse
 }
 
@@ -89,12 +88,11 @@ final class AuthService: AuthServiceProtocol {
         idToken: String,
         email: String?,
         fullName: String?,
-        givenName: String?,
-        familyName: String?
+        avatarURL: String?
     ) async throws -> TokenResponse {
         do {
             return try await networkClient.request(
-                AuthEndpoint.signInWithGoogle(idToken: idToken)
+                AuthEndpoint.signInWithGoogle(idToken: idToken, email: email, fullName: fullName, avatarURL: avatarURL)
             )
         } catch NetworkError.unauthorized {
             throw AuthError.invalidCredentials

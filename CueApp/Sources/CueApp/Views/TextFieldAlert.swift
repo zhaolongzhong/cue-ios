@@ -47,20 +47,20 @@ struct CenteredAlert<Content: View>: View {
                     .padding(.vertical)
 
                 HStack {
-                    Button(action: {
+                    Button {
                         isPresented = false
                         secondaryButton.action()
-                    }) {
+                    } label: {
                         Text(secondaryButton.title)
                             .foregroundColor(.secondary)
                     }
 
                     Spacer()
 
-                    Button(action: {
+                    Button {
                         primaryButton.action()
                         isPresented = false
-                    }) {
+                    } label: {
                         Text(primaryButton.title)
                             .foregroundColor(.primary.opacity(0.8))
                     }

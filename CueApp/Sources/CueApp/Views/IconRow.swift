@@ -22,11 +22,11 @@ struct IconRow: View {
 
     var body: some View {
         VStack {
-            Button(action: {
+            Button {
                 withAnimation(.easeOut) {
                     action()
                 }
-            }) {
+            } label: {
                 HStack(spacing: spacing) {
                     Group {
                         if isSystemImage {

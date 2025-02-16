@@ -52,66 +52,95 @@ actor NetworkClient: NetworkClientProtocol {
 
     private func performRequest<T: Decodable>(_ endpoint: Endpoint) async throws -> T {
         let token = await TokenManager.shared.accessToken
+        try validateAuthToken(token, requiresAuth: endpoint.requiresAuth)
 
-        if endpoint.requiresAuth && (token == nil || token?.isEmpty == true) {
+        let request = try endpoint.urlRequest(with: token)
+        logRequest(request)
+
+        let (data, response) = try await session.data(for: request)
+        let httpResponse = try validateHTTPResponse(response)
+
+        try handleHTTPStatusCode(httpResponse.statusCode, data: data)
+        return try decodeResponse(data)
+    }
+
+    private func validateAuthToken(_ token: String?, requiresAuth: Bool) throws {
+        if requiresAuth && (token == nil || token?.isEmpty == true) {
             logger.debug("Unauthorized: missing or empty token")
             throw NetworkError.unauthorized
         }
+    }
 
-        let request = try endpoint.urlRequest(with: token)
+    private func logRequest(_ request: URLRequest) {
         logger.debug("Performing request: \(request.httpMethod ?? "N/A") \(request.url?.absoluteString ?? "unknown URL")")
         if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
             logger.debug("Request body: \(bodyString)")
         }
+    }
 
-        let (data, response) = try await session.data(for: request)
-
+    private func validateHTTPResponse(_ response: URLResponse) throws -> HTTPURLResponse {
         guard let httpResponse = response as? HTTPURLResponse else {
             logger.error("Invalid response: \(response)")
             throw NetworkError.invalidResponse
         }
+        return httpResponse
+    }
 
-        switch httpResponse.statusCode {
+    private func handleHTTPStatusCode(_ statusCode: Int, data: Data) throws {
+        switch statusCode {
         case 200...299:
             #if DEBUG
-            if let raw = String(data: data, encoding: .utf8) {
-                logger.debug("Raw response: \(raw)")
-            }
+            logRawResponse(data)
             #endif
-            do {
-                return try decoder.decode(T.self, from: data)
-            } catch {
-                logger.debug("Default decoding failed: \(error)")
-                do {
-                    let altDecoder = JSONDecoder()
-                    altDecoder.keyDecodingStrategy = .convertFromSnakeCase
-                    logger.debug("Attempting decoding with convertFromSnakeCase")
-                    return try altDecoder.decode(T.self, from: data)
-                } catch {
-                    logger.error("Decoding error with convertFromSnakeCase: \(error)")
-                    if let raw = String(data: data, encoding: .utf8) {
-                        logger.error("Raw response data: \(raw)")
-                    }
-                    throw NetworkError.decodingError(error)
-                }
-            }
         case 401:
-            logger.error("Unauthorized error: \(httpResponse.statusCode)")
+            logger.error("Unauthorized error: \(statusCode)")
             throw NetworkError.unauthorized
         case 403:
-            let errorResponse = try? decoder.decode(APIError.self, from: data)
-            let message = errorResponse?.detail ?? "Token expired"
-            logger.error("Forbidden error: \(httpResponse.statusCode) - \(message)")
-            throw NetworkError.forbidden(message: message)
+            throw try handleForbiddenError(data)
         case 400...499:
-            logger.error("HTTP client error: \(httpResponse.statusCode)")
-            throw NetworkError.httpError(httpResponse.statusCode, data)
+            logger.error("HTTP client error: \(statusCode)")
+            throw NetworkError.httpError(statusCode, data)
         case 500...599:
-            logger.error("Server error: \(httpResponse.statusCode)")
+            logger.error("Server error: \(statusCode)")
             throw NetworkError.serverError
         default:
-            logger.error("Unhandled HTTP status code: \(httpResponse.statusCode)")
-            throw NetworkError.httpError(httpResponse.statusCode, data)
+            logger.error("Unhandled HTTP status code: \(statusCode)")
+            throw NetworkError.httpError(statusCode, data)
+        }
+    }
+
+    private func handleForbiddenError(_ data: Data) throws -> NetworkError {
+        let errorResponse = try? decoder.decode(APIError.self, from: data)
+        let message = errorResponse?.detail ?? "Token expired"
+        logger.error("Forbidden error: 403 - \(message)")
+        return NetworkError.forbidden(message: message)
+    }
+
+    private func decodeResponse<T: Decodable>(_ data: Data) throws -> T {
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            logger.debug("Default decoding failed: \(error)")
+            return try decodeWithSnakeCase(data)
+        }
+    }
+
+    private func decodeWithSnakeCase<T: Decodable>(_ data: Data) throws -> T {
+        do {
+            let altDecoder = JSONDecoder()
+            altDecoder.keyDecodingStrategy = .convertFromSnakeCase
+            logger.debug("Attempting decoding with convertFromSnakeCase")
+            return try altDecoder.decode(T.self, from: data)
+        } catch {
+            logger.error("Decoding error with convertFromSnakeCase: \(error)")
+            logRawResponse(data)
+            throw NetworkError.decodingError(error)
+        }
+    }
+
+    private func logRawResponse(_ data: Data) {
+        if let raw = String(data: data, encoding: .utf8) {
+            logger.debug("Raw response: \(raw)")
         }
     }
 

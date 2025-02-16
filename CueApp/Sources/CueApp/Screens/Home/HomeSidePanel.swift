@@ -41,6 +41,7 @@ final class SidePanelState: ObservableObject {
 struct HomeSidePanel: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
+    @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @ObservedObject private var sidePanelState: SidePanelState
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
@@ -71,7 +72,7 @@ struct HomeSidePanel: View {
     var body: some View {
         NavigationStack {
             contentList
-            #if os(iOS)
+                #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
@@ -263,13 +264,31 @@ struct HomeSidePanel: View {
     }
 
     private var settingsRow: some View {
-        IconRow(
-            title: "Settings",
-            action: {
-                coordinator.showSettingsSheet()
-            },
-            iconName: "gearshape",
-            isSystemImage: true
-        )
+        Group {
+            if let user = authRepository.currentUser, !user.displayName.isEmpty {
+                HStack(alignment: .center) {
+                    UserAvatar(user: user, size: 32)
+                    Text(user.displayName)
+                        .padding(.leading, 4)
+                    Spacer()
+                    Button {
+                        coordinator.showSettingsSheet()
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .foregroundColor(.primary)
+                    }
+                }
+                .padding(.all, 12)
+            } else {
+                IconRow(
+                    title: "Settings",
+                    action: {
+                        coordinator.showSettingsSheet()
+                    },
+                    iconName: "gearshape",
+                    isSystemImage: true
+                )
+            }
+        }
     }
 }

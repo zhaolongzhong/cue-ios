@@ -26,7 +26,6 @@ struct SidebarAssistantActions: AssistantActions {
 struct Sidebar: View {
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
-    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
@@ -57,27 +56,11 @@ struct Sidebar: View {
 
     var body: some View {
         VStack {
-            Group {
-                if featureFlags.enableCueChat {
-                    cueRow
-                    Divider()
-                }
-                emailRow
-            }
-            .padding(.horizontal, 16)
             contentList
             Spacer()
-            SettingsMenu(
-                currentUser: authRepository.currentUser,
-                onOpenAIChat: handleOpenAIChat,
-                onAnthropicChat: handleAnthropicChat,
-                onOpenGemini: handleGeminiChat,
-                onOpenSettings: handleOpenSettings
-            )
-            .padding(.all, 4)
-            .overlay(RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5))
-            .padding(.all, 8)
+            SettingsMenu(currentUser: authRepository.currentUser)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
         }
         #if os(macOS)
         .background(
@@ -120,58 +103,43 @@ struct Sidebar: View {
     private var contentList: some View {
         ScrollView {
             LazyVStack {
-                assistantsRow
-                    .padding(.horizontal, 16)
-                ForEach(assistantsViewModel.assistants) { assistant in
-                    AssistantRow(
-                        assistant: assistant,
-                        status: assistantsViewModel.getClientStatus(for: assistant),
-                        actions: SidebarAssistantActions(
-                            assistantsViewModel: assistantsViewModel,
-                            setAssistantToDelete: { assistant in
-                                assistantToDelete = assistant
-                            },
-                            onDetailsPressed: { _ in
-                                assistantForDetails = assistant
-                            }
-                        )
-                    )
-                    .padding(.horizontal, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
-                    )
-                    .padding(.horizontal, 8)
-                    .onTapGesture { selectedAssistant = assistant }
-                    .tag(assistant)
+                Group {
+                    if featureFlags.enableCueChat {
+                        cueRow
+                    }
+                    emailRow
                 }
-                .scrollContentBackground(.hidden)
+                .padding(.horizontal, 16)
+                if featureFlags.enableAssistants {
+                    assistantsRow
+                        .padding(.horizontal, 16)
+                    ForEach(assistantsViewModel.assistants) { assistant in
+                        AssistantRow(
+                            assistant: assistant,
+                            status: assistantsViewModel.getClientStatus(for: assistant),
+                            actions: SidebarAssistantActions(
+                                assistantsViewModel: assistantsViewModel,
+                                setAssistantToDelete: { assistant in
+                                    assistantToDelete = assistant
+                                },
+                                onDetailsPressed: { _ in
+                                    assistantForDetails = assistant
+                                }
+                            )
+                        )
+                        .padding(.horizontal, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
+                        )
+                        .padding(.horizontal, 8)
+                        .onTapGesture { selectedAssistant = assistant }
+                        .tag(assistant)
+                    }
+                    .scrollContentBackground(.hidden)
+                }
             }
         }
-    }
-
-    private func handleOpenAIChat() {
-        #if os(macOS)
-        openWindow(id: "openai-chat-window")
-        #endif
-    }
-
-    private func handleAnthropicChat() {
-        #if os(macOS)
-        openWindow(id: "anthropic-chat-window")
-        #endif
-    }
-
-    private func handleGeminiChat() {
-        #if os(macOS)
-        openWindow(id: "gemini-chat-window")
-        #endif
-    }
-
-    private func handleOpenSettings() {
-        #if os(macOS)
-        openWindow(id: "settings-window")
-        #endif
     }
 
     private var cueRow: some View {
@@ -189,7 +157,7 @@ struct Sidebar: View {
             action: onOpenHome
         )
     }
-    
+
     private var assistantsRow: some View {
         SectionHeader(
             title: "Assistants",

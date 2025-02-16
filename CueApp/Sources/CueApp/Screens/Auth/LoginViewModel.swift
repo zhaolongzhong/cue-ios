@@ -68,8 +68,7 @@ final class LoginViewModel: ObservableObject {
             return
         }
         let fullName = result.user.profile?.name
-        let givenName = result.user.profile?.givenName
-        let familyName = result.user.profile?.familyName
+        let avatarURL = result.user.profile?.imageURL(withDimension: 100)
 
         isLoading = true
         defer { isLoading = false }
@@ -80,12 +79,10 @@ final class LoginViewModel: ObservableObject {
             idToken: idToken,
             email: email,
             fullName: fullName,
-            givenName: givenName,
-            familyName: familyName
+            avatarURL: avatarURL?.absoluteString ?? ""
         ) {
         case .success:
             do {
-                // Store Google access token
                 _ = try await GmailService.getAccessToken()
             } catch {
                 AppLog.log.error("Access token fetch failed: \(error)")

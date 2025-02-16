@@ -64,21 +64,21 @@ struct RichTextField: View {
             HStack {
                 if featureFlags.enableMediaOptions {
                     Menu {
-                        Button(action: {
+                        Button {
                             // Handle attach photos
-                        }) {
+                        } label: {
                             Label("Attach Photos", systemImage: "photo")
                         }
 
-                        Button(action: {
+                        Button {
                             // Handle take photo
-                        }) {
+                        } label: {
                             Label("Take Photo", systemImage: "camera")
                         }
 
-                        Button(action: {
+                        Button {
                             // Handle attach files
-                        }) {
+                        } label: {
                             Label("Attach Files", systemImage: "folder")
                         }
                     } label: {

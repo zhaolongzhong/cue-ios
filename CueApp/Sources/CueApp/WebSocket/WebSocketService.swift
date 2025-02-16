@@ -164,35 +164,54 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
 
         switch message {
         case .string(let text):
-            do {
-                let eventMessage = try decoder.decode(EventMessage.self, from: Data(text.utf8))
-                switch eventMessage.type {
-                case .clientConnect, .clientDisconnect, .clientStatus:
-                    if let clientStatus = eventMessage.clientStatus {
-                        webSocketMessageSubject.send(.clientStatus(clientStatus))
-                    }
-                case .assistant, .user:
-                    if case .message(let messagePayload) = eventMessage.payload {
-                        webSocketMessageSubject.send(.messagePayload(messagePayload))
-                    }
-                case .generic, .error:
-                    if case .genericMessage(let genericPayload) = eventMessage.payload {
-                        AppLog.websocket.debug("Received generic message: \(genericPayload.message ?? "")")
-                    }
-                default:
-                    break
-                }
-            } catch {
-                await MainActor.run {
-                    AppLog.websocket.error("Failed to decode message: \(error.localizedDescription)")
-                    errorSubject.send(.messageDecodingFailed)
-                }
-            }
-
+            await handleStringMessage(text)
         case .data:
             AppLog.websocket.error("Unexpected data received")
         @unknown default:
             AppLog.websocket.error("Unknown message type received")
+        }
+    }
+
+    private func handleStringMessage(_ text: String) async {
+        do {
+            let eventMessage = try decoder.decode(EventMessage.self, from: Data(text.utf8))
+            await handleEventMessage(eventMessage)
+        } catch {
+            await MainActor.run {
+                AppLog.websocket.error("Failed to decode message: \(error.localizedDescription)")
+                errorSubject.send(.messageDecodingFailed)
+            }
+        }
+    }
+
+    private func handleEventMessage(_ eventMessage: EventMessage) async {
+        switch eventMessage.type {
+        case .clientConnect, .clientDisconnect, .clientStatus:
+            handleClientStatusEvent(eventMessage)
+        case .assistant, .user:
+            handleMessageEvent(eventMessage)
+        case .generic, .error:
+            handleGenericEvent(eventMessage)
+        default:
+            break
+        }
+    }
+
+    private func handleClientStatusEvent(_ eventMessage: EventMessage) {
+        if let clientStatus = eventMessage.clientStatus {
+            webSocketMessageSubject.send(.clientStatus(clientStatus))
+        }
+    }
+
+    private func handleMessageEvent(_ eventMessage: EventMessage) {
+        if case .message(let messagePayload) = eventMessage.payload {
+            webSocketMessageSubject.send(.messagePayload(messagePayload))
+        }
+    }
+
+    private func handleGenericEvent(_ eventMessage: EventMessage) {
+        if case .genericMessage(let genericPayload) = eventMessage.payload {
+            AppLog.websocket.debug("Received generic message: \(genericPayload.message ?? "")")
         }
     }
 

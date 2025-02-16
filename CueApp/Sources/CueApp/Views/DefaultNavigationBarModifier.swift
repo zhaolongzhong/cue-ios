@@ -26,9 +26,9 @@ struct DefaultNavigationBarModifier: ViewModifier {
             .toolbar {
                 if showCustomBackButton {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: {
+                        Button {
                             dismiss()
-                        }) {
+                        } label: {
                             Image(systemName: "chevron.left")
                         }
                     }

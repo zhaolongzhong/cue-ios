@@ -103,32 +103,23 @@ struct MessageContent: Codable, Sendable {
     }
 
     var toolUses: [Anthropic.ToolUseBlock]? {
-        var toolUseBlocks : [Anthropic.ToolUseBlock] = []
-        switch self.content {
-        case .array(let array):
+        var toolUseBlocks: [Anthropic.ToolUseBlock] = []
+        if case .array(let array) = self.content {
             for item in array {
-                switch item {
-                case .object(let dict):
-                    if dict["type"]?.asString == "tool_use" {
-                        if case .object(let inputDict) = dict["input"] {
-                            let toolUseBlock = Anthropic.ToolUseBlock(
-                                type: "tool_use",
-                                id: dict["id"]?.asString ?? "",
-                                input: inputDict,
-                                name: dict["name"]?.asString ?? ""
-                            )
-                            toolUseBlocks.append(toolUseBlock)
-                        }
-                    }
-                default:
-                    break
+                if case .object(let dict) = item,
+                dict["type"]?.asString == "tool_use",
+                case .object(let inputDict) = dict["input"] {
+                    let toolUseBlock = Anthropic.ToolUseBlock(
+                        type: "tool_use",
+                        id: dict["id"]?.asString ?? "",
+                        input: inputDict,
+                        name: dict["name"]?.asString ?? ""
+                    )
+                    toolUseBlocks.append(toolUseBlock)
                 }
             }
-            break
-        default:
-            break
         }
-        return toolUseBlocks.count > 0 ? toolUseBlocks : nil
+        return toolUseBlocks.isEmpty ? nil : toolUseBlocks
     }
 }
 

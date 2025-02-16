@@ -46,10 +46,11 @@ struct SignUpView: View {
                             focusedField = nil
                             await viewModel.signup()
                         },
-                        isLoading: viewModel.isLoading
-                    ) {
-                        Text("Sign up")
-                    }
+                        isLoading: viewModel.isLoading,
+                        label: {
+                            Text("Sign up")
+                        }
+                    )
                     .padding(.top, 8)
                 }
 

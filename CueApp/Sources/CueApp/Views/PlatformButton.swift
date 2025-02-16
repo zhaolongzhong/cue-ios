@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct PlatformButton<Label: View>: View {
+struct PlatformButton<Label>: View where Label: View {
     let action: () async -> Void
     let label: () -> Label
     let isLoading: Bool
@@ -43,11 +43,11 @@ struct PlatformButton<Label: View>: View {
     }
 
     var body: some View {
-        Button(action: {
+        Button {
             Task {
                 await action()
             }
-        }) {
+        } label: {
             ZStack {
                 if isLoading {
                     ProgressView()
@@ -57,7 +57,7 @@ struct PlatformButton<Label: View>: View {
                 }
             }
             #if os(iOS)
-           .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity)
             #endif
         }
         #if os(iOS)

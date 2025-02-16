@@ -166,12 +166,11 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
             if case .toolMessage(let toolMessage) = msg {
                 if let content = toolMessage.content.first?.content.first {
                     switch content {
-                        case .text(let text):
+                    case .text(let text):
                         return text.text
                     default:
                         return ""
                     }
-
                 }
             }
             return msg.content
@@ -274,10 +273,8 @@ public struct CueCompletionResponse: Decodable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: RootKeys.self)
-        // Decode the chat_completion object
         if let chatCompletion = try container.decodeIfPresent(OpenAI.ChatCompletion.self, forKey: .chatCompletion),
            let choice = chatCompletion.choices.first {
-            // Create a CueContent from the first choice message
             self.content = CueContent(
                 type: "chat",
                 content: choice.message.content ?? "",
@@ -296,7 +293,6 @@ public struct CueCompletionResponse: Decodable, Sendable {
         } else {
             self.content = nil
         }
-        // You can similarly map other keys if needed.
         self.author = nil
         self.metadata = nil
         self.parentId = nil

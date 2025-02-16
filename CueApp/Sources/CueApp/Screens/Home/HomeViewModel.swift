@@ -29,8 +29,8 @@ final class HomeViewModel: ObservableObject {
             timeBasedGreeting = "Good evening"
         }
 
-        if let displayName = user.name {
-            greeting = "\(timeBasedGreeting), \(displayName)"
+        if !user.firstName.isEmpty {
+            greeting = "\(timeBasedGreeting), \(user.firstName)"
         } else {
             greeting = timeBasedGreeting
         }

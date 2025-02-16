@@ -7,10 +7,10 @@ struct AXAppSelectionMenu: View {
     var body: some View {
         Menu {
             ForEach(AccessibleApplication.allCases, id: \.self) { app in
-                Button(action: {
+                Button {
                     selectedApp = app
                     onStartAXApp?(selectedApp)
-                }) {
+                } label: {
                     Text(app.name)
                         .frame(minWidth: 200, alignment: .leading)
                 }

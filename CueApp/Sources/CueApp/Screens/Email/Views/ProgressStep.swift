@@ -23,10 +23,11 @@ struct ProgressStep: View {
                         .font(.system(size: iconSize))
                         .foregroundColor(.green)
                 case .inProgress:
-                    AnimatedCircle(size: iconSize, strokeWidth: strokeWidth)
+                    ActivityIndicator()
+                        .frame(width: iconSize, height: iconSize)
                 case .uncompleted:
                     Circle()
-                        .strokeBorder(Color.secondary, lineWidth: strokeWidth)
+                        .strokeBorder(Color.secondary.opacity(0.8), lineWidth: strokeWidth)
                         .frame(width: iconSize, height: iconSize)
                 case .error:
                     Circle()

@@ -62,11 +62,11 @@ struct LoginView: View {
                                     focusedField = nil
                                     await viewModel.login()
                                 },
-                                isLoading: viewModel.isLoading
-                            ) {
-                                Text("Log in")
-                            }
-
+                                isLoading: viewModel.isLoading,
+                                label: {
+                                    Text("Log in")
+                                }
+                            )
                             PlatformButton(
                                 action: {
                                     focusedField = nil
@@ -77,10 +77,11 @@ struct LoginView: View {
                                     NSWorkspace.shared.open(url)
                                     #endif
                                 },
-                                style: .secondary
-                            ) {
-                                Text("Forgot Password?")
-                            }
+                                style: .secondary,
+                                label: {
+                                    Text("Forgot Password?")
+                                }
+                            )
                         }
                         .padding(.top, 8)
                     }

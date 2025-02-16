@@ -9,7 +9,7 @@ struct CopyButton: View {
     @State private var showCopiedFeedback = false
 
     var body: some View {
-        Button(action: {
+        Button {
             // Trigger press animation
             withAnimation(.easeInOut(duration: 0.1)) {
                 isPressed = true
@@ -36,7 +36,7 @@ struct CopyButton: View {
                     showCopiedFeedback = false
                 }
             }
-        }) {
+        } label: {
             ZStack {
                 // Copy icon
                 Image(systemName: "doc.on.doc")

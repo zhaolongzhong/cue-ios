@@ -1,7 +1,7 @@
 import SwiftUI
 import Dependencies
 
-private enum SettingsRoute: Hashable {
+enum SettingsRoute: Hashable {
     case providerAPIKeys
     case assistantAPIKeys
     case connectedApps
@@ -22,6 +22,9 @@ public struct SettingsView: View {
 
     public var body: some View {
         SettingsContentView(viewModel: viewModel)
+            .onAppear {
+                viewModel.refreshUserProfile()
+            }
             .onChange(of: viewModel.error) { _, error in
                 if let error = error {
                     coordinator.showError(error)
@@ -44,22 +47,29 @@ private struct SettingsContentView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            SettingsList(
-                viewModel: viewModel,
-                navigationPath: $navigationPath,
-                dismiss: dismiss
-            )
-            .navigationTitle("Settings")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    DismissButton(action: { dismiss() })
+            Group {
+                #if os(iOS)
+                SettingsListIOS(
+                    viewModel: viewModel,
+                    navigationPath: $navigationPath,
+                    dismiss: dismiss
+                )
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        DismissButton(action: { dismiss() })
+                    }
                 }
+                #else
+                SettingsListMacOS(
+                    viewModel: viewModel,
+                    navigationPath: $navigationPath,
+                    dismiss: dismiss
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #endif
             }
-            #else
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            #endif
+            .navigationTitle("Settings")
             .navigationDestination(for: SettingsRoute.self) { route in
                 switch route {
                 case .providerAPIKeys:
@@ -76,371 +86,6 @@ private struct SettingsContentView: View {
                     FeatureFlagsView()
                 }
             }
-        }
-    }
-}
-
-enum ColorSchemeOption: String, CaseIterable {
-    case system = "System"
-    case light = "Light"
-    case dark = "Dark"
-}
-
-private struct SettingsList: View {
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @Dependency(\.featureFlagsViewModel) private var featureFlags
-    @ObservedObject var viewModel: SettingsViewModel
-    @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
-    @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
-    @Binding var navigationPath: NavigationPath
-    let dismiss: DismissAction
-
-    var body: some View {
-        #if os(iOS)
-        List {
-            Section {
-                if let user = viewModel.currentUser {
-                    UserInfoView(email: user.email)
-                }
-            } header: {
-                SettingsHeader(title: "Account")
-            }
-            .padding(.trailing, 0)
-            .listSectionSpacing(.compact)
-
-            if featureFlags.enableAssistants || featureFlags.enableThirdPartyProvider {
-                Section {
-                    if featureFlags.enableThirdPartyProvider {
-                        APIKeysButton(title: "Third Party Providers", horizontal: true, onTap: {
-                            navigationPath.append(SettingsRoute.providerAPIKeys)
-                        })
-                    }
-                    if featureFlags.enableAssistants {
-                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                            navigationPath.append(SettingsRoute.assistantAPIKeys)
-                        })
-                    }
-                } header: {
-                    SettingsHeader(title: "API Keys")
-                }
-                .listSectionSpacing(.compact)
-            }
-
-            Section {
-                NavigationLink {
-                    ConnectedAppsView()
-                } label: {
-                    SettingsRow(
-                        systemName: "shield.checkerboard",
-                        title: "Google Apps",
-                        value: "",
-                        showChevron: false
-                    )
-                }
-            } header: {
-                SettingsHeader(title: "Connected Apps")
-            }
-
-            Section {
-                SettingsRow(
-                    systemName: "sun.max",
-                    title: "Color Scheme",
-                    value: "",
-                    showChevron: false,
-                    trailing: AnyView(
-                        Picker("", selection: $colorScheme) {
-                            ForEach(ColorSchemeOption.allCases, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .font(.system(size: 12))
-                        .padding(.vertical, 0)
-                        .frame(height: 30)
-                        .tint(Color.secondary)
-                    )
-                )
-                SettingsRow(
-                    systemName: "iphone.radiowaves.left.and.right",
-                    title: "Haptic Feedback",
-                    value: "",
-                    showChevron: false,
-                    trailing: AnyView(
-                        Toggle("", isOn: $hapticFeedbackEnabled)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .tint(.secondary)
-
-                    )
-                )
-            } header: {
-                SettingsHeader(title: "Appearance")
-            }
-            .listSectionSpacing(.compact)
-            Section {
-                NavigationLink {
-                    FeatureFlagsView()
-                } label: {
-                    SettingsRow(
-                        systemName: "flag",
-                        title: "Feature Flags",
-                        value: ""
-                    )
-                }
-            } header: {
-                SettingsHeader(title: "Development")
-            }
-            Section {
-                Button(action: {}) {
-                    SettingsRow(
-                        systemName: "info.circle",
-                        title: "Version",
-                        value: "\(viewModel.getVersionInfo())",
-                        showChevron: false
-                    )
-                }
-                .buttonStyle(.plain)
-            } header: {
-                SettingsHeader(title: "About")
-            }
-            .listSectionSpacing(.compact)
-            LogoutSection {
-                Task {
-                    await viewModel.logout()
-                    dismiss()
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .background(AppTheme.Colors.secondaryBackground.opacity(0.2))
-        .onChange(of: colorScheme) { _, newValue in
-            (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.overrideUserInterfaceStyle = {
-                switch newValue {
-                case .system: return .unspecified
-                case .light: return .light
-                case .dark: return .dark
-                }
-            }()
-        }
-        #else
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
-                Section {
-                    GroupBox {
-                        if let user = viewModel.currentUser {
-                            UserInfoView(email: user.email)
-                                .padding(.horizontal, 6)
-                        }
-                    }
-                } header: {
-                    SettingsHeader(title: "Account")
-                }
-
-                if featureFlags.enableAssistants || featureFlags.enableThirdPartyProvider {
-                    Section {
-                        GroupBox {
-                            if featureFlags.enableOpenAIChat || featureFlags.enableAnthropicChat {
-                                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
-                                    navigationPath.append(SettingsRoute.providerAPIKeys)
-                                })
-                                .padding(.horizontal, 6)
-                            }
-                            if featureFlags.enableAssistants {
-                                Divider()
-                                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                                    navigationPath.append(SettingsRoute.assistantAPIKeys)
-                                })
-                                .padding(.horizontal, 6)
-                            }
-                        }
-                    } header: {
-                        SettingsHeader(title: "API Keys")
-                    }
-                }
-
-                Section {
-                    GroupBox {
-                        Button {
-                            navigationPath.append(SettingsRoute.connectedApps)
-                        } label: {
-                            SettingsRow(
-                                systemName: "shield.checkerboard",
-                                title: "Google Apps",
-                                showChevron: true
-                            ).padding(.horizontal, 6)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } header: {
-                    SettingsHeader(title: "Connected Apps")
-                }
-
-                Section {
-                    GroupBox {
-                        Button {
-                            navigationPath.append(SettingsRoute.developer)
-                        } label: {
-                            SettingsRow(
-                                systemName: "hammer",
-                                title: "Developer",
-                                showChevron: true
-                            ).padding(.horizontal, 6)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Section {
-                    GroupBox {
-                        Button {
-                            navigationPath.append(SettingsRoute.featureFlags)
-                        } label: {
-                            SettingsRow(
-                                systemName: "flag",
-                                title: "Feature Flags",
-                                showChevron: true
-                            ).padding(.horizontal, 6)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Section {
-                    GroupBox {
-                        if let appcastUrl = viewModel.appConfig?.appcastUrl {
-                            Button {
-                                coordinator.checkForUpdates(withAppcastUrl: appcastUrl)
-                            } label: {
-                                SettingsRow(
-                                    systemName: "arrow.triangle.2.circlepath",
-                                    title: "Check for Updates",
-                                    showChevron: false
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 6)
-                            Divider()
-                        }
-
-                        SettingsRow(
-                            systemName: "info.circle",
-                            title: "Version",
-                            value: "\(viewModel.getVersionInfo())",
-                            showChevron: false
-                        )
-                        .padding(.horizontal, 6)
-                    }
-                }
-
-                Section {
-                    GroupBox {
-                        LogoutSection {
-                            Task {
-                                await viewModel.logout()
-                                dismiss()
-                            }
-                        }.padding(.horizontal, 6)
-                    }
-                }
-            }
-            .padding(.all, 32)
-        }
-        #endif
-    }
-}
-
-private struct SettingsHeader: View {
-    let title: String
-    var body: some View {
-        Text(title)
-            #if os(macOS)
-            .font(.headline)
-            .padding(.leading, 8)
-            #else
-            .font(.footnote.bold())
-            .padding(.leading, -8)
-            #endif
-    }
-}
-
-private struct UserInfoView: View {
-    let email: String
-
-    var body: some View {
-            SettingsRow(
-                systemName: "envelope",
-                title: "Email",
-                value: email,
-                showChevron: false
-            )
-    }
-}
-
-private struct APIKeysButton: View {
-    let title: String
-    let horizontal: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button {
-            #if os(iOS)
-            HapticManager.shared.impact(style: .light)
-            #endif
-            onTap()
-        } label: {
-            SettingsRow(
-                systemName: horizontal ? "key.horizontal" : "key",
-                title: title,
-                showChevron: true
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct LogoutSection: View {
-    let onLogout: () -> Void
-    @State private var showingLogoutConfirmation = false
-
-    var body: some View {
-        Section {
-            Button {
-                showingLogoutConfirmation = true
-            } label: {
-                SettingsRow(
-                    systemName: "rectangle.portrait.and.arrow.right",
-                    title: "Log out",
-                    showChevron: false
-                )
-            }
-            .buttonStyle(.plain)
-            .logoutConfirmation(
-                isPresented: $showingLogoutConfirmation,
-                onConfirm: onLogout
-            )
-        }
-    }
-}
-
-extension View {
-    func logoutConfirmation(
-        isPresented: Binding<Bool>,
-        onConfirm: @escaping () -> Void
-    ) -> some View {
-        confirmationDialog(
-            "Log out",
-            isPresented: isPresented,
-            titleVisibility: .visible
-        ) {
-            Button("Log out", role: .destructive) {
-                onConfirm()
-            }
-            Button("Cancel", role: .cancel) {
-                isPresented.wrappedValue = false
-            }
-        } message: {
-            Text("Are you sure you want to log out?")
         }
     }
 }

@@ -59,58 +59,99 @@ struct GmailTool: LocalTool, Sendable {
         guard let action = args.getString("action") else {
             throw ToolError.invalidArguments("Missing action")
         }
+        return try await handleAction(action, args)
+    }
+
+    private func handleAction(_ action: String, _ args: ToolArguments) async throws -> String {
         switch action {
         case "readInbox":
-            let maxCount = args.getInt("maxCount") ?? 20
-            let inboxResponse = try await GmailService.readInbox(maxCount: maxCount)
-            return inboxResponse.map { $0.toString() }.joined(separator: "\n---\n")
+            return try await handleReadInbox(args)
         case "getEmailDetails":
-            guard let messageId = args.getString("messageId") else {
-                throw ToolError.invalidArguments("Missing messageId")
-            }
-            let message = try await GmailService.getEmailDetails(messageId: messageId)
-            let cleanMessage = CleanGmailMessage(from: message)
-            return cleanMessage.toString(includeContent: true)
+            return try await handleGetEmailDetails(args)
         case "sendEmail":
-            guard let to = args.getString("to"),
-                  let subject = args.getString("subject"),
-                  let body = args.getString("body") else {
-                throw ToolError.invalidArguments("Missing to, subject, or body")
-            }
-            return try await GmailService.sendEmail(to: to, subject: subject, body: body)
+            return try await handleSendEmail(args)
         case "modifyEmailLabels":
-            guard let messageId = args.getString("messageId") else {
-                throw ToolError.invalidArguments("Missing messageId")
-            }
-            let addLabels = args.getArray("addLabelIds") as? [String] ?? []
-            let removeLabels = args.getArray("removeLabelIds") as? [String] ?? []
-            return try await GmailService.modifyEmailLabels(messageId: messageId,
-                                                             addLabelIds: addLabels,
-                                                             removeLabelIds: removeLabels)
+            return try await handleModifyEmailLabels(args)
         case "batchModifyEmails":
-            guard let messageIds = args.getArray("messageIds") as? [String] else {
-                throw ToolError.invalidArguments("Missing messageIds")
-            }
-            let addLabels = args.getArray("addLabelIds") as? [String] ?? []
-            let removeLabels = args.getArray("removeLabelIds") as? [String] ?? []
-            return try await GmailService.batchModifyEmails(messageIds: messageIds,
-                                                            addLabelIds: addLabels,
-                                                            removeLabelIds: removeLabels)
-        // Convenience actions for archiving (removing the INBOX label)
+            return try await handleBatchModifyEmails(args)
         case "archiveEmail":
-            guard let messageId = args.getString("messageId") else {
-                throw ToolError.invalidArguments("Missing messageId")
-            }
-            return try await GmailService.modifyEmailLabels(messageId: messageId, removeLabelIds: ["INBOX"])
+            return try await handleArchiveEmail(args)
         case "batchArchiveEmails":
-            guard let messageIds = args.getArray("messageIds") as? [String] else {
-                throw ToolError.invalidArguments("Missing messageIds")
-            }
-            return try await GmailService.batchModifyEmails(messageIds: messageIds, removeLabelIds: ["INBOX"])
+            return try await handleBatchArchiveEmails(args)
         case "listLabels":
             return try await GmailService.listLabels()
         default:
             throw ToolError.invalidArguments("Invalid action: \(action)")
         }
+    }
+
+    private func handleReadInbox(_ args: ToolArguments) async throws -> String {
+        let maxCount = args.getInt("maxCount") ?? 20
+        let inboxResponse = try await GmailService.readInbox(maxCount: maxCount)
+        return inboxResponse.map { $0.toString() }.joined(separator: "\n---\n")
+    }
+
+    private func handleGetEmailDetails(_ args: ToolArguments) async throws -> String {
+        guard let messageId = args.getString("messageId") else {
+            throw ToolError.invalidArguments("Missing messageId")
+        }
+        let message = try await GmailService.getEmailDetails(messageId: messageId)
+        let cleanMessage = CleanGmailMessage(from: message)
+        return cleanMessage.toString(includeContent: true)
+    }
+
+    private func handleSendEmail(_ args: ToolArguments) async throws -> String {
+        guard let to = args.getString("to"),
+              let subject = args.getString("subject"),
+              let body = args.getString("body") else {
+            throw ToolError.invalidArguments("Missing to, subject, or body")
+        }
+        return try await GmailService.sendEmail(to: to, subject: subject, body: body)
+    }
+
+    private func handleModifyEmailLabels(_ args: ToolArguments) async throws -> String {
+        guard let messageId = args.getString("messageId") else {
+            throw ToolError.invalidArguments("Missing messageId")
+        }
+        let addLabels = args.getArray("addLabelIds") as? [String] ?? []
+        let removeLabels = args.getArray("removeLabelIds") as? [String] ?? []
+        return try await GmailService.modifyEmailLabels(
+            messageId: messageId,
+            addLabelIds: addLabels,
+            removeLabelIds: removeLabels
+        )
+    }
+
+    private func handleBatchModifyEmails(_ args: ToolArguments) async throws -> String {
+        guard let messageIds = args.getArray("messageIds") as? [String] else {
+            throw ToolError.invalidArguments("Missing messageIds")
+        }
+        let addLabels = args.getArray("addLabelIds") as? [String] ?? []
+        let removeLabels = args.getArray("removeLabelIds") as? [String] ?? []
+        return try await GmailService.batchModifyEmails(
+            messageIds: messageIds,
+            addLabelIds: addLabels,
+            removeLabelIds: removeLabels
+        )
+    }
+
+    private func handleArchiveEmail(_ args: ToolArguments) async throws -> String {
+        guard let messageId = args.getString("messageId") else {
+            throw ToolError.invalidArguments("Missing messageId")
+        }
+        return try await GmailService.modifyEmailLabels(
+            messageId: messageId,
+            removeLabelIds: ["INBOX"]
+        )
+    }
+
+    private func handleBatchArchiveEmails(_ args: ToolArguments) async throws -> String {
+        guard let messageIds = args.getArray("messageIds") as? [String] else {
+            throw ToolError.invalidArguments("Missing messageIds")
+        }
+        return try await GmailService.batchModifyEmails(
+            messageIds: messageIds,
+            removeLabelIds: ["INBOX"]
+        )
     }
 }

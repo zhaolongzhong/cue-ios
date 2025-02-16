@@ -83,9 +83,9 @@ public struct RealtimeChatScreen: View {
                 .customTextFieldStyle()
             #endif
 
-            Button(action: {
+            Button {
                 voiceChatViewModel.sendMessage()
-            }) {
+            } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 24))
                     .foregroundStyle(.gray)
@@ -99,9 +99,9 @@ public struct RealtimeChatScreen: View {
     private var controlButton: some View {
         HStack(alignment: .center, spacing: 50) {
             // Main Control Button (Pause/Resume)
-            Button(action: {
+            Button {
                 handleMainButtonTap()
-            }) {
+            } label: {
                 Image(systemName: mainButtonIcon)
                     .font(.system(size: platformButtonFontSize, weight: .bold))
                     .frame(width: platformButtonSize, height: platformButtonSize)
@@ -113,9 +113,9 @@ public struct RealtimeChatScreen: View {
             .disabled(isMainButtonDisabled)
 
             // Session Control Button
-            Button(action: {
+            Button {
                 handleSessionButtonTap()
-            }) {
+            } label: {
                 Image(systemName: sessionButtonIcon)
                     .font(.system(size: platformButtonFontSize, weight: .bold))
                     .frame(width: platformButtonSize, height: platformButtonSize)

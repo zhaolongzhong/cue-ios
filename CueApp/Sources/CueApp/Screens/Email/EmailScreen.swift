@@ -146,7 +146,7 @@ struct EmailScreen: View {
     private var micButton: some View {
         Group {
             if viewModel.voiceChatState == .active || viewModel.processingState != .ready {
-                StopButton() {
+                StopButton {
                     Task {
                         if viewModel.voiceChatState == .active {
                             viewModel.stopVoiceChat()

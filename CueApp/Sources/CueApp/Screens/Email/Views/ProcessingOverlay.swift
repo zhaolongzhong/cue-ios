@@ -83,7 +83,7 @@ struct ProcessingOverlay: View {
             return step == .almostReady ? .inProgress : .completed
         case .ready:
             return .completed
-        case .error(_):
+        case .error:
             return .error
         }
     }

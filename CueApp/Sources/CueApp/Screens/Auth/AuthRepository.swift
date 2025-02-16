@@ -71,8 +71,7 @@ protocol AuthRepositoryProtocol: Sendable {
         idToken: String,
         email: String?,
         fullName: String?,
-        givenName: String?,
-        familyName: String?
+        avatarURL: String?
     ) async -> AuthResult<Void>
 }
 
@@ -107,6 +106,9 @@ actor AuthRepository: AuthRepositoryProtocol {
         let hasToken = UserDefaults.standard.string(forKey: "ACCESS_TOKEN_KEY")?.isEmpty == false
         Task { @MainActor in
             isAuthenticatedSubject.send(hasToken)
+            if let existingUser = try? UserDefaults.standard.getCurrentUser() {
+                currentUserSubject.send(existingUser)
+            }
         }
     }
 
@@ -123,7 +125,44 @@ actor AuthRepository: AuthRepositoryProtocol {
 
     @MainActor
     private func updateUser(_ user: User?) async {
-        currentUserSubject.send(user)
+        guard let user else {
+            currentUserSubject.send(nil)
+            UserDefaults.standard.removeCurrentUser()
+            return
+        }
+
+        var updatedUser = user
+
+        // Check if there's an existing user with the same ID
+        if let existingUser = try? UserDefaults.standard.getCurrentUser(),
+           existingUser.id == user.id {
+
+            // Helper function to preserve existing non-empty value
+            func preserveExistingValue(_ new: String?, existing: String?) -> String {
+                guard let existing = existing, !existing.isEmpty else {
+                    return new ?? ""
+                }
+                return new?.isEmpty ?? true ? existing : new ?? ""
+            }
+
+            // Preserve existing non-empty values
+            let updatedAvatarURL = preserveExistingValue(user.avatarURL, existing: existingUser.avatarURL)
+            let updatedName = preserveExistingValue(user.name, existing: existingUser.name)
+
+            updatedUser = User(
+                id: user.id,
+                email: user.email,
+                name: updatedName,
+                avatarURL: updatedAvatarURL
+            )
+        }
+
+        do {
+            try UserDefaults.standard.saveCurrentUser(updatedUser)
+            currentUserSubject.send(updatedUser)
+        } catch {
+            AppLog.log.error("Failed to save updated user: \(error)")
+        }
     }
 
     func login(email: String, password: String) async -> AuthResult<Void> {
@@ -199,16 +238,14 @@ actor AuthRepository: AuthRepositoryProtocol {
         idToken: String,
         email: String?,
         fullName: String?,
-        givenName: String?,
-        familyName: String?
+        avatarURL: String?
     ) async -> AuthResult<Void> {
         do {
             let response = try await authService.signInWithGoogle(
                 idToken: idToken,
                 email: email,
                 fullName: fullName,
-                givenName: givenName,
-                familyName: familyName
+                avatarURL: avatarURL
             )
             await TokenManager.shared.saveTokens(
                 accessToken: response.accessToken,
@@ -218,6 +255,12 @@ actor AuthRepository: AuthRepositoryProtocol {
 
             switch await fetchUserProfile() {
             case .success(let user):
+                let user = User(
+                    id: user.id,
+                    email: user.email,
+                    name: fullName,
+                    avatarURL: avatarURL
+                )
                 await updateUser(user)
                 return .success(())
             case .failure(let error):

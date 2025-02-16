@@ -6,7 +6,7 @@ enum AuthEndpoint {
     case refreshToken(token: String)
     case logout
     case me
-    case signInWithGoogle(idToken: String)
+    case signInWithGoogle(idToken: String, email: String?, fullName: String?, avatarURL: String?)
 }
 
 extension AuthEndpoint: Endpoint {
@@ -92,8 +92,13 @@ extension AuthEndpoint: Endpoint {
             return try? JSONSerialization.data(withJSONObject: params)
         case .logout, .me:
             return nil
-        case let .signInWithGoogle(idToken):
-            let params: [String: String] = ["id_token": idToken]
+        case let .signInWithGoogle(idToken, email, fullName, avatarURL):
+            let params: [String: String?] = [
+                "id_token": idToken,
+                "email": email,
+                "full_name": fullName,
+                "avatar_url": avatarURL
+            ]
             return try? JSONSerialization.data(withJSONObject: params)
         }
     }

@@ -20,7 +20,7 @@ extension AccessibleApplication {
     }
     var name: String {
         switch self {
-            case .xcode:
+        case .xcode:
             return "Xcode"
         case .textEdit:
             return "TextEdit"

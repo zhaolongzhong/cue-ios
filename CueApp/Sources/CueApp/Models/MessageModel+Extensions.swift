@@ -81,7 +81,6 @@ extension MessageModel: Equatable {
             lhs.updatedAt == rhs.updatedAt
     }
 
-
     var isUser: Bool {
         return self.role == Role.user && !(self.isTool || self.isToolMessage)
     }

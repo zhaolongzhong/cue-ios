@@ -30,7 +30,7 @@ struct SidebarRowButton: View {
     }
 
     var body: some View {
-        Button(action: { action?() }) {
+        Button(action: { action?() }, label: {
             HStack(spacing: 8) {
                 if let icon = icon {
                     iconView(for: icon)
@@ -51,7 +51,7 @@ struct SidebarRowButton: View {
                 }
             }
             .foregroundColor(.primary)
-        }
+        })
         .buttonStyle(.plain)
     }
 
