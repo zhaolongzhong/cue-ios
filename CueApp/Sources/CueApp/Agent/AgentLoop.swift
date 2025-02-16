@@ -142,11 +142,11 @@ final class AgentLoop<Client: ChatClientProtocol> {
             for (key, value) in toolBlock.input {
                 switch value {
                 case .string(let str): arguments[key] = str
-                case .int(let num): arguments[key] = num
-                case .double(let double): arguments[key] = double
+                case .int(let int): arguments[key] = int
+                case .number(let double): arguments[key] = double
                 case .bool(let bool): arguments[key] = bool
                 case .array(let arr): arguments[key] = arr
-                case .dictionary(let dict): arguments[key] = dict
+                case .object(let dict): arguments[key] = dict
                 case .null: arguments[key] = NSNull()
                 }
             }

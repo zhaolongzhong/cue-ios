@@ -17,7 +17,7 @@ public struct Author: Codable, Sendable {
 public enum ContentDetail: Codable, Sendable {
     case string(String)
     case array([JSONValue])
-    case dictionary([String: JSONValue])
+    case object([String: JSONValue])
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -27,7 +27,7 @@ public enum ContentDetail: Codable, Sendable {
         } else if let arrayValue = try? container.decode([JSONValue].self) {
             self = .array(arrayValue)
         } else if let dictValue = try? container.decode([String: JSONValue].self) {
-            self = .dictionary(dictValue)
+            self = .object(dictValue)
         } else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Content must be a string, array, or dictionary")
         }
@@ -41,7 +41,7 @@ public enum ContentDetail: Codable, Sendable {
             try container.encode(value)
         case .array(let value):
             try container.encode(value)
-        case .dictionary(let value):
+        case .object(let value):
             try container.encode(value)
         }
     }
@@ -81,10 +81,10 @@ struct MessageContent: Codable, Sendable {
             self.toolCalls = toolCallsArray
         } else if let rawToolCalls = try? container.decode([JSONValue].self, forKey: .toolCalls) {
             self.toolCalls = rawToolCalls.compactMap { jsonValue -> ToolCall? in
-                guard case .dictionary(let dict) = jsonValue,
+                guard case .object(let dict) = jsonValue,
                       let id = dict["id"]?.asString,
                       let type = dict["type"]?.asString,
-                      case .dictionary(let functionDict) = dict["function"] ?? .null,
+                      case .object(let functionDict) = dict["function"] ?? .null,
                       let name = functionDict["name"]?.asString,
                       let arguments = functionDict["arguments"]?.asString else {
                     return nil

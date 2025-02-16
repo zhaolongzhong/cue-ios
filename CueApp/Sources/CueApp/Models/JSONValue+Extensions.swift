@@ -5,7 +5,7 @@ import CueAnthropic
 
 extension JSONValue {
     func toChatCompletion() -> OpenAI.ChatCompletion? {
-        guard case .dictionary(let dict) = self else { return nil }
+        guard case .object(let dict) = self else { return nil }
 
         // Extract required fields
         guard let id = dict["id"]?.asString,
@@ -14,16 +14,16 @@ extension JSONValue {
               let systemFingerprint = dict["system_fingerprint"]?.asString,
               case .int(let created) = dict["created"],
               case .array(let choicesArray) = dict["choices"],
-              case .dictionary(let usageDict) = dict["usage"] else {
+              case .object(let usageDict) = dict["usage"] else {
             return nil
         }
 
         // Parse choices
         let choices: [OpenAI.Choice] = choicesArray.compactMap { choiceValue -> OpenAI.Choice? in
-            guard case .dictionary(let choiceDict) = choiceValue,
+            guard case .object(let choiceDict) = choiceValue,
                   let finishReason = choiceDict["finish_reason"]?.asString,
                   case .int(let index) = choiceDict["index"],
-                  case .dictionary(let messageDict) = choiceDict["message"] else {
+                  case .object(let messageDict) = choiceDict["message"] else {
                 return nil
             }
 
@@ -34,14 +34,14 @@ extension JSONValue {
             // Parse tool_calls if present
             let toolCalls: [ToolCall]? = {
                 guard case .array(let toolCallsArray)? = messageDict["tool_calls"] else {
-                    return nil
+                    return []
                 }
 
                 return toolCallsArray.compactMap { toolCallValue in
-                    guard case .dictionary(let toolCallDict) = toolCallValue,
+                    guard case .object(let toolCallDict) = toolCallValue,
                           let id = toolCallDict["id"]?.asString,
                           let type = toolCallDict["type"]?.asString,
-                          case .dictionary(let functionDict) = toolCallDict["function"],
+                          case .object(let functionDict) = toolCallDict["function"],
                           let name = functionDict["name"]?.asString,
                           let arguments = functionDict["arguments"]?.asString else {
                         return nil
@@ -66,8 +66,8 @@ extension JSONValue {
         guard case .int(let totalTokens) = usageDict["total_tokens"],
               case .int(let completionTokens) = usageDict["completion_tokens"],
               case .int(let promptTokens) = usageDict["prompt_tokens"],
-              case .dictionary(let completionTokensDetailsDict) = usageDict["completion_tokens_details"],
-              case .dictionary(let promptTokensDetailsDict) = usageDict["prompt_tokens_details"] else {
+              case .object(let completionTokensDetailsDict) = usageDict["completion_tokens_details"],
+              case .object(let promptTokensDetailsDict) = usageDict["prompt_tokens_details"] else {
             return nil
         }
 
@@ -111,7 +111,7 @@ extension JSONValue {
 
 extension JSONValue {
     public func toAnthropicMessage() -> Anthropic.AnthropicMessage? {
-        guard case .dictionary(let dict) = self else { return nil }
+        guard case .object(let dict) = self else { return nil }
 
         // Extract required fields
         guard let id = dict["id"]?.asString,
@@ -128,7 +128,7 @@ extension JSONValue {
 
         // Parse content items
         let content: [Anthropic.ContentBlock?] = contentArray.map { contentValue -> Anthropic.ContentBlock? in
-            guard case .dictionary(let contentDict) = contentValue,
+            guard case .object(let contentDict) = contentValue,
                   let typeStr = contentDict["type"]?.asString else {
                 return nil
             }
@@ -151,7 +151,7 @@ extension JSONValue {
         }
 
         let usage: Anthropic.Usage?
-        if case .dictionary(let usageDict) = dict["usage"] {
+        if case .object(let usageDict) = dict["usage"] {
             usage = parseAnthropicUsage(from: usageDict)
         } else {
             usage = nil

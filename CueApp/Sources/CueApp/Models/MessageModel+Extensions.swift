@@ -80,8 +80,8 @@ extension ContentDetail {
             switch jsonValue {
             case .array(let array):
                 self = .array(array)
-            case .dictionary(let dict):
-                self = .dictionary(dict)
+            case .object(let dict):
+                self = .object(dict)
             default:
                 // If it's not a valid JSON array or dictionary, treat as plain string
                 self = .string(string)
@@ -106,7 +106,7 @@ extension ContentDetail {
                     switch value {
                     case .string(let str):
                         return str
-                    case .dictionary(let dict):
+                    case .object(let dict):
                         if let text = dict["text"]?.asString ?? dict["content"]?.asString {
                             return text
                         }
@@ -118,7 +118,7 @@ extension ContentDetail {
             return texts.reduce("") { result, text in
                 result.isEmpty ? text : result + "\n" + text
             }
-        case .dictionary(let dict):
+        case .object(let dict):
             if let text = dict["text"]?.asString ?? dict["content"]?.asString {
                 return text
             }
@@ -204,7 +204,7 @@ extension MessageModel {
         case .array(let array):
             for item in array {
                 switch item {
-                case .dictionary(let dict):
+                case .object(let dict):
                     if dict["type"]?.asString == "tool_use" {
                         return true
                     }
@@ -227,7 +227,7 @@ extension MessageModel {
         case .array(let array):
             for item in array {
                 switch item {
-                case .dictionary(let dict):
+                case .object(let dict):
                     if dict["type"]?.asString == "tool_result" {
                         return true
                     }
@@ -237,7 +237,7 @@ extension MessageModel {
 
             }
             return false
-        case .dictionary(let dict):
+        case .object(let dict):
             if dict["role"]?.asString == "tool" {
                 return true
             }
@@ -255,7 +255,7 @@ extension ContentDetail: Equatable {
             return lhsValue == rhsValue
         case (.array(let lhsValue), .array(let rhsValue)):
             return lhsValue == rhsValue
-        case (.dictionary(let lhsValue), .dictionary(let rhsValue)):
+        case (.object(let lhsValue), .object(let rhsValue)):
             return lhsValue == rhsValue
         default:
             return false

@@ -6,7 +6,7 @@ extension EventMessage {
             switch self.type {
             case .clientConnect, .clientStatus:
                 if let jsonPayload = payload.payload,
-                   case .dictionary(let dict) = jsonPayload {
+                   case .object(let dict) = jsonPayload {
                     return  ClientStatus(
                         clientId: payload.clientId,
                         assistantId: dict["assistant_id"]?.asString,

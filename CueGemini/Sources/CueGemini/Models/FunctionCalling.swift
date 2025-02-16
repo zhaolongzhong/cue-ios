@@ -1,6 +1,7 @@
 /// https://github.com/google-gemini/generative-ai-swift/blob/main/Sources/GoogleAI/FunctionCalling.swift
 
 import Foundation
+import CueCommon /// For JSONObject
 
 /// A predicted function call returned from the model.
 public struct FunctionCall: Equatable, Sendable {

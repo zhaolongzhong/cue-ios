@@ -7,6 +7,8 @@ public extension JSONValue {
         switch self {
         case .null:
             return NSNull()
+        case .int(let int):
+            return int
         case .number(let num):
             return num
         case .string(let str):
@@ -25,6 +27,8 @@ public extension JSONValue {
         switch value {
         case is NSNull:
             self = .null
+        case let num as Int:
+            self = .int(num)
         case let num as Double:
             self = .number(num)
         case let str as String:
@@ -125,4 +129,79 @@ extension JSONValue {
 // MARK: - Error Types
 public enum JSONValueError: Error {
     case typeMismatch(expected: String, actual: String)
+}
+
+
+extension JSONValue {
+    public var asString: String? {
+        if case .string(let str) = self {
+            return str
+        }
+        return nil
+    }
+
+    public var asBool: Bool? {
+        if case .bool(let value) = self {
+            return value
+        }
+        return nil
+    }
+
+    public var asInt: Int? {
+        if case .int(let value) = self {
+            return value
+        }
+        if case .number(let value) = self {
+            return Int(value)
+        }
+        return nil
+    }
+}
+
+extension JSONValue {
+    public init<T: Encodable>(encodable value: T) throws {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(value)
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        self = try decoder.decode(JSONValue.self, from: data)
+    }
+}
+
+extension JSONValue {
+    public init(any value: Any) {
+        if value is NSNull {
+            self = .null
+        } else if let string = value as? String {
+            self = .string(string)
+        } else if let bool = value as? Bool {
+            self = .bool(bool)
+        } else if let int = value as? Int {
+            self = .int(int)
+        } else if let double = value as? Double {
+            self = .number(double)
+        } else if let array = value as? [Any] {
+            self = .array(array.map { JSONValue(any: $0) })
+        } else if let dict = value as? [String: Any] {
+            self = .object(dict.mapValues { JSONValue(any: $0) })
+        } else {
+            self = .null
+        }
+    }
+}
+
+extension JSONDecoder {
+    static func debugPrint(_ data: Data) {
+        do {
+            let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
+            let prettyData = try JSONSerialization.data(withJSONObject: json, options: .prettyPrinted)
+            if let prettyString = String(data: prettyData, encoding: .utf8) {
+                print("📋 Decoded JSON Structure:\n\(prettyString)")
+            }
+        } catch {
+            print("Error pretty printing JSON: \(error)")
+        }
+    }
 }

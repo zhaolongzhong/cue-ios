@@ -63,7 +63,7 @@ struct ToolResponse: Codable {
 // MARK: - JSONValue Extension
 extension JSONValue {
     func toToolResponse() -> ToolResponse? {
-        guard case .dictionary(let payloadDict) = self,
+        guard case .object(let payloadDict) = self,
               let model = payloadDict["model"]?.asString else {
             return nil
         }
@@ -71,7 +71,7 @@ extension JSONValue {
         // Parse payload
         guard let msgId = payloadDict["msg_id"]?.asString,
               let payloadModel = payloadDict["model"]?.asString,
-              case .dictionary(let authorDict) = payloadDict["author"] else {
+              case .object(let authorDict) = payloadDict["author"] else {
             return nil
         }
 
@@ -82,7 +82,7 @@ extension JSONValue {
 
         // Parse tool result message (optional)
         var toolResultMessage: ToolResultMessage?
-        if case .dictionary(let toolResultDict) = payloadDict["tool_result_message"] {
+        if case .object(let toolResultDict) = payloadDict["tool_result_message"] {
             if let parsedToolResult = parseToolResultMessage(from: toolResultDict) {
                 toolResultMessage = parsedToolResult
             }
@@ -121,7 +121,7 @@ extension JSONValue {
 
         // Parse content array
         let content: [Anthropic.ToolResultContent?] = contentArray.map { contentValue -> Anthropic.ToolResultContent? in
-            guard case .dictionary(let contentDict) = contentValue,
+            guard case .object(let contentDict) = contentValue,
                   case .bool(let isError) = contentDict["is_error"],
                   let toolUseId = contentDict["tool_use_id"]?.asString,
                   let type = contentDict["type"]?.asString else {
@@ -158,7 +158,7 @@ extension JSONValue {
     // Helper function to parse ToolMessages
     private func parseToolMessages(from array: [JSONValue]) -> ToolMessages? {
         let messages: [OpenAI.ToolMessage] = array.compactMap { messageValue in
-            guard case .dictionary(let messageDict) = messageValue,
+            guard case .object(let messageDict) = messageValue,
                   let toolCallId = messageDict["tool_call_id"]?.asString,
                   let content = messageDict["content"]?.asString,
                   let role = messageDict["role"]?.asString else {

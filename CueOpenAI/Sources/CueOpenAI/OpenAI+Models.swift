@@ -54,7 +54,6 @@ extension OpenAI {
         // Custom decoding initializer that handles missing keys
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            let presentKeys = container.allKeys.map { $0.stringValue }
             self.rejectedPredictionTokens = try container.decodeIfPresent(Int.self, forKey: .rejectedPredictionTokens) ?? 0
             self.audioTokens = try container.decodeIfPresent(Int.self, forKey: .audioTokens) ?? 0
             self.acceptedPredictionTokens = try container.decodeIfPresent(Int.self, forKey: .acceptedPredictionTokens) ?? 0
