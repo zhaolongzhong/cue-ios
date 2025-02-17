@@ -65,6 +65,7 @@ final class AgentLoop<Client: ChatClientProtocol> {
     /// Handles an Anthropic message by processing its content blocks.
     private func handleAnthropicMessage(_ msg: Anthropic.Message, conversation: inout [Client.MessageParamType]) async -> Bool {
         var processedToolUse = false
+        AppLog.log.debug("Usage: \(String(describing: msg))")
         for contentBlock in msg.content {
             switch contentBlock {
             case .text(let textBlock):

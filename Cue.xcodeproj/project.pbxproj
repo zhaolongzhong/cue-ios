@@ -451,6 +451,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Cue/Preview Content\"";
 				DEVELOPMENT_TEAM = 3DV2RUMV6J;
 				ENABLE_PREVIEWS = YES;
+				FUSE_BUILD_SCRIPT_PHASES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires microphone access to record voice notes.";
@@ -467,6 +468,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				LLVM_LTO = YES_THIN;
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
 				MARKETING_VERSION = "$(MARKETING_VERSION)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -496,6 +498,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Cue/Preview Content\"";
 				DEVELOPMENT_TEAM = 3DV2RUMV6J;
 				ENABLE_PREVIEWS = YES;
+				FUSE_BUILD_SCRIPT_PHASES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires microphone access to record voice notes.";
@@ -512,6 +515,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				LLVM_LTO = YES_THIN;
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
 				MARKETING_VERSION = "$(MARKETING_VERSION)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.cue;

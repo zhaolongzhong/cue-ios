@@ -1,5 +1,36 @@
 import SwiftUI
 
+struct AlertButton {
+    let title: String
+    let style: AlertButtonStyle
+    let action: () -> Void
+
+    // Convert the AlertButton style to system ButtonRole
+    var systemRole: ButtonRole? {
+        switch style {
+        case .cancel: return .cancel
+        case .destructive: return .destructive
+        case .default: return nil
+        }
+    }
+
+    init(
+        title: String,
+        style: AlertButtonStyle = .default,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.style = style
+        self.action = action
+    }
+}
+
+enum AlertButtonStyle {
+    case `default`
+    case cancel
+    case destructive
+}
+
 struct CenteredAlert<Content: View>: View {
     @Binding var isPresented: Bool
     let title: String
@@ -74,28 +105,6 @@ struct CenteredAlert<Content: View>: View {
             .frame(maxWidth: 300)
         }
     }
-}
-
-struct AlertButton {
-    let title: String
-    let style: AlertButtonStyle
-    let action: () -> Void
-
-    init(
-        title: String,
-        style: AlertButtonStyle = .default,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.style = style
-        self.action = action
-    }
-}
-
-enum AlertButtonStyle {
-    case `default`
-    case cancel
-    case destructive
 }
 
 struct TextFieldAlert: View {

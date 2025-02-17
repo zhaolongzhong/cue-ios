@@ -43,6 +43,7 @@ public class ViewModelFactory {
     private var chatViewModels: [String: ChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
     private var realtimeChatViewModel: RealtimeChatViewModel?
+    private var emailScreenViewModel: EmailScreenViewModel?
 
     func makeAssistantsViewModel() -> AssistantsViewModel {
         if let assistantsViewModel = self.assistantsViewModel {
@@ -89,6 +90,16 @@ public class ViewModelFactory {
 
     func makeSignUpViewModel() -> SignUpViewModel {
         SignUpViewModel()
+    }
+
+    func makeEmailScreenViewModel() -> EmailScreenViewModel {
+        if let emailScreenViewModel = self.emailScreenViewModel {
+            return emailScreenViewModel
+        }
+
+        let emailScreenViewModel = EmailScreenViewModel()
+        self.emailScreenViewModel = emailScreenViewModel
+        return emailScreenViewModel
     }
 
     func cleanup() {

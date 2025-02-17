@@ -43,6 +43,15 @@ struct DefaultNavigationBarModifier: ViewModifier {
             }
         #else
         content
+            .navigationBarBackButtonHidden(false)
+            .toolbar {
+                if let title = title {
+                    ToolbarItem(placement: .principal) {
+                        Text(title)
+                            .font(.headline)
+                    }
+                }
+            }
         #endif
     }
 }

@@ -162,9 +162,8 @@ private extension HomeView {
                 .id(assistant.id)
             case .email:
                 #if os(iOS)
-                EmailScreen(apiKey: apiKeysProviderViewModel.openAIKey, onClose: {
-                    homeViewModel.navigateToDestination(.home)
-                })
+                EmailScreen(emailScreenViewModel: dependencies.viewModelFactory.makeEmailScreenViewModel())
+                    .environmentObject(homeViewModel)
                 #endif
             }
         }

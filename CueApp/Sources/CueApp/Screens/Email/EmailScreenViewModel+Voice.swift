@@ -43,6 +43,9 @@ extension EmailScreenViewModel {
 
     func startVoiceChat() async {
         do {
+            guard let apiKey = apiKey else {
+                fatalError("Client API key not set")
+            }
             micPermissionGranted = true
             // First check microphone permission
             try await checkMicrophonePermission()
@@ -50,7 +53,7 @@ extension EmailScreenViewModel {
             // Only proceed if we have permission
             if micPermissionGranted {
                 setupRealtimeSubscription()
-                try await realtimeClient.startSession(apiKey: self.apiKey, model: ChatRealtimeModel.gpt4oRealtimePreview.id)
+                try await realtimeClient.startSession(apiKey: apiKey, model: ChatRealtimeModel.gpt4oRealtimePreview.id)
                 voiceChatState = .active
                 try await updateSession()
             }
@@ -60,6 +63,7 @@ extension EmailScreenViewModel {
     }
 
     func stopVoiceChat() {
+        AppLog.log.debug("stopVoiceChat")
         Task {
             await realtimeClient.endChat()
             voiceChatState = .idle
@@ -68,22 +72,7 @@ extension EmailScreenViewModel {
 
     private func updateSession() async throws {
         var builder = SessionUpdateBuilder()
-        let name = self.name
-        builder.instructions = """
-        You are \(name)'s personal email companion - think of yourself as a friendly and efficient email partner who helps keep his inbox organized. Your personality is warm and conversational, like a trusted assistant who's genuinely invested in making email management easier and more pleasant.
-
-        When you greet \(name), be natural and personable - like you're catching up with a friend while getting down to business. For example: "Hey John! Looks like we've got some new emails to tackle together. I see 6 fresh messages in your inbox - nothing urgent though, which is nice! Should we start with clearing out those newsletters?"
-
-        Key behaviors:
-        - Keep things casual and friendly, but respect \(name)'s time with concise summaries
-        - Wait for \(name)'s go-ahead before diving into specific emails
-        - Use the available tools to check email details when needed
-        - Actively engage with \(name)'s preferences and adapt your style accordingly
-        - If a category is empty, smoothly transition to the next relevant one
-        - Be proactive in spotting patterns or suggesting ways to make email management easier
-
-        Remember to match \(name)'s communication style - if he's more formal or casual, mirror that tone while maintaining your helpful and personable nature.
-        """
+        builder.instructions =  Instructions.buildVoiceInstruction(name: name)
         builder.tools = self.toolManager.getTools().map { $0.asDefinition() }
         builder.toolChoice = .auto
         let event = ClientEvent.sessionUpdate(
@@ -179,11 +168,13 @@ extension EmailScreenViewModel {
     }
 
     func autoStartVoiceSummarization() async {
-        let summaries = getCategorySummaries()
-        await sendMessage(message: "Email summarization session starts, summaries: \(summaries)")
+        let categoriesContent = getCategorySummaries()
+        let summaries = getSummaryContents()
+        await sendMessage(message: "Email summarization session starts, categories: \(categoriesContent), summaries: \(summaries)")
     }
 
     public func sendMessage(message: String) async {
+        AppLog.log.debug("Voice - send message: \(message.prefix(200))...")
         await createConversationItem(text: message)
     }
 
@@ -220,5 +211,35 @@ extension EmailScreenViewModel {
             "\(category.displayName): \(categoryCounts[category, default: 0])"
         }
         return summaries.joined(separator: "\n")
+    }
+
+    private func getSummaryContents() -> String {
+        let summaries = emailSummaries.map {
+            "\($0.conciseSummary), "
+        }
+        return summaries.joined(separator: "\n")
+    }
+}
+
+extension EmailSummary {
+    var conciseSummary: String {
+        var summary = """
+ID: \(self.id)
+Thread_ID: \(self.thread)
+Subject: \(self.title)
+Snippet: \(self.snippet)
+Category: \(self.category)
+"""
+
+        if let from = self.originalEmail?.from {
+            summary += "\nFrom: \(from)"
+        }
+
+        summary += "\nDate: \(self.date)"
+
+        if let labelIds = self.originalEmail?.labelIds {
+            summary += "\nLabelIds: \(labelIds.joined(separator: ", "))"
+        }
+        return summary
     }
 }

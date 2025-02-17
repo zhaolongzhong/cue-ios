@@ -41,15 +41,14 @@ struct AssistantDetailView: View {
                 }
             }
         )
-        .inputAlert(
+        .numberInputAlert(
             title: "Set Max Turns",
-            message: "Enter the maximum number of conversation turns",
-            text: $viewModel.tempMaxTurns,
+            message: "Enter the maximum number of turns for agent automaticaly run.",
             isPresented: $viewModel.showingMaxTurnsEdit,
-            placeholder: "Enter number",
-            isNumeric: true,
-            validator: viewModel.validateMaxTurns,
-            onSave: viewModel.handleMaxTurnsUpdate
+            inputValue: $viewModel.tempMaxTurns,
+            onSave: { newValue in
+                viewModel.handleMaxTurnsUpdate(newValue)
+            }
         )
         .sheet(isPresented: $viewModel.showingInstructionEdit) {
             TextFieldEditorSheet(
@@ -191,7 +190,7 @@ struct AssistantSettingsRow: View {
 }
 
 struct AssistantMaxTurnsRow: View {
-    let maxTurns: String
+    let maxTurns: Int
     let onTap: () -> Void
 
     var body: some View {
@@ -199,7 +198,7 @@ struct AssistantMaxTurnsRow: View {
             SettingsRow(
                 systemName: "number",
                 title: "Max Turns",
-                value: maxTurns.isEmpty ? "Not set" : maxTurns,
+                value: String(maxTurns),
                 showChevron: true
             )
         }

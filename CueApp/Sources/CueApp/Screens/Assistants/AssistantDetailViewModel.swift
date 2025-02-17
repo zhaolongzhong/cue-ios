@@ -17,7 +17,7 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var selectedModel = ""
     @Published var instruction = ""
     @Published var description = ""
-    @Published var maxTurns = ""
+    @Published var maxTurns = 30
     @Published var tempMaxTurns = ""
 
     let availableModels = [
@@ -40,7 +40,7 @@ final class AssistantDetailViewModel: ObservableObject {
         self.selectedModel = assistant.metadata?.model ?? availableModels[0]
         self.instruction = assistant.metadata?.instruction ?? ""
         self.description = assistant.metadata?.description ?? ""
-        self.maxTurns = String(assistant.metadata?.maxTurns ?? 0)
+        self.maxTurns = assistant.metadata?.maxTurns ?? 30
     }
 
     func updateName() async {
@@ -81,16 +81,14 @@ final class AssistantDetailViewModel: ObservableObject {
     }
 
     func prepareMaxTurnsEdit() {
-        tempMaxTurns = maxTurns
+        tempMaxTurns = String(maxTurns)
         showingMaxTurnsEdit = true
     }
 
-    func handleMaxTurnsUpdate(_ value: String) {
-        if let turns = Int(value) {
-            maxTurns = String(turns)
-            Task {
-                await updateMetadata(maxTurns: turns)
-            }
+    func handleMaxTurnsUpdate(_ value: Int) {
+        Task {
+            await updateMetadata(maxTurns: value)
+            maxTurns = value
         }
     }
 

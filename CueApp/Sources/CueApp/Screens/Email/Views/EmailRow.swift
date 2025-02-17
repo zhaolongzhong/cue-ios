@@ -15,27 +15,20 @@ struct EmailRow: View {
                         .foregroundColor(.orange)
                 }
             }
-
             Text(email.snippet)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-                .lineLimit(2)
-
+                .lineLimit(3)
             if !email.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
                         ForEach(email.tags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.secondary.opacity(0.2))
-                                .cornerRadius(8)
+                            TagView(tag: tag)
                         }
                     }
                 }
             }
         }
-        .padding(.all, 16)
+        .contentShape(Rectangle())
     }
 }

@@ -4,7 +4,7 @@ import Dependencies
 import CueCommon
 
 @MainActor
-final class AssistantsViewModel: ObservableObject {
+public final class AssistantsViewModel: ObservableObject {
     @Dependency(\.clientStatusService) public var clientStatusService
     @Dependency(\.webSocketService) public var webSocketService
     @Dependency(\.assistantRepository) private var assistantRepository
