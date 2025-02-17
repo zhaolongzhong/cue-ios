@@ -14,6 +14,10 @@ public class DynamicFeedUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     public func feedURLString(for updater: SPUUpdater) -> String? {
         return dynamicFeedURL
     }
+
+    public func updater(_ updater: SPUUpdater, shouldDownloadReleaseNotesForUpdate updateItem: SUAppcastItem) -> Bool {
+        return false
+    }
 }
 
 final class CheckForUpdatesViewModel: ObservableObject {

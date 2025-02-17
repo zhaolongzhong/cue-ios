@@ -29,6 +29,10 @@
     <string>Allow access to photo library to select photos</string>
     <key>GIDClientID</key>
     <string>317182542550-3bdem6r507g9t0jsm913272tvmoi492c.apps.googleusercontent.com</string>
+    <key>SUPublicEDKey</key>
+    <string>NorYmWIctYxmvhL92MFiQWm0tG9eSrLujt4DfFqRg8A=</string>
+    <key>SUShowReleaseNotes</key>
+    <false/>
     <key>CFBundleURLTypes</key>
     <array>
       <dict>
