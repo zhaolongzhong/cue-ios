@@ -19,10 +19,11 @@ struct HomeDefaultView: View {
     }
 
     private var contentView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 16) {
             greetingView
             quoteView
             sessionButton
+                .padding(.top, 20)
         }
         .padding()
     }
@@ -47,11 +48,12 @@ struct HomeDefaultView: View {
             if let quoteOrFunFact = viewModel.quoteOrFunFact.first {
                 VStack {
                     Text("\"\(quoteOrFunFact.text)\"")
-                        .frame(maxWidth: 300)
+                        .font(.title3)
+                        .frame(maxWidth: 350)
                         .multilineTextAlignment(.center)
                     if let source = quoteOrFunFact.source {
                         Text(source)
-                            .font(.subheadline)
+                            .font(.title3)
                     }
                 }
                 .offset(y: animateQuote ? 0 : 30)
@@ -74,10 +76,10 @@ struct HomeDefaultView: View {
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.cyan.opacity(0.9),
-                            Color.blue.opacity(0.9),
-                            Color.purple.opacity(0.9),
-                            Color.red.opacity(0.9)
+                            Color.cyan.opacity(0.95),
+                            Color.blue.opacity(0.95),
+                            Color.purple.opacity(0.95),
+                            Color.red.opacity(0.95)
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing
@@ -87,7 +89,6 @@ struct HomeDefaultView: View {
                 .shadow(color: Color.black.opacity(0.4), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(.plain)
-        .padding(.top, 20)
         .offset(y: animateQuote ? 0 : 30)
         .opacity(animateButton ? 1 : 0)
     }

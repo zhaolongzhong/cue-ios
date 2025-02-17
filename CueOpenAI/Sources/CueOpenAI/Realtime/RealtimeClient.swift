@@ -115,7 +115,6 @@ public final class RealtimeClient: @preconcurrency RealtimeClientProtocol, @unch
     }
     
     private func handleEvent(_ event: ServerEvent) async {
-        logger.debug("RealtimeClient handleEvent: \(event.type)")
         realtimeMessageSubject.send(event)
         
         switch event {

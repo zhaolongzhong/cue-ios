@@ -25,8 +25,7 @@ struct macOSApp: App {
                 .environmentObject(dependencies)
                 .environmentObject(mainCoordinator)
         }
-        .windowToolbarStyle(.unified)
-        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()

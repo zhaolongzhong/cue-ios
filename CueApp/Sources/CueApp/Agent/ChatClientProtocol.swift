@@ -45,6 +45,7 @@ extension OpenAI: ChatClientProtocol {
         guard let message = completion.choices.first?.message else {
             return nil
         }
+        AppLog.log.debug("OpenAI token usage: \(String(describing: completion.usage))")
         return .openAI(message)
     }
 }
@@ -63,13 +64,16 @@ extension Anthropic: ChatClientProtocol {
         if toolChoice != nil {
             _toolChoice = ["type": toolChoice!]
         }
-        return try await self.messages.create(
+        let response = try await self.messages.create(
             model: model,
             maxTokens: 1024, // adjust as needed
             messages: messages,
             tools: tools,
             toolChoice: _toolChoice
         )
+
+        AppLog.log.debug("Anthropic token usage: \(String(describing: response.usage))")
+        return response
     }
 
     public func extractAssistantMessage(from completion: Anthropic.AnthropicMessage) -> CueAssistantMessage? {
@@ -101,8 +105,10 @@ extension CueClient: ChatClientProtocol {
     public func extractAssistantMessage(from completion: CueCompletionResponse) -> CueAssistantMessage? {
         if let chatCompletion = completion.content?.chatCompletion,
            let msg = chatCompletion.choices.first?.message {
+            AppLog.log.debug("Token usage: \(String(describing: chatCompletion.usage))")
             return .openAI(msg)
         } else if let anthropicMsg = completion.content?.anthropicMessage {
+            AppLog.log.debug("Token usage: \(String(describing: anthropicMsg.usage))")
             return .anthropic(anthropicMsg)
         }
         return nil

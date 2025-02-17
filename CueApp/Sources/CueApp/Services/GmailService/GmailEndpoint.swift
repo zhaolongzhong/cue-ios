@@ -4,6 +4,7 @@ enum GmailEndpoint {
     case listInbox(maxResults: Int = 10)
     case getMessageDetails(id: String)
     case sendMessage(to: String, subject: String, body: String)
+    case replyToMessage(threadId: String, body: String)
     case deleteMessage(id: String)
     case modifyMessage(id: String, addLabels: [String], removeLabels: [String])
     case listLabels
@@ -22,6 +23,8 @@ extension GmailEndpoint: Endpoint {
             return "/gmail/v1/users/me/messages/\(id)/?format=full"
         case .sendMessage:
             return "/gmail/v1/users/me/messages/send"
+        case .replyToMessage:
+            return "/gmail/v1/users/me/messages/send"
         case .deleteMessage(let id):
             return "/gmail/v1/users/me/messages/\(id)"
         case .modifyMessage(let id, _, _):
@@ -36,6 +39,8 @@ extension GmailEndpoint: Endpoint {
         case .listInbox, .getMessageDetails, .listLabels:
             return .get
         case .sendMessage:
+            return .post
+        case .replyToMessage:
             return .post
         case .deleteMessage:
             return .delete
@@ -76,7 +81,17 @@ extension GmailEndpoint: Endpoint {
                     .replacingOccurrences(of: "=", with: "") ?? ""
             ]
             return try? JSONSerialization.data(withJSONObject: message)
-
+        case .replyToMessage(let threadId, let body):
+            let message = [
+                "raw": body
+                    .data(using: .utf8)?
+                    .base64EncodedString()
+                    .replacingOccurrences(of: "+", with: "-")
+                    .replacingOccurrences(of: "/", with: "_")
+                    .replacingOccurrences(of: "=", with: "") ?? "",
+                "threadId": threadId
+            ]
+            return try? JSONSerialization.data(withJSONObject: message)
         case .modifyMessage(_, let addLabels, let removeLabels):
             let params: [String: [String]] = [
                 "addLabelIds": addLabels,
@@ -106,21 +121,4 @@ extension GmailEndpoint: Endpoint {
 //        """
         return "To: \(to)\r\nSubject: \(subject)\r\n\r\n\(body)"
     }
-
-//    private func createMimeMessageV2(to: String, subject: String, body: String) -> String {
-//        // Create a simple MIME message.
-//        let messageString = "To: \(to)\r\nSubject: \(subject)\r\n\r\n\(body)"
-//        guard let messageData = messageString.data(using: .utf8) else {
-//            throw GmailServiceError.invalidResponse
-//        }
-//        var raw = messageData.base64EncodedString()
-//        // Make URL-safe.
-//        raw = raw.replacingOccurrences(of: "+", with: "-")
-//                 .replacingOccurrences(of: "/", with: "_")
-//                 .replacingOccurrences(of: "=", with: "")
-//
-//        let jsonBody: [String: Any] = ["raw": raw]
-////        request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
-//        let jsonData = try JSONSerialization.data(withJSONObject: jsonBody)
-//    }
 }

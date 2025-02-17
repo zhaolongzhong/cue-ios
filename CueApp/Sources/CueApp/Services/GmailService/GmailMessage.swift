@@ -8,7 +8,7 @@ struct InboxResponse: Codable, Sendable {
     }
 }
 
-struct GmailMessage: Codable, Sendable {
+struct GmailMessage: Codable, Equatable, Sendable, Identifiable, Hashable {
     let id: String
     let threadId: String
     let labelIds: [String]?
@@ -21,19 +21,44 @@ struct GmailMessage: Codable, Sendable {
 }
 
 extension GmailMessage {
-    // Convert internalDate (Unix timestamp in milliseconds) to Date
-    var messageDate: Date {
+    var messageDate: String {
+         if let internalDate = self.internalDate,
+            let timestamp = Double(internalDate) {
+             let date = Date(timeIntervalSince1970: timestamp / 1000.0)
+             let dateFormatter = DateFormatter()
+             dateFormatter.dateFormat = "MMMM d"
+             return dateFormatter.string(from: date)
+         }
+         return ""
+     }
+
+    var receivedAt: Date? {
         if let internalDate = self.internalDate,
            let timestamp = Double(internalDate) {
-            // Convert milliseconds to seconds
-            return Date(timeIntervalSince1970: timestamp / 1000.0)
+            let date = Date(timeIntervalSince1970: timestamp / 1000.0)
+            return date
         }
-        return .distantPast
+        return nil
+    }
+
+    var subject: String {
+        getHeaderValue(self.payload?.headers, key: "Subject") ?? "No Subject"
+    }
+    var from: String {
+        getHeaderValue(self.payload?.headers, key: "From") ?? "Unknown Sender"
+    }
+
+    var htmlContent: String? {
+        getEmailContent(from: self, mimeType: .html)
+    }
+
+    var plainTextContent: String? {
+        extractEmailBody(from: self)
     }
 }
 
 // Represents a MIME message part.
-struct MessagePart: Codable, Sendable {
+struct MessagePart: Codable, Equatable, Sendable, Hashable {
     let partId: String?
     let mimeType: String?
     let filename: String?
@@ -43,63 +68,16 @@ struct MessagePart: Codable, Sendable {
 }
 
 // Represents an individual email header.
-struct Header: Codable, Sendable {
+struct Header: Codable, Equatable, Sendable, Hashable {
     let name: String?
     let value: String?
 }
 
 // Represents the body of a message part.
-struct MessagePartBody: Codable, Sendable {
+struct MessagePartBody: Codable, Equatable, Sendable, Hashable {
     let size: Int?
     let data: String?
     let attachmentId: String?
-}
-
-struct CleanGmailMessage: Sendable {
-    let id: String
-    let subject: String
-    let from: String
-    let snippet: String
-    let content: String
-    let date: String
-    let labelIds: [String]
-}
-
-extension CleanGmailMessage {
-    // Initialize from a raw GmailMessage by extracting header values.
-    init(from gmailMessage: GmailMessage) {
-        self.id = gmailMessage.id
-        self.snippet = gmailMessage.snippet ?? "[No snippet]"
-        self.content = extractEmailBody(from: gmailMessage)
-        let headers = gmailMessage.payload?.headers
-        self.subject = getHeaderValue(headers, key: "Subject") ?? "[No subject]"
-        self.from = getHeaderValue(headers, key: "From") ?? "[No sender]"
-        self.date = getHeaderValue(headers, key: "Date") ?? "[No date]"
-        self.labelIds = gmailMessage.labelIds ?? []
-    }
-
-    func toString(includeContent: Bool = false) -> String {
-        if includeContent {
-            return """
-            ID: \(self.id)
-            Subject: \(self.subject)
-            From: \(self.from)
-            Date: \(self.date)
-            LabelIds: \(self.labelIds.joined(separator: ", "))
-            Snippet: \(self.snippet)
-            Content: \(self.content)
-            """
-        } else {
-            return """
-            ID: \(self.id)
-            Subject: \(self.subject)
-            From: \(self.from)
-            Date: \(self.date)
-            LabelIds: \(self.labelIds.joined(separator: ", "))
-            Snippet: \(self.snippet)
-            """
-        }
-    }
 }
 
 // Helper to fetch a header's value from an array.
@@ -110,12 +88,33 @@ func getHeaderValue(_ headers: [Header]?, key: String) -> String? {
 
 // Helper to extract the email body from a GmailMessage.
 // It first looks at the top-level payload, and if not available, then in the payload parts.
-func extractEmailBody(from message: GmailMessage) -> String {
+enum MimeType: String {
+    case html = "text/html"
+    case plainText = "text/plain"
+}
+
+func getEmailContent(from message: GmailMessage, mimeType: MimeType = .plainText) -> String? {
+    guard let parts = message.payload?.parts else {
+        return nil
+    }
+    for part in parts {
+        if part.mimeType == mimeType.rawValue,
+           let dataString = part.body?.data,
+           let decoded = decodeBase64URL(dataString) {
+            return decoded
+        }
+    }
     if let dataString = message.payload?.body?.data,
        let decoded = decodeBase64URL(dataString) {
         return decoded
     }
+    return nil
+}
+
+func extractEmailBody(from message: GmailMessage) -> String {
+    // First try to get HTML content as it's typically more complete
     if let parts = message.payload?.parts {
+        // Look for plain text first
         for part in parts {
             if part.mimeType == "text/plain",
                let dataString = part.body?.data,
@@ -123,7 +122,23 @@ func extractEmailBody(from message: GmailMessage) -> String {
                 return decoded
             }
         }
+
+        // Fall back to HTML if plain text
+        for part in parts {
+            if part.mimeType == "text/html",
+               let dataString = part.body?.data,
+               let decoded = decodeBase64URL(dataString) {
+                return decoded
+            }
+        }
     }
+
+    // Try direct body content if no parts
+    if let dataString = message.payload?.body?.data,
+       let decoded = decodeBase64URL(dataString) {
+        return decoded
+    }
+
     return "[No body content]"
 }
 

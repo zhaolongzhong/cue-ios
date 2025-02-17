@@ -96,7 +96,7 @@ struct GmailTool: LocalTool, Sendable {
             throw ToolError.invalidArguments("Missing messageId")
         }
         let message = try await GmailService.getEmailDetails(messageId: messageId)
-        let cleanMessage = CleanGmailMessage(from: message)
+        let cleanMessage = CleanEmailMessage(from: message)
         return cleanMessage.toString(includeContent: true)
     }
 
@@ -129,7 +129,7 @@ struct GmailTool: LocalTool, Sendable {
         let addLabels = args.getArray("addLabelIds") as? [String] ?? []
         let removeLabels = args.getArray("removeLabelIds") as? [String] ?? []
         return try await GmailService.batchModifyEmails(
-            messageIds: messageIds,
+            ids: messageIds,
             addLabelIds: addLabels,
             removeLabelIds: removeLabels
         )
@@ -150,7 +150,7 @@ struct GmailTool: LocalTool, Sendable {
             throw ToolError.invalidArguments("Missing messageIds")
         }
         return try await GmailService.batchModifyEmails(
-            messageIds: messageIds,
+            ids: messageIds,
             removeLabelIds: ["INBOX"]
         )
     }

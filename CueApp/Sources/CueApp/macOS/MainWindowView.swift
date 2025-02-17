@@ -2,111 +2,184 @@ import SwiftUI
 import CueOpenAI
 import Dependencies
 
-class SharedNavigationState: ObservableObject {
-    @Published var columnVisibility: NavigationSplitViewVisibility = .all
-}
-
 public struct MainWindowView: View {
-    @StateObject private var sharedNavState = SharedNavigationState()
+    // MARK: - Environment & State Objects
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
     @StateObject private var homeViewModel = HomeViewModel()
-    @StateObject private var selectionManager = HomeNavigationManager()
+    @StateObject private var emailScreenViewModel: EmailScreenViewModel
+    @StateObject private var mainNavigationManager = HomeNavigationManager()
+
+    // MARK: - State Properties
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var lastStatusUpdate: Date = Date()
+    @State private var selectedEmailCategory: EmailCategory? = .newsletters
 
     #if os(macOS)
     @State private var windowDelegate: WindowDelegate?
     #endif
 
-    init(viewModelFactory: @escaping () -> AssistantsViewModel) {
-        self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
+    // MARK: - Initialization
+
+    public init(viewModelFactory: @escaping () -> AssistantsViewModel) {
+        _assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
+        _emailScreenViewModel = StateObject(wrappedValue: EmailScreenViewModel())
     }
 
-    public var body: some View {
-        ZStack {
-            NavigationSplitView(columnVisibility: $sharedNavState.columnVisibility) {
-                Sidebar(
-                    assistantsViewModel: assistantsViewModel,
-                    onOpenHome: {
-                        selectionManager.selectDetailContent(.home)
-                    },
-                    onOpenCueChat: {
-                        selectionManager.selectDetailContent(.chat)
-                    },
-                    selectedAssistant: Binding(
-                        get: { selectionManager.selectedAssistant },
-                        set: {
-                            selectionManager.selectDetailContent(.assistant($0))
-                        }
-                    )
-                )
-                .navigationSplitViewColumnWidth(min: WindowSize.sidebarMiniWidth, ideal: WindowSize.sidebarIdealWidth, max: WindowSize.sidebarMaxWidth)
-                .id("sidebar-\(lastStatusUpdate.timeIntervalSince1970)")
-            } detail: {
-                if !selectionManager.isEmailViewPresented {
-                    NavigationStack {
-                        switch selectionManager.currentView {
-                        case .home:
-                            HomeDefaultView(viewModel: homeViewModel, onNewSession: {
-                                selectionManager.selectDetailContent(.email)
-                            })
-                        case .assistant(let assistant):
-                            DetailContent(
-                                assistantsViewModel: assistantsViewModel,
-                                selectedAssistant: assistant
-                            )
-                        case .chat:
-                            CueChatView()
-                        case .email:
-                            HomeDefaultView(viewModel: homeViewModel, onNewSession: {
-                                selectionManager.selectDetailContent(.email)
-                            })
-                        }
-                    }
-                }
-            }
-            .navigationSplitViewStyle(.balanced)
+    // MARK: - Body
 
-            #if os(macOS)
-            if selectionManager.isEmailViewPresented {
-                EmailScreen(
-                    apiKey: apiKeysProviderViewModel.openAIKey,
-                    sharedNavState: sharedNavState,
-                    onClose: {
-                        selectionManager.isEmailViewPresented = false
-                    }
-                )
-                .transition(.move(edge: .trailing))
-                .zIndex(1)
-            }
-            #endif
+    public var body: some View {
+        NavigationSplitView {
+            sidebarContent
+        } detail: {
+            detailContent
         }
+        .navigationSplitViewStyle(.balanced)
         .environmentObject(apiKeysProviderViewModel)
         .onReceive(assistantsViewModel.$clientStatuses) { _ in
             lastStatusUpdate = Date()
         }
         .onChange(of: appStateViewModel.state.currentUser) { _, user in
-            if user != nil {
-                Task {
-                    await homeViewModel.initialize()
-                }
-            }
+            handleUserChange(user)
         }
         #if os(macOS)
-        .overlay(
-            WindowAccessor { window in
-                guard let window = window else { return }
-                loadWindowState(for: window)
-                self.windowDelegate = WindowDelegate(saveState: { [weak window] in
-                    guard let window = window else { return }
-                    saveWindowState(for: window)
-                })
-                window.delegate = self.windowDelegate
-            }
-        )
+        .overlay(windowStateHandler)
         #endif
     }
+
+    // MARK: - View Components
+
+    @ViewBuilder
+    private var sidebarContent: some View {
+        Group {
+            if mainNavigationManager.isEmailViewPresented {
+                emailSidebarView
+            } else {
+                standardSidebarView
+            }
+        }
+        .navigationSplitViewColumnWidth(
+            min: WindowSize.sidebarMiniWidth,
+            ideal: WindowSize.sidebarIdealWidth,
+            max: WindowSize.sidebarMaxWidth
+        )
+        .id("sidebar-\(lastStatusUpdate.timeIntervalSince1970)")
+    }
+
+    @ViewBuilder
+    private var emailSidebarView: some View {
+        EmailCategoryView(
+            selectedCategory: $selectedEmailCategory,
+            emailSummaries: emailScreenViewModel.emailSummaries,
+            isLoading: emailScreenViewModel.processingState.isLoading
+        )
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                homeButton
+            }
+        }
+    }
+
+    private var homeButton: some View {
+        Button {
+            mainNavigationManager.isEmailViewPresented = false
+        } label: {
+            Image(systemName: "house")
+        }
+    }
+
+    private var standardSidebarView: some View {
+        Sidebar(
+            assistantsViewModel: assistantsViewModel,
+            onOpenHome: handleOpenHome,
+            onOpenCueChat: handleOpenCueChat,
+            selectedAssistant: assistantBinding
+        )
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        if mainNavigationManager.isEmailViewPresented {
+            #if os(macOS)
+            EmailScreen(
+                emailScreenViewModel: emailScreenViewModel,
+                selectedEmailCategory: $selectedEmailCategory
+            )
+            #endif
+        } else {
+            mainNavigationContent
+        }
+    }
+
+    private var mainNavigationContent: some View {
+        NavigationStack {
+            switch mainNavigationManager.currentView {
+            case .home, .email:
+                HomeDefaultView(
+                    viewModel: homeViewModel,
+                    onNewSession: handleNewSession
+                )
+            case .assistant(let assistant):
+                DetailContent(
+                    assistantsViewModel: assistantsViewModel,
+                    selectedAssistant: assistant
+                )
+            case .chat:
+                CueChatView()
+            }
+        }
+    }
+
+    #if os(macOS)
+    private var windowStateHandler: some View {
+        WindowAccessor { window in
+            guard let window = window else { return }
+            handleWindowSetup(window)
+        }
+    }
+    #endif
+
+    // MARK: - Computed Properties
+
+    private var assistantBinding: Binding<Assistant?> {
+        Binding(
+            get: { mainNavigationManager.selectedAssistant },
+            set: { mainNavigationManager.selectDetailContent(.assistant($0)) }
+        )
+    }
+
+    // MARK: - Action Handlers
+
+    private func handleOpenHome() {
+        mainNavigationManager.selectDetailContent(.home)
+    }
+
+    private func handleOpenCueChat() {
+        mainNavigationManager.selectDetailContent(.chat)
+    }
+
+    private func handleNewSession() {
+        mainNavigationManager.selectDetailContent(.email)
+    }
+
+    private func handleUserChange(_ user: User?) {
+        if user != nil {
+            Task {
+                await homeViewModel.initialize()
+            }
+        }
+    }
+
+    #if os(macOS)
+    private func handleWindowSetup(_ window: NSWindow) {
+        loadWindowState(for: window)
+        windowDelegate = WindowDelegate(saveState: { [weak window] in
+            guard let window = window else { return }
+            saveWindowState(for: window)
+        })
+        window.delegate = windowDelegate
+    }
+    #endif
 }
