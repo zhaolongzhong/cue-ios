@@ -7,8 +7,8 @@ struct HomeDefaultView: View {
 
     @State private var animateGreeting = false
     @State private var animateQuote = false
+    @State private var animateQuickActions = false
     @State private var animateButton = false
-    @State private var isLoadingQuote = false
 
     var body: some View {
         ZStack {
@@ -22,6 +22,7 @@ struct HomeDefaultView: View {
         VStack(alignment: .center, spacing: 20) {
             greetingView
             quoteView
+            quickActionsView
             sessionButton
         }
         .padding()
@@ -64,6 +65,30 @@ struct HomeDefaultView: View {
         }
     }
 
+    private var quickActionsView: some View {
+        HStack(spacing: 12) {
+            BorderButton(
+                title: "Last Session",
+                icon: "clock.arrow.circlepath",
+                action: { viewModel.navigateToDestination(.lastSession) }
+            )
+            
+            BorderButton(
+                title: "Stars",
+                icon: "star.fill",
+                action: { viewModel.navigateToDestination(.favorites) }
+            )
+            
+            BorderButton(
+                title: "To-dos",
+                icon: "checklist",
+                action: { viewModel.navigateToDestination(.todos) }
+            )
+        }
+        .offset(y: animateQuickActions ? 0 : 30)
+        .opacity(animateQuickActions ? 1 : 0)
+    }
+    
     private var sessionButton: some View {
         Button(action: onNewSession) {
             Text("Start session")
@@ -102,16 +127,22 @@ struct HomeDefaultView: View {
                 await MainActor.run {
                     isLoadingQuote = false
                     withAnimation(.easeOut(duration: 0.6)) { animateQuote = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                        withAnimation(.easeOut(duration: 0.6)) { animateButton = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeOut(duration: 0.6)) { animateQuickActions = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeOut(duration: 0.6)) { animateButton = true }
+                        }
                     }
                 }
             }
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                 withAnimation(.easeOut(duration: 0.6)) { animateQuote = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                    withAnimation(.easeOut(duration: 0.6)) { animateButton = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.easeOut(duration: 0.6)) { animateQuickActions = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeOut(duration: 0.6)) { animateButton = true }
+                    }
                 }
             }
         }
