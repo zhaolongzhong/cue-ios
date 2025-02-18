@@ -10,6 +10,7 @@ final class CueChatViewModel: ObservableObject {
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
     private var cancellables = Set<AnyCancellable>()
+    private var currentAgent: AgentLoop<CueClient>?
 
     @Published var model: ChatModel = .gpt4oMini {
         didSet {
@@ -25,6 +26,7 @@ final class CueChatViewModel: ObservableObject {
         }
     }
     @Published var error: ChatError?
+    @Published var agentState: AgentState = .idle
 
     init() {
         self.cueClient = CueClient()
@@ -62,15 +64,39 @@ final class CueChatViewModel: ObservableObject {
 
         isLoading = true
         newMessage = ""
+        error = nil
+
+        // Create and store new agent
+        let agent = AgentLoop(chatClient: cueClient, toolManager: toolManager, model: model.rawValue)
+        currentAgent = agent
+        
+        // Observe agent state
+        Task { @MainActor in
+            for await state in agent.$state.values {
+                self.agentState = state
+                self.isLoading = state != .idle && state != .stopped && state != .error("")
+            }
+        }
 
         do {
-            let agent = AgentLoop(chatClient: cueClient, toolManager: toolManager, model: model.rawValue)
             let completionRequest = CompletionRequest(model: model.rawValue, tools: tools, toolChoice: "auto")
             let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
-            messages = updatedMessages
+            if agent.state != .stopped {
+                messages = updatedMessages
+            }
         } catch {
+            self.error = ChatError.unknownError(error.localizedDescription)
             ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
         }
+        
+        isLoading = false
+        if error == nil && agent.state != .stopped {
+            agentState = .idle
+        }
+    }
+    
+    func stopAgent() {
+        currentAgent?.stop()
         isLoading = false
     }
 

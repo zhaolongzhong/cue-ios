@@ -46,29 +46,55 @@ public struct CueChatView: View {
             }
             .frame(maxHeight: .infinity)
 
-            RichTextField(
-                showVoiceChat: true,
-                showAXapp: false,
-                onShowTools: {
-                    showingToolsList = true
-                },
-                onOpenVoiceChat: {
-                    #if os(macOS)
-                    openWindow(id: "realtime-chat-window")
-                    #else
-                    coordinator.showLiveChatSheet()
-                    #endif
-                },
-                onStartAXApp: { _ in },
-                onSend: {
-                    Task {
-                        await viewModel.sendMessage()
+            VStack(spacing: 8) {
+                // Agent state indicator
+                if viewModel.isLoading {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.7)
+                        
+                        Text(viewModel.agentState.description)
+                            .foregroundColor(.secondary)
+                            .font(.footnote)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            viewModel.stopAgent()
+                        }) {
+                            Label("Stop", systemImage: "stop.fill")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.borderless)
                     }
-                },
-                toolCount: viewModel.availableTools.count,
-                inputMessage: $viewModel.newMessage,
-                isFocused: $isFocused
-            )
+                    .padding(.horizontal)
+                }
+                
+                RichTextField(
+                    showVoiceChat: true,
+                    showAXapp: false,
+                    onShowTools: {
+                        showingToolsList = true
+                    },
+                    onOpenVoiceChat: {
+                        #if os(macOS)
+                        openWindow(id: "realtime-chat-window")
+                        #else
+                        coordinator.showLiveChatSheet()
+                        #endif
+                    },
+                    onStartAXApp: { _ in },
+                    onSend: {
+                        Task {
+                            await viewModel.sendMessage()
+                        }
+                    },
+                    toolCount: viewModel.availableTools.count,
+                    inputMessage: $viewModel.newMessage,
+                    isFocused: $isFocused,
+                    isLoading: viewModel.isLoading
+                )
             .padding(.all, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

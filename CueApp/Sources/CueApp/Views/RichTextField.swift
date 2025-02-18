@@ -12,6 +12,7 @@ struct RichTextField: View {
     let onStartAXApp: ((AccessibleApplication) -> Void)?
     let onSend: () -> Void
     let toolCount: Int
+    let isLoading: Bool
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
@@ -26,7 +27,8 @@ struct RichTextField: View {
         onSend: @escaping () -> Void,
         toolCount: Int = 0,
         inputMessage: Binding<String>,
-        isFocused: FocusState<Bool>.Binding
+        isFocused: FocusState<Bool>.Binding,
+        isLoading: Bool = false
     ) {
         self.isEnabled = isEnabled
         self.showVoiceChat = showVoiceChat
@@ -36,6 +38,7 @@ struct RichTextField: View {
         self.onStartAXApp = onStartAXApp
         self.onSend = onSend
         self.toolCount = toolCount
+        self.isLoading = isLoading
         self._inputMessage = inputMessage
         self._isFocused = isFocused
     }
@@ -52,8 +55,9 @@ struct RichTextField: View {
                         .lineLimit(1...5)
                         .focused($isFocused)
                         .background(.clear)
+                        .disabled(isLoading)
                         .onSubmit {
-                            if isMessageValid {
+                            if isMessageValid && !isLoading {
                                 onSend()
                             }
                         }
@@ -127,7 +131,7 @@ struct RichTextField: View {
                     }
                     .buttonStyle(.plain)
                 }
-                SendButton(isEnabled: isMessageValid, action: onSend)
+                SendButton(isEnabled: isMessageValid && !isLoading, action: onSend)
             }
             .contentShape(Rectangle())
             .onTapGesture {
