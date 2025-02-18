@@ -3,44 +3,104 @@ import CueCommon
 import CueOpenAI
 import CueAnthropic
 
+/// Represents the current state of the agent
+enum AgentState {
+    case idle
+    case thinking
+    case executingTool(name: String)
+    case stopped
+    case error(String)
+    
+    var description: String {
+        switch self {
+        case .idle: return "Idle"
+        case .thinking: return "Thinking..."
+        case .executingTool(let name): return "Using tool: \(name)"
+        case .stopped: return "Stopped"
+        case .error(let msg): return "Error: \(msg)"
+        }
+    }
+}
+
 @MainActor
 final class AgentLoop<Client: ChatClientProtocol> {
     private let chatClient: Client
     private let toolManager: ToolManager?
     private let model: String
-
+    private var task: Task<Void, Never>?
+    
+    @Published private(set) var state: AgentState = .idle
+    private var isCancelled = false
+    
     init(chatClient: Client, toolManager: ToolManager? = nil, model: String) {
         self.chatClient = chatClient
         self.toolManager = toolManager
         self.model = model
     }
+    
+    func stop() {
+        isCancelled = true
+        task?.cancel()
+        state = .stopped
+    }
 
     func run(with initialMessages: [Client.MessageParamType], request: CompletionRequest) async throws -> [Client.MessageParamType] {
+        // Reset state
+        isCancelled = false
+        state = .idle
         var conversation = initialMessages
         var iteration = 0
-
-        while iteration < request.maxTurns {
-            let completion = try await chatClient.createChatCompletion(
-                model: model,
-                messages: conversation,
-                tools: request.tools,
-                toolChoice: request.toolChoice
-            )
-            guard let assistantMessage = chatClient.extractAssistantMessage(from: completion) else {
-                break
+        
+        // Create a new task for this run
+        task = Task { [weak self] in
+            while !Task.isCancelled && iteration < request.maxTurns {
+                do {
+                    // Check for cancellation
+                    if self?.isCancelled == true { break }
+                    
+                    // Update state to thinking
+                    self?.state = .thinking
+                    
+                    let completion = try await chatClient.createChatCompletion(
+                        model: model,
+                        messages: conversation,
+                        tools: request.tools,
+                        toolChoice: request.toolChoice
+                    )
+                    
+                    // Check for cancellation after network call
+                    if self?.isCancelled == true { break }
+                    
+                    guard let assistantMessage = chatClient.extractAssistantMessage(from: completion) else {
+                        break
+                    }
+                    
+                    let shouldContinue: Bool
+                    switch assistantMessage {
+                    case .openAI(let msg):
+                        shouldContinue = await handleOpenAIMessage(msg, conversation: &conversation)
+                    case .anthropic(let msg):
+                        shouldContinue = await handleAnthropicMessage(msg, conversation: &conversation)
+                    }
+                    
+                    if !shouldContinue { break }
+                    iteration += 1
+                    
+                } catch {
+                    self?.state = .error(error.localizedDescription)
+                    throw error
+                }
             }
-
-            let shouldContinue: Bool
-            switch assistantMessage {
-            case .openAI(let msg):
-                shouldContinue = await handleOpenAIMessage(msg, conversation: &conversation)
-            case .anthropic(let msg):
-                shouldContinue = await handleAnthropicMessage(msg, conversation: &conversation)
-            }
-
-            if !shouldContinue { break }
-            iteration += 1
         }
+        
+        // Wait for task completion
+        try await task?.value
+        
+        // Set final state if not already stopped
+        if state != .stopped {
+            state = .idle
+        }
+        
         return conversation
     }
 
@@ -119,12 +179,19 @@ final class AgentLoop<Client: ChatClientProtocol> {
         }
         var results: [OpenAI.ToolMessage] = []
         for toolCall in toolCalls {
+            // Check for cancellation
+            if isCancelled { break }
+            
             if let data = toolCall.function.arguments.data(using: .utf8),
                let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 do {
+                    // Update state with current tool
+                    state = .executingTool(name: toolCall.function.name)
+                    
                     let result = try await toolManager.callTool(name: toolCall.function.name, arguments: args)
                     results.append(OpenAI.ToolMessage(role: "tool", content: result, toolCallId: toolCall.id))
                 } catch {
+                    state = .error(error.localizedDescription)
                     results.append(OpenAI.ToolMessage(role: "tool", content: "Error: \(error.localizedDescription)", toolCallId: toolCall.id))
                 }
             }
@@ -137,7 +204,14 @@ final class AgentLoop<Client: ChatClientProtocol> {
         guard let toolManager = self.toolManager else {
             return ""
         }
+        
+        // Check for cancellation
+        if isCancelled { return "Cancelled" }
+        
         do {
+            // Update state with current tool
+            state = .executingTool(name: toolBlock.name)
+            
             var arguments: [String: Any] = [:]
             for (key, value) in toolBlock.input {
                 switch value {
@@ -153,6 +227,7 @@ final class AgentLoop<Client: ChatClientProtocol> {
             let result = try await toolManager.callTool(name: toolBlock.name, arguments: arguments)
             return result
         } catch {
+            state = .error(error.localizedDescription)
             AppLog.log.error("Tool error: \(error)")
             return "Error: \(error.localizedDescription)"
         }
