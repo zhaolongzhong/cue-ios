@@ -15,19 +15,30 @@ extension HomeViewModel {
         self.quoteOrFunFact = quotes
     }
 
+    private var previousQuotes: Set<String> = []
+    
     func generateQuotes() async -> [QuoteContent] {
         let cueClient = CueClient()
         var messageParams: [CueChatMessage] = []
 
-        let prompt = """
-        Generate 3 meaningful quotes that would resonate with someone who values personal growth and innovation and entrepreneurship. Format your response as a JSON array where each quote has 'text' and optional 'source' fields.
+        // Convert previous quotes to a formatted string
+        let previousQuotesContext = previousQuotes.isEmpty ? "" : """
+        Previously generated quotes (avoid these):
+        \(previousQuotes.map { "- \($0)" }.joined(separator: "\n"))
 
-        Requirements:
+        """
+
+        let prompt = """
+        Generate 3 NEW and DIFFERENT meaningful quotes that would resonate with someone who values personal growth and innovation and entrepreneurship. Format your response as a JSON array where each quote has 'text' and optional 'source' fields.
+
+        \(previousQuotesContext)Requirements:
+        - Each quote MUST BE DIFFERENT from previously generated quotes
         - Mix of both famous quotes and original insights
         - Focus on themes of growth, creativity, and wisdom
         - Each quote should be concise and impactful
         - Include source attribution where applicable
         - Output must be valid JSON format
+        - Ensure variety in themes and authors
 
         Example format:
         [
@@ -79,7 +90,20 @@ extension HomeViewModel {
             return []
         }
 
-        return parseQuotesResponse(jsonString)
+        let quotes = parseQuotesResponse(jsonString)
+        
+        // Update previous quotes set with new quotes
+        quotes.forEach { quote in
+            // Only store the text to save memory
+            previousQuotes.insert(quote.text)
+            
+            // Keep set size manageable by removing oldest quotes if too large
+            if previousQuotes.count > 50 {
+                previousQuotes.remove(previousQuotes.first!)
+            }
+        }
+        
+        return quotes
     }
 
     private func parseQuotesResponse(_ response: String) -> [QuoteContent] {
