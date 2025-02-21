@@ -26,14 +26,14 @@ struct SidebarAssistantActions: AssistantActions {
 struct Sidebar: View {
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
-    @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
     @State private var isShowingNewAssistantSheet = false
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
-    private let onOpenHome: () -> Void
-    private let onOpenCueChat: () -> Void
+    private let homeNavigationManager: HomeNavigationManager
+    @Environment(\.openWindow) private var openWindow
 
     private var showDeleteAlert: Binding<Bool> {
         Binding(
@@ -44,13 +44,11 @@ struct Sidebar: View {
 
     init(
         assistantsViewModel: AssistantsViewModel,
-        onOpenHome: @escaping () -> Void,
-        onOpenCueChat: @escaping () -> Void,
+        homeNavigationManager: HomeNavigationManager,
         selectedAssistant: Binding<Assistant?>
     ) {
         self.assistantsViewModel = assistantsViewModel
-        self.onOpenHome = onOpenHome
-        self.onOpenCueChat = onOpenCueChat
+        self.homeNavigationManager = homeNavigationManager
         self._selectedAssistant = selectedAssistant
     }
 
@@ -104,39 +102,21 @@ struct Sidebar: View {
         ScrollView {
             LazyVStack {
                 Group {
-                    if featureFlags.enableCueChat {
+                    if featureFlags.enableCue {
                         cueRow
                     }
                     emailRow
+                    if featureFlags.enableProviders {
+                        if !providersViewModel.enabledProviders.isEmpty {
+                            Divider()
+                                .opacity(0.5)
+                            providersSection
+                        }
+                    }
                 }
                 .padding(.horizontal, 16)
                 if featureFlags.enableAssistants {
-                    assistantsRow
-                        .padding(.horizontal, 16)
-                    ForEach(assistantsViewModel.assistants) { assistant in
-                        AssistantRow(
-                            assistant: assistant,
-                            status: assistantsViewModel.getClientStatus(for: assistant),
-                            actions: SidebarAssistantActions(
-                                assistantsViewModel: assistantsViewModel,
-                                setAssistantToDelete: { assistant in
-                                    assistantToDelete = assistant
-                                },
-                                onDetailsPressed: { _ in
-                                    assistantForDetails = assistant
-                                }
-                            )
-                        )
-                        .padding(.horizontal, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
-                        )
-                        .padding(.horizontal, 8)
-                        .onTapGesture { selectedAssistant = assistant }
-                        .tag(assistant)
-                    }
-                    .scrollContentBackground(.hidden)
+                    assistantsSection
                 }
             }
         }
@@ -146,7 +126,9 @@ struct Sidebar: View {
         SidebarRowButton(
             title: "Cue",
             icon: .custom("~"),
-            action: onOpenCueChat
+            action: {
+                homeNavigationManager.navigateTo(.cue)
+            }
         )
     }
 
@@ -154,15 +136,120 @@ struct Sidebar: View {
         SidebarRowButton(
             title: "Email",
             icon: .system("envelope"),
-            action: onOpenHome
+            action: {
+                homeNavigationManager.navigateTo(.home)
+            }
         )
     }
 
-    private var assistantsRow: some View {
+    private var emptyProvidersStateView: some View {
+        Text("No providers configured")
+            .foregroundColor(.secondary)
+            .font(.caption)
+    }
+
+    private var providersHeader: some View {
+        SectionHeader(
+            title: "Providers",
+            trailingIcon: .system("plus"),
+            trailingAction: {
+                homeNavigationManager.navigateTo(.openai)
+                #if os(macOS)
+                openWindow(id: WindowId.providersManagement.rawValue)
+                #endif
+            }
+        )
+    }
+
+    private var providersSection: some View {
+        VStack(spacing: 0) {
+            providersHeader
+
+            if providersViewModel.enabledProviders.isEmpty {
+                emptyProvidersStateView
+            } else {
+                ForEach(providersViewModel.enabledProviders, id: \.self) { provider in
+                    switch provider {
+                    case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
+                        ProviderSidebarRow(provider: provider) {
+                            homeNavigationManager.navigateTo(.openai)
+                        }
+                    case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
+                        ProviderSidebarRow(provider: provider) {
+                            homeNavigationManager.navigateTo(.anthropic)
+                        }
+                    case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
+                        ProviderSidebarRow(provider: provider) {
+                            homeNavigationManager.navigateTo(.gemini)
+                        }
+                    default:
+                        AnyView(EmptyView())
+                    }
+                }
+            }
+        }
+        #if os(iOS)
+        .listSectionSpacing(.compact)
+        #endif
+    }
+
+    private var assistantsSection: some View {
+        VStack {
+            assistantsSectionHeader
+                .padding(.horizontal, 16)
+            ForEach(assistantsViewModel.assistants) { assistant in
+                AssistantRow(
+                    assistant: assistant,
+                    status: assistantsViewModel.getClientStatus(for: assistant),
+                    actions: SidebarAssistantActions(
+                        assistantsViewModel: assistantsViewModel,
+                        setAssistantToDelete: { assistant in
+                            assistantToDelete = assistant
+                        },
+                        onDetailsPressed: { _ in
+                            assistantForDetails = assistant
+                        }
+                    )
+                )
+                .padding(.horizontal, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
+                )
+                .padding(.horizontal, 8)
+                .onTapGesture { selectedAssistant = assistant }
+                .tag(assistant)
+            }
+            .scrollContentBackground(.hidden)
+        }
+    }
+
+    private var assistantsSectionHeader: some View {
         SectionHeader(
             title: "Assistants",
             trailingIcon: .system("plus"),
             trailingAction: { isShowingNewAssistantSheet = true }
         )
+    }
+}
+
+struct ProviderSidebarRow: View {
+    let provider: Provider
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                ProviderAvatar(
+                    iconName: provider.iconName,
+                    isSystemImage: provider.isSystemIcon
+                )
+
+                Text(provider.displayName)
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import Dependencies
 
 enum SettingsRoute: Hashable {
-    case providerAPIKeys
+    case providers
     case assistantAPIKeys
     case connectedApps
     #if os(macOS)
@@ -37,7 +37,7 @@ public struct SettingsView: View {
 private struct SettingsContentView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var dependencies: AppDependencies
-    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @ObservedObject var viewModel: SettingsViewModel
     @State private var navigationPath = NavigationPath()
 
@@ -69,11 +69,18 @@ private struct SettingsContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 #endif
             }
-            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 4) {
+                        Text("Settings")
+                            .font(.headline)
+                    }
+                }
+            }
             .navigationDestination(for: SettingsRoute.self) { route in
                 switch route {
-                case .providerAPIKeys:
-                    APIKeysProviderView(apiKeysProviderViewModel: apiKeysProviderViewModel)
+                case .providers:
+                    ProvidersScreen(providersViewModel: providersViewModel)
                 case .assistantAPIKeys:
                     APIKeysView()
                 case .connectedApps:

@@ -40,7 +40,6 @@ struct AddAPIKeySheet: View {
                             dismiss()
                         }
                     }
-                    .disabled(name.isEmpty)
                 }
             }
         }

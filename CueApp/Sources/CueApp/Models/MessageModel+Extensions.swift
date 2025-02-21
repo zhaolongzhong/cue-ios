@@ -153,9 +153,9 @@ extension MessageContent {
 
     public var toolArgs: String? {
         if let toolCalls = toolCalls {
-            return toolCalls.map { $0.function.arguments }.joined(separator: ", ")
+            return toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
         } else if let toolUses = toolUses {
-            return toolUses.map { String(describing: $0.input.toNativeDictionary) }.joined(separator: ", ")
+            return toolUses.map { $0.prettyInput }.joined(separator: ", ")
         }
         return nil
     }

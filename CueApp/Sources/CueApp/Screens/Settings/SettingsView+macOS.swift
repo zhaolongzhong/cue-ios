@@ -14,129 +14,110 @@ struct SettingsListMacOS: View {
     var body: some View {
         #if os(macOS)
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
-                Section {
-                    GroupBox {
-                        if let user = viewModel.currentUser {
-                            UserInfoView(email: user.email)
-                                .padding(.horizontal, 6)
-                        }
-                    }
-                } header: {
-                    SettingsHeader(title: "Account")
-                }
+            HStack {
+                Spacer()
+                contentView
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        #endif
+    }
 
-                if featureFlags.enableAssistants || featureFlags.enableThirdPartyProvider {
-                    Section {
-                        GroupBox {
-                            if featureFlags.enableOpenAIChat || featureFlags.enableAnthropicChat {
-                                APIKeysButton(title: "Provider API Keys", horizontal: true, onTap: {
-                                    navigationPath.append(SettingsRoute.providerAPIKeys)
-                                })
-                                .padding(.horizontal, 6)
-                                if featureFlags.enableAssistants {
-                                    Divider()
-                                }
-                            }
-                            if featureFlags.enableAssistants {
-                                APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                                    navigationPath.append(SettingsRoute.assistantAPIKeys)
-                                })
-                                .padding(.horizontal, 6)
-                            }
-                        }
-                    } header: {
-                        SettingsHeader(title: "API Keys")
+    var contentView: some View {
+        LazyVStack(alignment: .leading, spacing: 12) {
+            Section {
+                GroupBox {
+                    if let user = viewModel.currentUser {
+                        UserInfoView(email: user.email)
                     }
                 }
+            } header: {
+                SettingsHeader(title: "Account")
+            }
 
-                Section {
-                    GroupBox {
-                        Button {
-                            navigationPath.append(SettingsRoute.connectedApps)
-                        } label: {
-                            SettingsRow(
-                                systemName: "shield.checkerboard",
-                                title: "Google Apps",
-                                showChevron: true
-                            ).padding(.horizontal, 6)
+            Section {
+                GroupBox {
+                    if featureFlags.enableProviders {
+                        SettingsRow(systemIcon: "key.viewfinder", title: "Providers", showChevron: true, showDivider: true) {
+                            navigationPath.append(SettingsRoute.providers)
                         }
-                        .buttonStyle(.plain)
                     }
-                } header: {
-                    SettingsHeader(title: "Connected Apps")
-                }
-
-                Section {
-                    GroupBox {
-                        Button {
-                            navigationPath.append(SettingsRoute.developer)
-                        } label: {
-                            SettingsRow(
-                                systemName: "hammer",
-                                title: "Developer",
-                                showChevron: true
-                            ).padding(.horizontal, 6)
+                    if featureFlags.enableAssistants {
+                        SettingsRow(systemIcon: "key", title: "API Keys", showChevron: true, showDivider: true) {
+                            navigationPath.append(SettingsRoute.assistantAPIKeys)
                         }
-                        .buttonStyle(.plain)
+                    }
+                    SettingsRow(
+                        systemIcon: "app.connected.to.app.below.fill",
+                        title: "Connected Apps",
+                        showChevron: true
+                    ) {
+                        navigationPath.append(SettingsRoute.connectedApps)
                     }
                 }
+            } header: {
+                SettingsHeader(title: "Services")
+            }
 
-                Section {
-                    GroupBox {
-                        Button {
-                            navigationPath.append(SettingsRoute.featureFlags)
-                        } label: {
-                            SettingsRow(
-                                systemName: "flag",
-                                title: "Feature Flags",
-                                showChevron: true
-                            ).padding(.horizontal, 6)
-                        }
-                        .buttonStyle(.plain)
+            Section {
+                GroupBox {
+                    SettingsRow(
+                        systemIcon: "flag",
+                        title: "Feature Flags",
+                        value: "",
+                        showChevron: true,
+                        showDivider: true
+                    ) {
+                        navigationPath.append(SettingsRoute.featureFlags)
+                    }
+                    SettingsRow(
+                        systemIcon: "hammer",
+                        title: "Integrations",
+                        value: "",
+                        showChevron: true
+                    ) {
+                        navigationPath.append(SettingsRoute.developer)
                     }
                 }
+            } header: {
+                SettingsHeader(title: "Developer")
+            }
 
-                Section {
-                    GroupBox {
-                        if let appcastUrl = viewModel.appConfig?.appcastUrl {
-                            Button {
-                                coordinator.checkForUpdates(withAppcastUrl: appcastUrl)
-                            } label: {
-                                SettingsRow(
-                                    systemName: "arrow.triangle.2.circlepath",
-                                    title: "Check for Updates",
-                                    showChevron: false
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 6)
-                            Divider()
-                        }
-
+            Section {
+                GroupBox {
+                    if let appcastUrl = viewModel.appConfig?.appcastUrl {
                         SettingsRow(
-                            systemName: "info.circle",
-                            title: "Version",
-                            value: "\(viewModel.getVersionInfo())",
-                            showChevron: false
-                        )
-                        .padding(.horizontal, 6)
+                            systemIcon: "arrow.triangle.2.circlepath",
+                            title: "Check for Updates",
+                            showDivider: true
+                        ) {
+                            coordinator.checkForUpdates(withAppcastUrl: appcastUrl)
+                        }
                     }
-                }
 
-                Section {
-                    GroupBox {
-                        LogoutSection {
-                            Task {
-                                await viewModel.logout()
-                                dismiss()
-                            }
-                        }.padding(.horizontal, 6)
+                    SettingsRow(
+                        systemIcon: "info.circle",
+                        title: "Version",
+                        value: "\(viewModel.getVersionInfo())"
+                    )
+                }
+            }
+
+            Section {
+                GroupBox {
+                    LogoutSection {
+                        Task {
+                            await viewModel.logout()
+                            dismiss()
+                        }
                     }
                 }
             }
-            .padding(.all, 32)
         }
-        #endif
+        .frame(maxWidth: 600)
     }
 }

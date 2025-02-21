@@ -8,6 +8,7 @@ public struct CueChatView: View {
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
     @State private var showingToolsList = false
+    @AppStorage("selectedCueModel") private var storedModel: ChatModel = .gpt4oMini
 
     public init() {}
 
@@ -22,7 +23,7 @@ public struct CueChatView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(viewModel.messages) { message in
                             MessageBubble(message: message)
                         }
@@ -30,7 +31,7 @@ public struct CueChatView: View {
                             .frame(height: 1)
                             .id(bottomID)
                     }
-                    .padding()
+                    .padding(.top)
                 }
                 #if os(iOS)
                 .simultaneousGesture(DragGesture().onChanged { _ in
@@ -72,7 +73,7 @@ public struct CueChatView: View {
             .padding(.all, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .defaultNavigationBar(showCustomBackButton: false, title: "")
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 #if os(iOS)
@@ -85,7 +86,6 @@ public struct CueChatView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(viewModel.model.displayName)
-                            .font(.headline)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
@@ -94,32 +94,14 @@ public struct CueChatView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                #else
-                Menu {
-                    ForEach(ChatModel.allCases, id: \.self) { model in
-                        Button {
-                            viewModel.model = model
-                        } label: {
-                            if viewModel.model == model {
-                                Label(model.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(model.displayName)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(viewModel.model.displayName)
-                            .font(.headline)
-                    }
-                    .frame(width: 120)
-                    .foregroundColor(.primary)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
                 #endif
             }
         }
+        #if os(macOS)
+        .toolbar {
+            toolbarContent
+        }
+        #endif
         .onAppear {
             Task {
                 await viewModel.startServer()
@@ -149,5 +131,19 @@ public struct CueChatView: View {
                 }
         )
         #endif
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ModelSelectorToolbar(
+            currentModel: viewModel.model,
+            models: ChatModel.models(for: .cue),
+            iconView: AnyView(Provider.cue.iconView),
+            getModelName: { $0.displayName },
+            onModelSelected: { model in
+                storedModel = model
+                viewModel.model = model
+            }
+        )
     }
 }

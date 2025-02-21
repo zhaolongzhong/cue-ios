@@ -5,22 +5,41 @@ struct InitialsAvatar: View {
     let size: CGFloat
 
     private static let colors: [Color] = [
-        .blue, .green, .orange, .purple, .pink, .teal
+        .blue, .red, .purple, .cyan
     ]
 
     private var avatarColor: Color {
-        let hash = abs(text.hashValue)
-        let index = hash % Self.colors.count
+        var hash: UInt64 = 5381
+        let text = text.lowercased() // Normalize the input
+
+        // djb2 hash algorithm
+        for char in text.unicodeScalars {
+            hash = ((hash << 5) &+ hash) &+ UInt64(char.value)
+        }
+
+        // Use golden ratio to help spread the hash values more evenly
+        let phi: Double = 0.618033988749895
+        let normalizedHash = Double(hash) * phi
+        let fractionalPart = normalizedHash.truncatingRemainder(dividingBy: 1.0)
+
+        let index = Int(floor(fractionalPart * Double(Self.colors.count)))
         return Self.colors[index]
     }
 
     private var avatarLetter: String {
-        String(text.prefix(1).uppercased())
+        if text.isEmpty {
+            return "?"
+        }
+        return String(text.prefix(1).uppercased())
+    }
+
+    private var backgroundColor: Color {
+        avatarColor.opacity(0.2)
     }
 
     var body: some View {
         Circle()
-            .fill(avatarColor.opacity(0.2))
+            .fill(backgroundColor)
             .overlay(
                 Text(avatarLetter)
                     .font(.system(size: size * 0.44, weight: .medium))

@@ -43,12 +43,20 @@ struct DefaultNavigationBarModifier: ViewModifier {
             }
         #else
         content
-            .navigationBarBackButtonHidden(false)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
-                if let title = title {
-                    ToolbarItem(placement: .principal) {
-                        Text(title)
-                            .font(.headline)
+                ToolbarItem(placement: .navigation) {
+                    HStack(spacing: 4) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+
+                        if let title = title {
+                            Text(title)
+                                .font(.headline)
+                        }
                     }
                 }
             }

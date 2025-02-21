@@ -11,9 +11,6 @@ struct DetailContent: View {
             VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
                 .ignoresSafeArea()
             #endif
-            AppTheme.Colors.background
-                .opacity(0.8)
-                .ignoresSafeArea()
             if let assistant = selectedAssistant {
                 ChatView(
                     assistant: assistant,

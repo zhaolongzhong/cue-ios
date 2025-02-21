@@ -16,7 +16,7 @@ struct MessageModelRecord: Codable, FetchableRecord, PersistableRecord {
 
     // Convert MessageModel to MessageModelRecord
     init(message: MessageModel) throws {
-        self.id = message.id ?? UUID().uuidString
+        self.id = message.id
         self.conversationId = message.conversationId
         self.author = try JSONEncoder().encode(message.author)
         self.content = try JSONEncoder().encode(message.content)

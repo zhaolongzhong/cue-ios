@@ -10,7 +10,13 @@ final class SidePanelState: ObservableObject {
 
     var selectedAssistant: Assistant? {
         get { navigationManager.selectedAssistant }
-        set { navigationManager.selectDetailContent(.assistant(newValue)) }
+        set {
+            if let assistant = newValue {
+                navigationManager.navigateTo(.chat(assistant))
+            } else {
+                navigationManager.navigateTo(.home)
+            }
+        }
     }
 
     init(navigationManager: HomeNavigationManager = HomeNavigationManager()) {
@@ -34,13 +40,17 @@ final class SidePanelState: ObservableObject {
     }
 
     func selectAssistant(_ assistant: Assistant?) {
-        navigationManager.selectDetailContent(.assistant(assistant))
+        if let assistant = assistant {
+            navigationManager.navigateTo(.chat(assistant))
+        } else {
+            navigationManager.navigateTo(.home)
+        }
     }
 }
 
 struct HomeSidePanel: View {
     @EnvironmentObject private var coordinator: AppCoordinator
-    @EnvironmentObject private var apiKeyProviderViewModel: APIKeysProviderViewModel
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @ObservedObject private var sidePanelState: SidePanelState
@@ -79,13 +89,12 @@ struct HomeSidePanel: View {
                         Button {
                             onSelectAssistant(nil)
                         } label: {
-                            Text("Cue")
+                            Text("~")
                                 .font(.title2)
                         }
                     }
                 }
                 #endif
-                .background(AppTheme.Colors.secondaryBackground)
                 .onAppear {
                     Task {
                         await assistantsViewModel.fetchAssistants()
@@ -119,19 +128,19 @@ struct HomeSidePanel: View {
     }
 
     private var contentList: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             ScrollView {
-                LazyVStack {
-                    if featureFlags.enableCueChat {
+                VStack(spacing: 16) {
+                    if featureFlags.enableCue {
                         cueRow
                         Divider()
+                            .opacity(0.5)
                     }
                     emailRow
-                    if featureFlags.enableThirdPartyProvider {
-                        if !apiKeyProviderViewModel.openAIKey.isEmpty
-                            || !apiKeyProviderViewModel.anthropicKey.isEmpty
-                            || !apiKeyProviderViewModel.geminiKey.isEmpty {
+                    if featureFlags.enableProviders {
+                        if !providersViewModel.enabledProviders.isEmpty {
                             Divider()
+                                .opacity(0.5)
                             providersSection
                         }
                     }
@@ -140,21 +149,49 @@ struct HomeSidePanel: View {
                     }
                 }
                 .padding(.horizontal, 8)
+                .padding(.bottom, 16)
             }
-            settingsRow
+            .background(AppTheme.Colors.secondaryBackground)
+
+            VStack {
+                Divider()
+                    .opacity(0.5)
+                settingsRow
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 12)
+            }
+            .background(.ultraThickMaterial)
         }
+    }
+
+    private func navigate(to route: HomeDestination) {
+        navigationPath.append(route)
+        sidePanelState.hidePanel()
     }
 
     private var providersSection: some View {
         Section(header: providersHeader) {
-            if !apiKeyProviderViewModel.openAIKey.isEmpty && featureFlags.enableOpenAIChat {
-                openAIRow
-            }
-            if !apiKeyProviderViewModel.anthropicKey.isEmpty && featureFlags.enableAnthropicChat {
-                anthropicRow
-            }
-            if !apiKeyProviderViewModel.geminiKey.isEmpty && featureFlags.enableGeminiChat {
-                geminiRow
+            if providersViewModel.enabledProviders.isEmpty {
+                emptyProvidersStateView
+            } else {
+                ForEach(providersViewModel.enabledProviders, id: \.self) { provider in
+                    switch provider {
+                    case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
+                        ProviderSidebarRow(provider: provider) {
+                            navigate(to: .openai)
+                        }
+                    case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
+                        ProviderSidebarRow(provider: provider) {
+                            navigate(to: .anthropic)
+                        }
+                    case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
+                        ProviderSidebarRow(provider: provider) {
+                            navigate(to: .gemini)
+                        }
+                    default:
+                        AnyView(EmptyView())
+                    }
+                }
             }
         }
         #if os(iOS)
@@ -162,18 +199,24 @@ struct HomeSidePanel: View {
         #endif
     }
 
+    private var emptyProvidersStateView: some View {
+        Text("No providers configured")
+            .foregroundColor(.secondary)
+            .font(.caption)
+    }
+
     private var providersHeader: some View {
-        HStack {
-            Text("Third Party Providers")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundColor(.secondary)
-        }
+        SectionHeader(
+            title: "Providers",
+            trailingIcon: .system("plus"),
+            trailingAction: {
+                coordinator.showProvidersSheet()
+            }
+        )
     }
 
     private var assistantsSection: some View {
-        Section(header: assistantsRow) {
+        Section(header: assistantsSectionHeader) {
             ForEach(assistantsViewModel.assistants) { assistant in
                 AssistantRow(
                     assistant: assistant,
@@ -204,8 +247,7 @@ struct HomeSidePanel: View {
             title: "Cue",
             icon: .custom("~"),
             action: {
-                sidePanelState.togglePanel()
-                navigationPath.append(HomeDestination.cue)
+                navigate(to: HomeDestination.cue)
             }
         )
     }
@@ -215,13 +257,12 @@ struct HomeSidePanel: View {
             title: "Email",
             icon: .system("envelope"),
             action: {
-                sidePanelState.togglePanel()
-                navigationPath.append(HomeDestination.email)
+                navigate(to: HomeDestination.email)
             }
         )
     }
 
-    private var assistantsRow: some View {
+    private var assistantsSectionHeader: some View {
         SectionHeader(
             title: "Assistants",
             trailingIcon: .system("plus"),
@@ -229,56 +270,21 @@ struct HomeSidePanel: View {
         )
     }
 
-    private var openAIRow: some View {
-        IconRow(
-            title: "OpenAI",
-            action: {
-                navigationPath.append(HomeDestination.openai)
-                sidePanelState.hidePanel()
-            },
-            iconName: "openai"
-        )
-    }
-
-    private var anthropicRow: some View {
-        IconRow(
-            title: "Anthropic",
-            action: {
-                navigationPath.append(HomeDestination.anthropic)
-                sidePanelState.hidePanel()
-            },
-            iconName: "anthropic"
-        )
-    }
-
-    private var geminiRow: some View {
-        IconRow(
-            title: "Gemini",
-            action: {
-                navigationPath.append(HomeDestination.gemini)
-                sidePanelState.hidePanel()
-            },
-            iconName: "sparkle",
-            isSystemImage: true
-        )
-    }
-
     private var settingsRow: some View {
         Group {
             if let user = authRepository.currentUser, !user.displayName.isEmpty {
-                HStack(alignment: .center) {
-                    UserAvatar(user: user, size: 32)
-                    Text(user.displayName)
-                        .padding(.leading, 4)
-                    Spacer()
-                    Button {
-                        coordinator.showSettingsSheet()
-                    } label: {
+                Button {
+                    coordinator.showSettingsSheet()
+                } label: {
+                    HStack(alignment: .center, spacing: 12) {
+                        UserAvatar(user: user, size: 32)
+                        Text(user.displayName)
+                        Spacer()
                         Image(systemName: "ellipsis")
                             .foregroundColor(.primary)
                     }
                 }
-                .padding(.all, 12)
+                .buttonStyle(.plain)
             } else {
                 IconRow(
                     title: "Settings",

@@ -286,3 +286,9 @@ extension Anthropic {
         }
     }
 }
+
+extension Anthropic.ToolUseBlock {
+    public var prettyInput: String {
+        JSONFormatter.prettyString(from: input.toNativeDictionary) ?? String(describing: input)
+    }
+}

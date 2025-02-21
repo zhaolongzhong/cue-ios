@@ -4,8 +4,8 @@ import CueCommon
 // MARK: - Base Result Model
 
 public struct MCPCallToolResult: Codable {
-    let content: [MCPContent]
-    let isError: Bool
+    public let content: [MCPContent]
+    public let isError: Bool
 
     enum CodingKeys: String, CodingKey {
         case content
@@ -68,8 +68,8 @@ public enum MCPContent: Codable {
 }
 
 public struct MCPTextContent: Codable {
-    let type: String
-    let text: String
+    public let type: String
+    public let text: String
 }
 
 public struct MCPImageContent: Codable {
@@ -99,27 +99,3 @@ extension MCPServerManager {
     }
 }
 #endif
-
-// MARK: - Debug Helpers
-
-extension MCPContent: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .text(let content):
-            return "Text: \(content.text)"
-        case .image(let content):
-            return "Image: \(content.mimeType) (\(content.data.prefix(20))...)"
-        }
-    }
-}
-
-extension MCPCallToolResult: CustomStringConvertible {
-    public var description: String {
-        """
-        Tool Result:
-          Error: \(isError)
-          Content:
-        \(content.map { "    - \($0)" }.joined(separator: "\n"))
-        """
-    }
-}

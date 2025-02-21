@@ -140,13 +140,30 @@ class ToolManager {
         }
 
         #if os(macOS)
-        if mcpManager?.hasTool(name: name) == true {
-            let result = try await mcpManager?.callToolByName(name, arguments: safeArgs.toDictionary())
-            return String(describing: result)
+        guard let mcpManager = mcpManager, mcpManager.hasTool(name: name) == true else {
+            throw ToolError.toolNotFound(name)
         }
-        #endif
 
+        let result: MCPCallToolResult = try await mcpManager.callToolByName(name, arguments: safeArgs.toDictionary())
+        let isError: Bool = result.isError
+        let contents: [MCPContent] = result.content
+        var texts = ""
+        for content in contents {
+            switch content {
+            case .text(let textContent):
+                texts += "\(textContent.text)"
+            case .image:
+                break
+            }
+        }
+
+        let jsonString = """
+        {"isError":\(isError),"content":"\(texts.replacingOccurrences(of: "\"", with: "\\\""))"}
+        """
+        return jsonString
+        #else
         throw ToolError.toolNotFound(name)
+        #endif
     }
 
     func callTools(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {

@@ -9,22 +9,25 @@ import UIKit
 struct CodeBlockView: View {
     let language: String
     let code: String
-    let hideHeader: Bool
+    let isHeaderVisible: Bool
+    let isBorderVisible: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     public init(
         language: String = "",
         code: String,
-        hideHeader: Bool = false
+        isHeaderVisible: Bool = true,
+        isBorderVisible: Bool = true
     ) {
         self.language = language
         self.code = code
-        self.hideHeader = hideHeader
+        self.isHeaderVisible = isHeaderVisible
+        self.isBorderVisible = isBorderVisible
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if !hideHeader {
+            if isHeaderVisible {
                 HStack {
                     Text(language.isEmpty ? "plaintext" : language.lowercased())
                     Spacer()
@@ -43,7 +46,7 @@ struct CodeBlockView: View {
                 .textSelection(.enabled)
                 .background(
                     colorScheme == .light
-                        ? Color(red: 0.92, green: 0.92, blue: 0.92)
+                    ? .white
                         : Color(red: 0.12, green: 0.12, blue: 0.12)
                 )
         }

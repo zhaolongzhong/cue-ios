@@ -5,7 +5,7 @@ struct SettingsHeader: View {
     var body: some View {
         Text(title)
             #if os(macOS)
-            .font(.headline)
+            .font(.callout)
             .padding(.leading, 8)
             #else
             .font(.footnote.bold())

@@ -5,8 +5,7 @@ enum EmailRoute: Hashable {
 }
 
 struct EmailScreen: View {
-    // MARK: - Environment & Observed Objects
-    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
+    @EnvironmentObject private var providerViewModel: ProvidersViewModel
     @ObservedObject private var viewModel: EmailScreenViewModel
 
     // MARK: - State Properties
@@ -265,7 +264,7 @@ struct EmailScreen: View {
     // MARK: - Action Handlers
 
     private func handleOnAppear() {
-        let apiKey = apiKeysProviderViewModel.openAIKey
+        let apiKey = providerViewModel.openAIKey
         viewModel.updateApiKey(apiKey)
 
         if viewModel.processingState != .ready {

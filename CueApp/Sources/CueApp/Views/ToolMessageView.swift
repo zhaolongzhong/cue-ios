@@ -27,10 +27,7 @@ struct ToolMessageView: View {
 
     var content: String {
         if message.isTool {
-            let jsonString = message.toolArgs?
-                .replacingOccurrences(of: "[", with: "{")
-                .replacingOccurrences(of: "]", with: "}") ?? ""
-            return jsonString
+            return message.toolArgs ?? ""
         } else if message.isToolMessage {
             return message.toolResultContent
         }
@@ -43,7 +40,7 @@ struct ToolMessageView: View {
             if expansionState != .collapsed {
                 ZStack {
                     ScrollView {
-                        CodeBlockView(language: "json", code: content, hideHeader: true)
+                        CodeBlockView(language: "json", code: content, isHeaderVisible: false, isBorderVisible: false)
                             .lineLimit(nil)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -111,6 +108,12 @@ struct ToolMessageView: View {
                         .foregroundColor(.secondary)
                         .font(.system(size: 12))
                         .padding(6)
+                        #if os(macOS)
+                        .background(Color(nsColor: .windowBackgroundColor))
+                        #endif
+                        #if os(iOS)
+                        .background(Color(uiColor: .systemGray5))
+                        #endif
                         .background(Color.secondary.opacity(0.2))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
@@ -119,9 +122,14 @@ struct ToolMessageView: View {
 
             CopyButton(content: content, isVisible: true)
                 .padding(4)
-                .background(Color.secondary.opacity(0.2))
+                #if os(macOS)
+                .background(Color(nsColor: .windowBackgroundColor))
+                #endif
+                #if os(iOS)
+                .background(Color(uiColor: .systemGray5))
+                #endif
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-                .padding(.leading, 4)
+                .padding(.leading, 2)
         }
         .padding(8)
     }

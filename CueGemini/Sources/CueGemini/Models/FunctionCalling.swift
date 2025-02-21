@@ -228,21 +228,21 @@ public struct ToolConfig {
 /// containing any output from the function is used as context to the model. This should contain the
 /// result of a ``FunctionCall`` made based on model prediction.
 public struct FunctionResponse: Decodable, Equatable, Sendable {
-  let id: String
+  public let id: String
 
   /// The name of the function that was called.
-  let name: String
+  public let name: String
 
   /// The function's response.
-  let response: JSONObject
+  public let response: JSONObject
 
   /// Constructs a new `FunctionResponse`.
   ///
   /// - Parameters:
   ///   - name: The name of the function that was called.
   ///   - response: The function's response.
-    public init(id: String, name: String, response: JSONObject) {
-        self.id = id
+  public init(id: String, name: String, response: JSONObject) {
+    self.id = id
     self.name = name
     self.response = response
   }
@@ -300,22 +300,34 @@ public struct CodeExecutionResult: Equatable, Sendable {
 // MARK: - Codable Conformance
 
 extension FunctionCall: Decodable {
-  enum CodingKeys: CodingKey {
-    case id
-    case name
-    case args
-  }
-
-  public init(from decoder: Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    id = try container.decode(String.self, forKey: .id)
-    name = try container.decode(String.self, forKey: .name)
-    if let args = try container.decodeIfPresent(JSONObject.self, forKey: .args) {
-      self.args = args
-    } else {
-      args = JSONObject()
+    enum CodingKeys: CodingKey {
+        case id
+        case name
+        case args
     }
-  }
+
+    private static func generateId() -> String {
+        let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        let randomString = String((0..<4).map { _ in letters.randomElement()! })
+        return "fc_\(randomString)"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Handle optional args
+        if let decodedArgs = try container.decodeIfPresent(JSONObject.self, forKey: .args) {
+            args = decodedArgs
+        } else {
+            args = JSONObject()
+        }
+
+        // Generate id with prefix
+        id = Self.generateId()
+
+        // Decode required name
+        name = try container.decode(String.self, forKey: .name)
+    }
 }
 
 extension FunctionCall: Encodable {}
@@ -373,4 +385,11 @@ extension CodeExecutionResult: Codable {
     outcome = try container.decode(Outcome.self, forKey: .outcome)
     output = try container.decodeIfPresent(String.self, forKey: .output) ?? ""
   }
+}
+
+extension FunctionCall {
+    public var prettyArgs: String {
+        JSONFormatter.prettyString(from: args.toNativeDictionary) ??
+            args.map { "\($0): \($1)" }.joined(separator: ", ")
+    }
 }

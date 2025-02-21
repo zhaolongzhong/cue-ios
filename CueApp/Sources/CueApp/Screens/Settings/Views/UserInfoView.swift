@@ -5,7 +5,7 @@ struct UserInfoView: View {
 
     var body: some View {
             SettingsRow(
-                systemName: "envelope",
+                systemIcon: "envelope",
                 title: "Email",
                 value: email,
                 showChevron: false

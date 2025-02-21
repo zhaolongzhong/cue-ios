@@ -44,9 +44,9 @@ struct StyledTextView: View {
         return segments.reduce(Text("")) { result, segment in
             switch segment {
             case .plain(let text):
-                return result + Text(text).font(.body)
+                return result + Text(text).font(.body).foregroundColor(colorScheme == .dark ? .white :.black)
             case .bold(let text):
-                return result + Text(text).bold()
+                return result + Text(text).bold().foregroundColor(colorScheme == .dark ? .white :.black)
             case .inlineCode(let code):
                 let highlightedCode = SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: "", code: code)
                 let attributedString = NSMutableAttributedString(attributedString: highlightedCode)

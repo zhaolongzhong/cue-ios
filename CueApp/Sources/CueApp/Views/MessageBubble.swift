@@ -39,9 +39,6 @@ struct MessageBubble: View {
         HStack(alignment: .top) {
             if isUser {
                 Spacer()
-            } else {
-                avatar.padding(.vertical, 4)
-                    .opacity(message.isToolMessage ? 0 : 1)
             }
             VStack(spacing: 0) {
                 HStack(alignment: .top) {
@@ -54,11 +51,10 @@ struct MessageBubble: View {
                         isExpanded: isExpanded,
                         onShowMore: onShowMore
                     )
-                    .padding(.horizontal, getHorizontalPadding())
+                    .padding(.horizontal, isUser ? 16 : 6)
                     .padding(.vertical, isUser ? 10 : 0)
                     .background(isUser ? bubbleColor : .clear)
-                    .clipShape(RoundedRectangle(cornerRadius: isUser ? 16 : 0))
-                    .padding(.horizontal, getHorizontalPadding())
+                    .clipShape(RoundedRectangle(cornerRadius: isUser ? 18 : 0))
                     .textSelection(.enabled)
                     if !isUser {
                         Spacer()
@@ -70,8 +66,8 @@ struct MessageBubble: View {
                             Spacer()
                         }
                         CopyButton(content: message.content, isVisible: isHovering)
-                            .padding(.horizontal, getHorizontalPadding())
-                            .padding(.top, 2)
+                            .padding(.horizontal, isUser ? 0 : 2)
+                            .padding(.top, 4)
                         if !isUser {
                             Spacer()
                         }
@@ -83,7 +79,7 @@ struct MessageBubble: View {
             }
 
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, isUser ? 18 : 14)
         #if os(macOS)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -91,10 +87,6 @@ struct MessageBubble: View {
             }
         }
         #endif
-    }
-
-    private func getHorizontalPadding() -> CGFloat {
-        return isUser ? 14 : 8
     }
 
     private var avatar: some View {
@@ -144,7 +136,6 @@ struct MessageBubbleContent: View {
             if message.isTool {
                 ToolMessageView(message: message)
             }
-
         }
     }
 }

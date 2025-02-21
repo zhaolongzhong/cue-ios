@@ -5,15 +5,11 @@ import CueOpenAI
 
 @MainActor
 final class OpenAIChatViewModel: ObservableObject {
-    private let openAI: OpenAI
-    private let model: ChatModel = .gpt4oMini
-    private let toolManager: ToolManager
-    private var tools: [JSONValue] = []
-    #if os(macOS)
-    private let axManager: AXManager
-    #endif
-    private var cancellables = Set<AnyCancellable>()
-
+    @Published var model: ChatModel = .gpt4oMini {
+        didSet {
+            updateTools()
+        }
+    }
     @Published var messages: [OpenAI.ChatMessageParam] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
@@ -28,6 +24,14 @@ final class OpenAIChatViewModel: ObservableObject {
     private var textAreaContent: TextAreaContent?
     #endif
     @Published var focusedLines: String?
+
+    private let openAI: OpenAI
+    private let toolManager: ToolManager
+    private var tools: [JSONValue] = []
+    #if os(macOS)
+    private let axManager: AXManager
+    #endif
+    private var cancellables = Set<AnyCancellable>()
 
     init(apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)

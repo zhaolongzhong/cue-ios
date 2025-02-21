@@ -1,4 +1,5 @@
 import Foundation
+import CueCommon
 
 public struct ToolDefinition: Codable {
     let type: ToolType
@@ -49,5 +50,11 @@ public struct ToolCall: Codable, Sendable, Equatable {
         self.id = id
         self.type = type
         self.function = function
+    }
+}
+
+extension Function {
+    public var prettyArguments: String {
+        JSONFormatter.prettyString(from: arguments) ?? arguments
     }
 }

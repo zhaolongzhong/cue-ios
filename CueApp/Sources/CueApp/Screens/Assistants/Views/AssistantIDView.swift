@@ -16,9 +16,8 @@ struct AssistantIDView: View {
     }
 
     var body: some View {
-
         SettingsRow(
-            systemName: "number.circle",
+            systemIcon: "number.circle",
             title: "ID",
             value: displayId,
             trailing: AnyView(

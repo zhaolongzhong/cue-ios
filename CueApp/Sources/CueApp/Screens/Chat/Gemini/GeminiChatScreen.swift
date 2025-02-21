@@ -1,70 +1,41 @@
 import SwiftUI
 import CueGemini
 
-public struct GeminiChatView: View {
+public struct GeminiChatScreen: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: GeminiChatViewModel
     @FocusState private var isFocused: Bool
+    @Namespace private var bottomID
     @State private var showingToolsList = false
+    @AppStorage("selectedGeminiModel") private var storedModel: ChatModel = .gemini20FlashExp
 
     public init(apiKey: String) {
         _viewModel = StateObject(wrappedValue: GeminiChatViewModel(apiKey: apiKey))
     }
 
     public var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                GlassmorphismParticleBackgroundView(screenSize: geometry.size)
-                    .opacity(colorScheme == .dark ? 0.6 : 0.9)
-                    .zIndex(0)
-                VStack(spacing: 16) {
-                    Spacer()
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            Text(viewModel.messageContent)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 48)
-                                .id("messageBottom")
-                        }
-                        .frame(maxHeight: .infinity)
-                        .edgesIgnoringSafeArea(.all)
-                        .onChange(of: viewModel.messageContent) { _, newValue in
-                            if !newValue.isEmpty {
-                                withAnimation {
-                                    proxy.scrollTo("messageBottom", anchor: .bottom)
-                                }
-                            }
-                        }
-                    }
-                    .scrollDismissesKeyboard(.immediately)
-                    .padding(.vertical, 60)
-
-                    controlButtons
-                    RichTextField(onShowTools: {
-                        showingToolsList = true
-                    }, onSend: {
-                        Task {
-                            await viewModel.sendMessage()
-                        }
-                    }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
-                    .padding(.horizontal, 8)
+        VStack(spacing: 16) {
+            messageList
+            RichTextField(showVoiceChat: true, onShowTools: {
+                showingToolsList = true
+            }, onOpenVoiceChat: { }, onSend: {
+                Task {
+                    await viewModel.sendMessage()
                 }
-                .padding(.vertical)
-                .zIndex(1)
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    DismissButton(action: {
-                        viewModel.disconnect()
-                        dismiss()
-                    })
-                }
-            }
-            .edgesIgnoringSafeArea(.all)
+            }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+            .padding(.all, 8)
+        }
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        #endif
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            toolbarContent
         }
         .onAppear {
+            viewModel.model = storedModel
             Task {
                 await viewModel.startServer()
             }
@@ -80,46 +51,48 @@ public struct GeminiChatView: View {
         }
     }
 
-    private var controlButtons: some View {
-        HStack(alignment: .center, spacing: 50) {
-            Button(action: handleConnectionButton) {
-                Image(systemName: connectionButtonIcon)
-                    .font(.system(size: platformButtonFontSize, weight: .bold))
-                    .frame(width: platformButtonSize, height: platformButtonSize)
-                    .foregroundColor(connectionButtonColor)
-                    .background(Circle().fill(AppTheme.Colors.controlButtonBackground))
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ModelSelectorToolbar(
+            currentModel: viewModel.model,
+            models: ChatModel.models(for: .gemini),
+            iconView: AnyView(Provider.gemini.iconView),
+            getModelName: { $0.displayName },
+            onModelSelected: { model in
+                storedModel = model
+                viewModel.model = model
             }
-            .buttonStyle(.plain)
-        }
+        )
     }
 
-    private func handleConnectionButton() {
-        Task {
-            if viewModel.state.isConnected {
-                viewModel.disconnect()
-            } else {
-                do {
-                    try await viewModel.connect()
-                } catch {
-                    AppLog.log.error("Failed to connect: \(error.localizedDescription)")
+    private var messageList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(viewModel.messageParmas) { message in
+                        MessageBubble(message: .gemini(message))
+                    }
+                    // Invisible marker view at bottom
+                    Color.clear
+                        .frame(height: 1)
+                        .id(bottomID)
+                }
+                .padding(.top)
+            }
+            #if os(iOS)
+            .simultaneousGesture(DragGesture().onChanged { _ in
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                to: nil, from: nil, for: nil)
+            })
+            #endif
+            .onChange(of: viewModel.messages.count) { _, _ in
+                withAnimation {
+                    proxy.scrollTo(bottomID, anchor: .bottom)
                 }
             }
-        }
-    }
-
-    private var connectionButtonIcon: String {
-        if viewModel.state.isConnected {
-            return "xmark"
-        } else {
-            return "mic"
-        }
-    }
-
-    private var connectionButtonColor: Color {
-        if viewModel.state.isConnected {
-            return .red
-        } else {
-            return .gray
+            .sheet(isPresented: $showingToolsList) {
+                ToolsListView(tools: viewModel.availableTools)
+            }
         }
     }
 }

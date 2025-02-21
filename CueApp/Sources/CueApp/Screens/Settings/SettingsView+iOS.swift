@@ -15,6 +15,7 @@ struct SettingsListIOS: View {
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
     @Binding var navigationPath: NavigationPath
+    @State private var showingLogoutConfirmation = false
     let dismiss: DismissAction
 
     var body: some View {
@@ -29,43 +30,42 @@ struct SettingsListIOS: View {
             }
             .padding(.trailing, 0)
             .listSectionSpacing(.compact)
-
-            if featureFlags.enableAssistants || featureFlags.enableThirdPartyProvider {
-                Section {
-                    if featureFlags.enableThirdPartyProvider {
-                        APIKeysButton(title: "Third Party Providers", horizontal: true, onTap: {
-                            navigationPath.append(SettingsRoute.providerAPIKeys)
-                        })
-                    }
-                    if featureFlags.enableAssistants {
-                        APIKeysButton(title: "Assistant API Keys", horizontal: false, onTap: {
-                            navigationPath.append(SettingsRoute.assistantAPIKeys)
-                        })
-                    }
-                } header: {
-                    SettingsHeader(title: "API Keys")
-                }
-                .listSectionSpacing(.compact)
-            }
-
             Section {
-                NavigationLink {
-                    ConnectedAppsView()
-                } label: {
-                    SettingsRow(
-                        systemName: "shield.checkerboard",
-                        title: "Google Apps",
-                        value: "",
-                        showChevron: false
-                    )
+                if featureFlags.enableProviders {
+                    SettingsRow(systemIcon: "key.viewfinder", title: "Providers", showChevron: true) {
+                        navigationPath.append(SettingsRoute.providers)
+                    }
+                }
+                if featureFlags.enableAssistants {
+                    SettingsRow(systemIcon: "key", title: "API Keys", showChevron: true) {
+                        navigationPath.append(SettingsRoute.assistantAPIKeys)
+                    }
+                }
+                SettingsRow(
+                    systemIcon: "app.connected.to.app.below.fill",
+                    title: "Connected Apps",
+                    showChevron: true
+                ) {
+                    navigationPath.append(SettingsRoute.connectedApps)
                 }
             } header: {
-                SettingsHeader(title: "Connected Apps")
+                SettingsHeader(title: "Services")
             }
-
             Section {
                 SettingsRow(
-                    systemName: "sun.max",
+                    systemIcon: "flag",
+                    title: "Feature Flags",
+                    value: "",
+                    showChevron: true
+                ) {
+                    navigationPath.append(SettingsRoute.featureFlags)
+                }
+            } header: {
+                SettingsHeader(title: "Developer")
+            }
+            Section {
+                SettingsRow(
+                    systemIcon: "sun.max",
                     title: "Color Scheme",
                     value: "",
                     showChevron: false,
@@ -83,7 +83,7 @@ struct SettingsListIOS: View {
                     )
                 )
                 SettingsRow(
-                    systemName: "iphone.radiowaves.left.and.right",
+                    systemIcon: "iphone.radiowaves.left.and.right",
                     title: "Haptic Feedback",
                     value: "",
                     showChevron: false,
@@ -97,25 +97,12 @@ struct SettingsListIOS: View {
                     )
                 )
             } header: {
-                SettingsHeader(title: "Appearance")
+                SettingsHeader(title: "App")
             }
             .listSectionSpacing(.compact)
             Section {
-                NavigationLink {
-                    FeatureFlagsView()
-                } label: {
-                    SettingsRow(
-                        systemName: "flag",
-                        title: "Feature Flags",
-                        value: ""
-                    )
-                }
-            } header: {
-                SettingsHeader(title: "Development")
-            }
-            Section {
                 SettingsRow(
-                    systemName: "info.circle",
+                    systemIcon: "info.circle",
                     title: "Version",
                     value: "\(viewModel.getVersionInfo())",
                     showChevron: false
@@ -124,11 +111,25 @@ struct SettingsListIOS: View {
                 SettingsHeader(title: "About")
             }
             .listSectionSpacing(.compact)
-            LogoutSection {
-                Task {
-                    await viewModel.logout()
-                    dismiss()
+            Section {
+                SettingsRow(
+                    systemIcon: "rectangle.portrait.and.arrow.right",
+                    title: "Log out",
+                    showChevron: false
+                ) {
+                    showingLogoutConfirmation = true
                 }
+                .logoutConfirmation(
+                    isPresented: $showingLogoutConfirmation,
+                    onConfirm: {
+                        Task {
+                            await viewModel.logout()
+                            dismiss()
+                        }
+                    }
+                )
+            } header: {
+                SettingsHeader(title: "Developer")
             }
         }
         .listStyle(.insetGrouped)

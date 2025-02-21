@@ -126,7 +126,7 @@ struct AssistantNameRow: View {
     var body: some View {
         Button(action: onTap) {
             SettingsRow(
-                systemName: "person.circle",
+                systemIcon: "person.circle",
                 title: "Name",
                 value: name
             )
@@ -142,7 +142,7 @@ struct AssistantModelRow: View {
 
     var body: some View {
         SettingsRow(
-            systemName: "gearshape",
+            systemIcon: "gearshape",
             title: "Model",
             trailing: AnyView(
                 HStack {
@@ -180,7 +180,7 @@ struct AssistantSettingsRow: View {
     var body: some View {
         Button(action: onTap) {
             SettingsRow(
-                systemName: systemName,
+                systemIcon: systemName,
                 title: title,
                 showChevron: true
             )
@@ -196,7 +196,7 @@ struct AssistantMaxTurnsRow: View {
     var body: some View {
         Button(action: onTap) {
             SettingsRow(
-                systemName: "number",
+                systemIcon: "number",
                 title: "Max Turns",
                 value: String(maxTurns),
                 showChevron: true

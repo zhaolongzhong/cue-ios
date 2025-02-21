@@ -38,8 +38,28 @@ public struct Gemini {
         public let error: ErrorDetails
 
         public struct ErrorDetails: Decodable, Sendable {
+            public let code: Int
             public let message: String
-            public let type: String
+            public let status: String
+            public let details: [ErrorDetail]
+
+            public struct ErrorDetail: Decodable, Sendable {
+                enum CodingKeys: String, CodingKey {
+                    case type = "@type"
+                    case reason
+                    case domain
+                    case metadata
+                    case locale
+                    case message
+                }
+
+                public let type: String
+                public let reason: String?
+                public let domain: String?
+                public let metadata: [String: String]?
+                public let locale: String?
+                public let message: String?
+            }
         }
     }
 

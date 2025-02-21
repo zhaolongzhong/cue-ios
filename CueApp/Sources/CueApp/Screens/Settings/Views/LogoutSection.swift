@@ -6,16 +6,13 @@ struct LogoutSection: View {
 
     var body: some View {
         Section {
-            Button {
+            SettingsRow(
+                systemIcon: "rectangle.portrait.and.arrow.right",
+                title: "Log out",
+                showChevron: false
+            ) {
                 showingLogoutConfirmation = true
-            } label: {
-                SettingsRow(
-                    systemName: "rectangle.portrait.and.arrow.right",
-                    title: "Log out",
-                    showChevron: false
-                )
             }
-            .buttonStyle(.plain)
             .logoutConfirmation(
                 isPresented: $showingLogoutConfirmation,
                 onConfirm: onLogout

@@ -237,7 +237,7 @@ extension OpenAI {
             case .userMessage(let message):
                 return message.content
             case .assistantMessage(let message):
-                return message.content ?? String(describing: message.toolCalls)
+                return message.content ?? ""
             case .toolMessage(let message):
                 return message.content
             }
@@ -257,7 +257,7 @@ extension OpenAI {
         }
 
         public var toolArgs: String? {
-            toolCalls.map{ $0.function.arguments }.joined(separator: ", ")
+            toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
         }
     }
     

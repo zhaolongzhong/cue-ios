@@ -36,7 +36,7 @@ private struct AuthenticatedContent: View {
             }
         }
         .environmentObject(viewModel)
-        .environmentObject(dependencies.apiKeysProviderViewModel)
+        .environmentObject(dependencies.providersViewModel)
         .onChange(of: viewModel.state.error) { _, error in
             if let error = error {
                 coordinator.showError(error)
@@ -47,7 +47,12 @@ private struct AuthenticatedContent: View {
         .sheet(isPresented: $coordinator.showSettings) {
             NavigationStack {
                 SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
-                    .environmentObject(dependencies.apiKeysProviderViewModel)
+                    .environmentObject(dependencies.providersViewModel)
+            }
+        }
+        .sheet(isPresented: $coordinator.showProviders) {
+            NavigationStack {
+                ProvidersScreen(providersViewModel: dependencies.providersViewModel)
             }
         }
         .withCoordinatorAlert()

@@ -1,21 +1,10 @@
 import SwiftUI
 
-// MARK: - Navigation
-enum HomeDestination: Hashable {
-    case home
-    case cue
-    case chat(Assistant)
-    case email
-    case openai
-    case anthropic
-    case gemini
-}
-
 struct HomeView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @StateObject private var homeViewModel = HomeViewModel()
     @StateObject private var assistantsViewModel = AssistantsViewModel()
     @StateObject private var sidePanelState = SidePanelState()
@@ -59,7 +48,7 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $coordinator.showLiveChat) {
             RealtimeChatScreen(
                 viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,
-                apiKey: apiKeysProviderViewModel.openAIKey
+                apiKey: providersViewModel.openAIKey
             )
         }
         #endif
@@ -132,7 +121,7 @@ private extension HomeView {
                 ),
                 value: sidePanelState.isShowing || dragOffset != 0
             )
-            .environmentObject(apiKeysProviderViewModel)
+            .environmentObject(providersViewModel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -147,17 +136,16 @@ private extension HomeView {
             case .cue:
                 CueChatView()
             case .openai:
-                OpenAIChatView(apiKey: apiKeysProviderViewModel.openAIKey)
+                OpenAIChatView(apiKey: providersViewModel.openAIKey)
             case .anthropic:
-                AnthropicChatView(apiKey: apiKeysProviderViewModel.anthropicKey)
+                AnthropicChatView(apiKey: providersViewModel.anthropicKey)
             case .gemini:
-                GeminiChatView(apiKey: apiKeysProviderViewModel.geminiKey)
+                GeminiChatScreen(apiKey: providersViewModel.geminiKey)
             case .chat(let assistant):
                 ChatView(
                     assistant: assistant,
                     chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
-                    assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(),
-                    tag: "home"
+                    assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel()
                 )
                 .id(assistant.id)
             case .email:
@@ -165,6 +153,8 @@ private extension HomeView {
                 EmailScreen(emailScreenViewModel: dependencies.viewModelFactory.makeEmailScreenViewModel())
                     .environmentObject(homeViewModel)
                 #endif
+            case .providers:
+                ProvidersScreen(providersViewModel: ProvidersViewModel())
             }
         }
         .withCommonNavigationBar()

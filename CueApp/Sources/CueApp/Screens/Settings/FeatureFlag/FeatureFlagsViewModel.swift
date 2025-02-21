@@ -3,11 +3,11 @@ import Dependencies
 
 extension FeatureFlagsViewModel {
     private enum Keys: String {
-        case enableThirdPartyProvider
-        case enableCueChat
-        case enableOpenAIChat
-        case enableAnthropicChat
-        case enableGeminiChat
+        case enableProviders
+        case enableCue
+        case enableOpenAI
+        case enableAnthropic
+        case enableGemini
         case enableMediaOptions
         case enableAssistants
 
@@ -30,20 +30,20 @@ extension DependencyValues {
 }
 
 final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
-    @Published var enableThirdPartyProvider: Bool {
-        didSet { UserDefaults.standard.set(enableThirdPartyProvider, forKey: Keys.enableThirdPartyProvider.key) }
+    @Published var enableProviders: Bool {
+        didSet { UserDefaults.standard.set(enableProviders, forKey: Keys.enableProviders.key) }
     }
-    @Published var enableCueChat: Bool {
-        didSet { UserDefaults.standard.set(enableCueChat, forKey: Keys.enableCueChat.key) }
+    @Published var enableCue: Bool {
+        didSet { UserDefaults.standard.set(enableCue, forKey: Keys.enableCue.key) }
     }
-    @Published var enableOpenAIChat: Bool {
-        didSet { UserDefaults.standard.set(enableOpenAIChat, forKey: Keys.enableOpenAIChat.key) }
+    @Published var enableOpenAI: Bool {
+        didSet { UserDefaults.standard.set(enableOpenAI, forKey: Keys.enableOpenAI.key) }
     }
-    @Published var enableAnthropicChat: Bool {
-        didSet { UserDefaults.standard.set(enableAnthropicChat, forKey: Keys.enableAnthropicChat.key) }
+    @Published var enableAnthropic: Bool {
+        didSet { UserDefaults.standard.set(enableAnthropic, forKey: Keys.enableAnthropic.key) }
     }
-    @Published var enableGeminiChat: Bool {
-        didSet { UserDefaults.standard.set(enableGeminiChat, forKey: Keys.enableGeminiChat.key) }
+    @Published var enableGemini: Bool {
+        didSet { UserDefaults.standard.set(enableGemini, forKey: Keys.enableGemini.key) }
     }
     @Published var enableMediaOptions: Bool {
         didSet { UserDefaults.standard.set(enableMediaOptions, forKey: Keys.enableMediaOptions.key) }
@@ -53,11 +53,11 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
     }
 
     init() {
-        enableThirdPartyProvider = UserDefaults.standard.bool(forKey: Keys.enableThirdPartyProvider.key)
-        enableCueChat = UserDefaults.standard.bool(forKey: Keys.enableCueChat.key)
-        enableOpenAIChat = UserDefaults.standard.bool(forKey: Keys.enableOpenAIChat.key)
-        enableAnthropicChat = UserDefaults.standard.bool(forKey: Keys.enableAnthropicChat.key)
-        enableGeminiChat = UserDefaults.standard.bool(forKey: Keys.enableGeminiChat.key)
+        enableProviders = UserDefaults.standard.bool(forKey: Keys.enableProviders.key)
+        enableCue = UserDefaults.standard.bool(forKey: Keys.enableCue.key)
+        enableOpenAI = UserDefaults.standard.bool(forKey: Keys.enableOpenAI.key)
+        enableAnthropic = UserDefaults.standard.bool(forKey: Keys.enableAnthropic.key)
+        enableGemini = UserDefaults.standard.bool(forKey: Keys.enableGemini.key)
         enableMediaOptions = UserDefaults.standard.bool(forKey: Keys.enableMediaOptions.key)
         enableAssistants = UserDefaults.standard.bool(forKey: Keys.enableAssistants.key)
     }

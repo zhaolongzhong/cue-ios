@@ -7,11 +7,15 @@ import CueAnthropic
 @MainActor
 final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
-    private let model: ChatModel = .claude35Haiku
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
     private var cancellables = Set<AnyCancellable>()
 
+    @Published var model: ChatModel = .claude35Sonnet {
+        didSet {
+            updateTools()
+        }
+    }
     @Published var messages: [Anthropic.ChatMessageParam] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false

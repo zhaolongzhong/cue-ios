@@ -10,6 +10,7 @@ public struct OpenAIChatView: View {
     @Namespace private var bottomID
     @State private var showingToolsList = false
     @State private var selectedApp: AccessibleApplication = .textEdit
+    @AppStorage("selectedOpenAIModel") private var storedModel: ChatModel = .gpt4o
 
     private let apiKey: String
     private let showAXapp: Bool
@@ -47,8 +48,12 @@ public struct OpenAIChatView: View {
             toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             .padding(.all, 8)
         }
-        .defaultNavigationBar(showCustomBackButton: false, title: "OpenAI")
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            toolbarContent
+        }
         .onAppear {
+            viewModel.model = storedModel
             Task {
                 await viewModel.startServer()
             }
@@ -79,10 +84,24 @@ public struct OpenAIChatView: View {
         #endif
     }
 
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ModelSelectorToolbar(
+            currentModel: viewModel.model,
+            models: ChatModel.models(for: .openai),
+            iconView: AnyView(Provider.openai.iconView),
+            getModelName: { $0.displayName },
+            onModelSelected: { model in
+                storedModel = model
+                viewModel.model = model
+            }
+        )
+    }
+
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
+                LazyVStack(alignment: .leading, spacing: 8) {
                     ForEach(viewModel.messages) { message in
                         MessageBubble(message: .openAI(message))
                     }
@@ -91,7 +110,7 @@ public struct OpenAIChatView: View {
                         .frame(height: 1)
                         .id(bottomID)
                 }
-                .padding()
+                .padding(.top)
             }
             #if os(iOS)
            .simultaneousGesture(DragGesture().onChanged { _ in

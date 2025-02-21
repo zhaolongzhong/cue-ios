@@ -66,7 +66,9 @@ struct ChatView: View {
             .padding(.all, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
         .defaultNavigationBar(showCustomBackButton: false, title: viewModel.assistant.name)
+        #endif
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .automatic) {
@@ -83,6 +85,10 @@ struct ChatView: View {
                     .font(.headline)
             }
             #else
+            ToolbarItem(placement: .principal) {
+                Text(viewModel.assistant.name)
+                    .font(.headline)
+            }
             ToolbarItemGroup(placement: .primaryAction) {
                 Spacer()
                 Menu {

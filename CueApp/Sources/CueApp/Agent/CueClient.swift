@@ -2,6 +2,7 @@ import Foundation
 import CueCommon
 import CueOpenAI
 import CueAnthropic
+import CueGemini
 
 // MARK: - Endpoint
 enum CueEndpoint: Endpoint {
@@ -68,146 +69,6 @@ public final class CueClient {
     }
 }
 
-// MARK: - Models
-public enum CueChatMessage: Encodable, Sendable, Identifiable {
-    case openAI(OpenAI.ChatMessageParam)
-    case anthropic(Anthropic.ChatMessageParam)
-    case cue(MessageModel)
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .openAI(let msg):
-            try container.encode(msg)
-        case .anthropic(let msg):
-            try container.encode(msg)
-        case .cue(let msg):
-            try container.encode(msg)
-        }
-    }
-
-    public var id: String {
-        switch self {
-        case .openAI(let msg):
-            return msg.id
-        case .anthropic(let msg):
-            return msg.id
-        case .cue(let msg):
-            return msg.id
-        }
-    }
-
-    var role: String {
-        switch self {
-        case .openAI(let msg): return msg.role
-        case .anthropic(let msg): return msg.role
-        case .cue(let msg): return msg.author.role
-        }
-    }
-
-    var content: String {
-        switch self {
-        case .openAI(let msg): return msg.content
-        case .anthropic(let msg): return msg.content
-        case .cue(let msg): return msg.content.text
-        }
-    }
-
-    var isUser: Bool {
-        switch self {
-        case .openAI(let msg): return msg.role == "user"
-        case .anthropic(let msg):
-            if case .userMessage = msg {
-                return true
-            }
-            return false
-        case .cue(let msg): return msg.isUser
-        }
-    }
-
-    var isTool: Bool {
-        switch self {
-        case .openAI(let msg):
-            if case .assistantMessage(let message) = msg {
-                return message.hasToolCall
-            }
-        case .anthropic(let msg):
-            if case .assistantMessage(let message) = msg {
-                return message.hasToolUse
-            }
-        case .cue(let msg): return msg.isTool
-        }
-        return false
-    }
-
-    var isToolMessage: Bool {
-        switch self {
-        case .openAI(let msg):
-            if case .toolMessage = msg {
-                return true
-            }
-        case .anthropic(let msg):
-            if case .toolMessage = msg {
-                return true
-            }
-        case .cue(let msg): return msg.isToolMessage
-        }
-        return false
-    }
-
-    var toolResultContent: String {
-        switch self {
-        case .openAI(let msg):
-            if case .toolMessage(let toolMessage) = msg {
-                return toolMessage.content
-            }
-            return msg.content
-        case .anthropic(let msg):
-            if case .toolMessage(let toolMessage) = msg {
-                if let content = toolMessage.content.first?.content.first {
-                    switch content {
-                    case .text(let text):
-                        return text.text
-                    default:
-                        return ""
-                    }
-                }
-            }
-            return msg.content
-        case .cue(let msg):
-            return msg.content.text
-        }
-    }
-
-    var toolName: String? {
-        switch self {
-        case .openAI(let msg):
-            return msg.toolName
-        case .anthropic(let msg):
-            return msg.toolName
-        case .cue(let msg):
-            return msg.content.toolName
-        }
-    }
-
-    var toolArgs: String? {
-        switch self {
-        case .openAI(let msg):
-            return msg.toolArgs
-        case .anthropic(let msg):
-            return msg.toolArgs
-        case .cue(let msg):
-            return msg.content.toolArgs
-        }
-    }
-}
-
-extension CueChatMessage: Equatable {
-    public static func == (lhs: CueChatMessage, rhs: CueChatMessage) -> Bool {
-        return lhs.id == rhs.id
-    }
-}
-
 public struct CompletionRequest: Encodable {
     let model: String
     let messages: [CueChatMessage]
@@ -268,6 +129,7 @@ public struct CueCompletionResponse: Decodable, Sendable {
         case model
         case chatCompletion = "chat_completion"
         case anthropicMessage = "anthropic_message"
+        case geminiMessage = "gemini_message"
         case usage
     }
 
@@ -280,6 +142,7 @@ public struct CueCompletionResponse: Decodable, Sendable {
                 content: choice.message.content ?? "",
                 chatCompletionMessage: nil,
                 anthropicMessage: nil,
+                geminiMessage: nil,
                 chatCompletion: chatCompletion
             )
         } else if let anthropicMessage = try container.decodeIfPresent(Anthropic.AnthropicMessage.self, forKey: .anthropicMessage) {
@@ -288,6 +151,16 @@ public struct CueCompletionResponse: Decodable, Sendable {
                 content: anthropicMessage.content.first?.text ?? "",
                 chatCompletionMessage: nil,
                 anthropicMessage: anthropicMessage,
+                geminiMessage: nil,
+                chatCompletion: nil
+            )
+        } else if let geminiMessage = try container.decodeIfPresent(ModelContent.self, forKey: .geminiMessage) {
+            self.content = CueContent(
+                type: "gemini",
+                content: geminiMessage.parts.first?.text ?? "",
+                chatCompletionMessage: nil,
+                anthropicMessage: nil,
+                geminiMessage: geminiMessage,
                 chatCompletion: nil
             )
         } else {
@@ -311,6 +184,7 @@ public struct CueContent: Codable, Sendable {
     public let content: String
     public let chatCompletionMessage: OpenAI.ChatMessageParam?
     public let anthropicMessage: Anthropic.AnthropicMessage?
+    public let geminiMessage: ModelContent?
     public let chatCompletion: OpenAI.ChatCompletion?
 
     enum CodingKeys: String, CodingKey {
@@ -319,6 +193,7 @@ public struct CueContent: Codable, Sendable {
         case chatCompletionMessage = "chat_completion_message"
         case anthropicMessage = "anthropic_message"
         case chatCompletion = "chat_completion"
+        case geminiMessage = "gemini_message"
     }
 }
 

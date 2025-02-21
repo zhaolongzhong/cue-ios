@@ -18,6 +18,7 @@ public class AppCoordinator: ObservableObject {
 
     @Published public var activeAlert: AlertType?
     @Published public var showSettings = false
+    @Published public var showProviders = false
     @Published public var showLiveChat = false
 
     #if os(macOS)
@@ -42,6 +43,10 @@ public class AppCoordinator: ObservableObject {
 
     func showSettingsSheet() {
         showSettings = true
+    }
+
+    func showProvidersSheet() {
+        showProviders = true
     }
 
     func showLiveChatSheet() {

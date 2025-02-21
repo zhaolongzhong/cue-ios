@@ -1,39 +1,66 @@
 import SwiftUI
 
-enum DetailViewType {
+public enum WindowId: String {
+    case settings = "settings-window"
+    case providersManagement = "providers-management-window"
+}
+
+enum HomeDestination: Hashable {
     case home
-    case assistant(Assistant?)
-    case chat
+    case cue
     case email
+    case openai
+    case anthropic
+    case gemini
+    case chat(Assistant)
+    case providers
 }
 
 @MainActor
 final class HomeNavigationManager: ObservableObject {
-    @Published var currentView: DetailViewType = .home
+    @Published var currentView: HomeDestination = .home
     @Published private(set) var selectedAssistant: Assistant?
     private let userDefaults: UserDefaults
     @Published var isEmailViewPresented = false
+    @Environment(\.openWindow) private var openWindow
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
     }
 
-    func selectDetailContent(_ detailType: DetailViewType) {
+    func navigateTo(_ detailType: HomeDestination) {
         switch detailType {
         case .home:
             userDefaults.lastSelectedAssistantId = nil
             selectedAssistant = nil
             currentView = .home
-        case .assistant(let assistant):
+        case .chat(let assistant):
             selectedAssistant = assistant
-            userDefaults.lastSelectedAssistantId = assistant?.id ?? nil
-            currentView = .assistant(assistant)
+            userDefaults.lastSelectedAssistantId = assistant.id
+            currentView = .chat(assistant)
         case .email:
             currentView = .email
             isEmailViewPresented = true
-        case .chat:
-            currentView = .chat
+        case .cue:
+            currentView = .cue
+        case .anthropic:
+            currentView = .anthropic
+        case .gemini:
+            currentView = .gemini
+        case .openai:
+            currentView = .openai
+        case .providers:
+            #if os(macOS)
+            openMacOSWindow(WindowId.providersManagement)
+            #else
+            currentView = .providers
+            #endif
         }
+    }
+    func openMacOSWindow(_ id: WindowId) {
+        #if os(macOS)
+        openWindow(id: id.rawValue)
+        #endif
     }
 }
 

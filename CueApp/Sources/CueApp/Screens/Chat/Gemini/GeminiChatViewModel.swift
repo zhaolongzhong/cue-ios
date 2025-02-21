@@ -10,8 +10,18 @@ public class GeminiChatViewModel: ObservableObject {
     @Published var messageContent: String = ""
     @Published var newMessage: String = ""
     @Published var error: ChatError?
-
-    let liveAPIClient: LiveAPIClient
+    @Published var messages: [ModelContent] = []
+    @Published var messageParmas: [Gemini.ChatMessageParam] = []
+    @Published var model: ChatModel = .gemini20FlashExp {
+        didSet {
+            updateTools()
+        }
+    }
+    @Published var availableTools: [OpenAITool] = [] {
+        didSet {
+            updateTools()
+        }
+    }
     @Published private(set) var state: VoiceState = .idle {
         didSet {
             logger.debug("Voice state change to \(self.state.description)")
@@ -23,20 +33,14 @@ public class GeminiChatViewModel: ObservableObject {
             }
         }
     }
-    private var messages: [String] = []
-    private var messageContents: [ModelContent] = []
+
+    let liveAPIClient: LiveAPIClient
     private let apiKey: String
     private let gemini: Gemini
     let toolManager: ToolManager
+    private var geminiTool: GeminiTool?
     private var cancellables = Set<AnyCancellable>()
     let logger = Logger(subsystem: "Gemini", category: "Gemini")
-
-    @Published var availableTools: [OpenAITool] = [] {
-        didSet {
-            updateTools()
-        }
-    }
-    private var geminiTool: GeminiTool?
 
     public init(apiKey: String) {
         self.apiKey = apiKey
@@ -124,7 +128,6 @@ public class GeminiChatViewModel: ObservableObject {
         }
 
         do {
-            messages.append(newMessage)
             try await sendText(newMessage)
             newMessage = ""
         } catch {
@@ -147,7 +150,10 @@ public class GeminiChatViewModel: ObservableObject {
     public func sendMessageUseClient() async throws {
         guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let newContent = ModelContent(role: "user", parts: [ModelContent.Part.text(newMessage)])
-        messageContents.append(newContent)
+        messages.append(newContent)
+        let userMessage = Gemini.ChatMessageParam.userMessage(newContent)
+        messageParmas.append(userMessage)
+        newMessage = ""
         try await generateContent()
     }
 
@@ -158,20 +164,20 @@ public class GeminiChatViewModel: ObservableObject {
                 tools.append(tool)
             }
             let response = try await gemini.chat.generateContent(
-                model: Gemini.ChatModel.gemini20FlashExp.id,
-                messages: messageContents,
+                model: self.model.id,
+                messages: messages,
                 tools: tools
             )
 
             AppLog.log.debug("Response: \(String(describing: response))")
             let candidateContent = response.candidates[0].content
-            messageContents.append(candidateContent)
+            messages.append(candidateContent)
 
-            // Check for function call and handle it
+            let assistantMessage = Gemini.ChatMessageParam.assistantMessage(candidateContent)
+            messageParmas.append(assistantMessage)
+
             if case .functionCall(let functionCall) = candidateContent.parts[0] {
-                // Call the tool and get result
                 let result = await handleFunctionCall(functionCall)
-                // Create function response message
                 let functionResponse = ModelContent(
                     role: "user",
                     parts: [.functionResponse(FunctionResponse(
@@ -183,15 +189,38 @@ public class GeminiChatViewModel: ObservableObject {
                         ]
                     ))]
                 )
-                // Add function response to message history
-                messageContents.append(functionResponse)
-                // Generate new content with the function response
+                messages.append(functionResponse)
+                let toolMessage = Gemini.ChatMessageParam.toolMessage(functionResponse)
+                messageParmas.append(toolMessage)
                 try await generateContent()
             } else {
                 self.messageContent = candidateContent.parts[0].text ?? ""
             }
-            newMessage = ""
+        } catch let error as Gemini.Error {
+            switch error {
+            case .apiError(let apiError):
+                if apiError.error.status == "INVALID_ARGUMENT" &&
+                   apiError.error.message.contains("API key expired") {
+                    self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
+                } else {
+                    // Use the most detailed error message available
+                    let detailMessage = apiError.error.details
+                        .first { $0.message != nil }?
+                        .message ?? apiError.error.message
+                    self.error = .sessionError("Error: \(detailMessage)")
+                }
+            case .unexpectedAPIResponse(let message):
+                if message.contains("API key expired") {
+                    self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
+                } else {
+                    self.error = .sessionError("An error occurred while generating content: \(message)")
+                }
+            default:
+                self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
+            }
+            AppLog.log.error("Generate content error: \(error)")
         } catch {
+            self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
             AppLog.log.error("Generate content error: \(error)")
         }
     }

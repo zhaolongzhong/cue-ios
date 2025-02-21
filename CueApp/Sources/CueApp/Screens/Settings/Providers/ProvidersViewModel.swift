@@ -1,12 +1,12 @@
 import SwiftUI
 
 @MainActor
-public final class APIKeysProviderViewModel: ObservableObject {
+public final class ProvidersViewModel: ObservableObject {
     @Published private(set) var openAIKey: String = ""
     @Published private(set) var anthropicKey: String = ""
     @Published private(set) var geminiKey: String = ""
 
-    @Published private(set) var editingKeyType: APIKeyType?
+    @Published private(set) var editingProvider: Provider?
     @Published private(set) var isAlertPresented: Bool = false
     @Published var tempAPIKey: String = ""
 
@@ -14,12 +14,12 @@ public final class APIKeysProviderViewModel: ObservableObject {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        openAIKey = userDefaults.string(forKey: APIKeyType.openai.rawValue) ?? ""
-        anthropicKey = userDefaults.string(forKey: APIKeyType.anthropic.rawValue) ?? ""
-        geminiKey = userDefaults.string(forKey: APIKeyType.gemini.rawValue) ?? ""
+        openAIKey = userDefaults.string(forKey: Provider.openai.rawValue) ?? ""
+        anthropicKey = userDefaults.string(forKey: Provider.anthropic.rawValue) ?? ""
+        geminiKey = userDefaults.string(forKey: Provider.gemini.rawValue) ?? ""
     }
 
-    private func saveKey(_ keyType: APIKeyType, value: String) {
+    private func saveKey(_ keyType: Provider, value: String) {
         if value.isEmpty {
             userDefaults.removeObject(forKey: keyType.rawValue)
         } else {
@@ -28,15 +28,16 @@ public final class APIKeysProviderViewModel: ObservableObject {
         print("Saved key for \(keyType.displayName): \(value.isEmpty ? "empty" : "set")")
     }
 
-    public func getAPIKey(for keyType: APIKeyType) -> String {
+    public func getAPIKey(for keyType: Provider) -> String {
         switch keyType {
         case .openai: return openAIKey
         case .anthropic: return anthropicKey
         case .gemini: return geminiKey
+        case .cue: return ""
         }
     }
 
-    func updateAPIKey(_ keyType: APIKeyType, with value: String) {
+    func updateAPIKey(_ keyType: Provider, with value: String) {
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         switch keyType {
         case .openai:
@@ -48,17 +49,19 @@ public final class APIKeysProviderViewModel: ObservableObject {
         case .gemini:
             geminiKey = trimmedValue
             saveKey(.gemini, value: trimmedValue)
+        case .cue:
+            break
         }
     }
 
-    func startEditing(_ keyType: APIKeyType) {
-        editingKeyType = keyType
+    func startEditing(_ keyType: Provider) {
+        editingProvider = keyType
         tempAPIKey = getAPIKey(for: keyType)
         isAlertPresented = true
     }
 
     func saveKey() {
-        guard let keyType = editingKeyType else { return }
+        guard let keyType = editingProvider else { return }
         updateAPIKey(keyType, with: tempAPIKey)
         stopEditing()
     }
@@ -69,36 +72,24 @@ public final class APIKeysProviderViewModel: ObservableObject {
     }
 
     private func stopEditing() {
-        editingKeyType = nil
+        editingProvider = nil
         isAlertPresented = false
     }
 
-    func deleteKey(_ keyType: APIKeyType) {
+    func deleteKey(_ keyType: Provider) {
         updateAPIKey(keyType, with: "")
     }
-}
 
-// MARK: - APIKeyType Enum
-public enum APIKeyType: String, CaseIterable, Identifiable {
-    case openai = "OPENAI_API_KEY"
-    case anthropic = "ANTHROPIC_API_KEY"
-    case gemini = "GEMINI_API_KEY"
-
-    public  var id: String { self.rawValue }
-
-    var displayName: String {
-        switch self {
-        case .openai: return "OpenAI"
-        case .anthropic: return "Anthropic"
-        case .gemini: return "Google Gemini"
-        }
+    func isProviderEnabled(_ provider: Provider) -> Bool {
+        !getAPIKey(for: provider).isEmpty
     }
 
-    var placeholder: String {
-        switch self {
-        case .openai: return "sk-..."
-        case .anthropic: return "sk-ant-..."
-        case .gemini: return "..."
+    var enabledProviders: [Provider] {
+        do {
+            return try [.openai, .anthropic, .gemini].filter(isProviderEnabled)
+        } catch {
+            debugPrint("Error: \(error)")
         }
+        return []
     }
 }

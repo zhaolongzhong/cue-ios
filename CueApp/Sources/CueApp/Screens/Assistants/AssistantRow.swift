@@ -12,14 +12,7 @@ public struct AssistantRow: View {
 
     public var body: some View {
         HStack(spacing: 12) {
-            Circle()
-                .strokeBorder(self.isOnline ? Color.green : Color.gray.opacity(0.5), lineWidth: 0.5)
-                .frame(width: 32, height: 32)
-                .overlay(
-                    Text(assistant.name.prefix(2).uppercased())
-                        .foregroundColor(.primary.opacity(0.8))
-                        .font(.footnote)
-                )
+            InitialsAvatar(text: assistant.name.prefix(1).uppercased(), size: 32)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(assistant.name)
@@ -42,6 +35,7 @@ public struct AssistantRow: View {
                 Circle()
                     .fill(Color.green)
                     .frame(width: 8, height: 8)
+                    .padding(.trailing, 8)
             }
         }
         .padding(.vertical, 4)

@@ -15,8 +15,6 @@ struct DismissButton: View {
             Image(systemName: "xmark")
                 .resizable()
                 .frame(width: iconSize, height: iconSize)
-                .foregroundColor(.almostPrimary)
-                .contentShape(Rectangle())
                 .padding(tappablePadding)
                 .contentShape(Rectangle())
             #else

@@ -178,9 +178,7 @@ public struct Anthropic {
         }
 
         public var toolArgs: String? {
-            return toolUses.map {
-                String(describing: $0.input)
-            }.joined(separator: ", ")
+            return toolUses.map { $0.prettyInput }.joined(separator: ", ")
         }
     }
 

@@ -1,18 +1,13 @@
 import SwiftUI
 
 struct IconRow: View {
-    // Core properties
     let title: String
     let action: () -> Void
-
-    // Icon configuration
     let iconName: String
     var isSystemImage: Bool = false
     var iconSize: CGFloat = 18
-
-    // Styling
     var spacing: CGFloat = 12
-    var showDivider: Bool = true
+    var showDivider: Bool = false
     var titleColor: Color = .primary
     var titleFont: Font = .body
     var iconColor: Color = .almostPrimary
@@ -46,7 +41,6 @@ struct IconRow: View {
                             .clipShape(Circle())
                     }
                     .frame(width: 32, height: 32)
-                    .accessibilityHidden(true)
 
                     Text(title)
                         .font(titleFont)
@@ -65,7 +59,6 @@ struct IconRow: View {
     }
 }
 
-// Helper extension for conditional modifiers
 extension View {
     @ViewBuilder func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
         if condition {

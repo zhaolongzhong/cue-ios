@@ -35,54 +35,55 @@ struct macOSApp: App {
             }
         }
 
-        CommonWindowGroup(id: "settings-window", dependencies: dependencies, appCoordinator: mainCoordinator) {
+        CommonWindowGroup(id: WindowId.settings.rawValue, dependencies: dependencies, appCoordinator: mainCoordinator) {
             SettingsWindowView()
-        }
-
-        CommonWindowGroup(id: "openai-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
-            OpenAIWindowView()
         }
 
         CommonWindowGroup(id: "realtime-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
             RealtimeWindowView()
         }
 
-        CommonWindowGroup(id: "anthropic-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
-            AnthropicWindowView()
-        }
-        CommonWindowGroup(id: "gemini-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
-            GeminiWindowView()
-        }
+        CommonWindowGroup(id: WindowId.providersManagement.rawValue, dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
+           ProviderManagementWindowView()
+       }
     }
 }
 
 struct CommonWindowGroup<Content: View>: Scene {
     @StateObject private var appCoordinator: AppCoordinator
     let id: String
+    let enableVisualEffect: Bool
     let dependencies: AppDependencies
     let content: () -> Content
 
-    init(id: String, dependencies: AppDependencies, appCoordinator: AppCoordinator, content: @escaping () -> Content) {
+    init(id: String, dependencies: AppDependencies, appCoordinator: AppCoordinator, enableVisualEffect: Bool = false, content: @escaping () -> Content) {
         _appCoordinator = StateObject(wrappedValue: appCoordinator)
         self.id = id
         self.dependencies = dependencies
+        self.enableVisualEffect = enableVisualEffect
         self.content = content
     }
 
     var body: some Scene {
         WindowGroup(id: id) {
-            ZStack {
-                VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
-                    .opacity(0.3)
-                    .ignoresSafeArea()
+            if enableVisualEffect {
+                ZStack {
+                    VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                        .opacity(0.3)
+                        .ignoresSafeArea()
+                    content()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .environmentObject(dependencies)
+                        .environmentObject(appCoordinator)
+                }
+            } else {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .environmentObject(dependencies)
                     .environmentObject(appCoordinator)
             }
         }
-        .windowToolbarStyle(.unified(showsTitle: true))
-        .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .defaultSize(width: WindowSize.small.width, height: WindowSize.small.height)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
@@ -96,24 +97,9 @@ struct SettingsWindowView: View {
     var body: some View {
         SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
             .environmentObject(coordinator)
-            .navigationTitle("Settings")
             .frame(minHeight: 400)
-            .frame(width: 600)
-            .environmentObject(dependencies.apiKeysProviderViewModel)
-            .withCoordinatorAlert()
-    }
-}
-
-struct OpenAIWindowView: View {
-    @EnvironmentObject var coordinator: AppCoordinator
-    @EnvironmentObject var dependencies: AppDependencies
-
-    var body: some View {
-        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.openai)
-        OpenAIChatView(apiKey: apiKey)
-            .environmentObject(coordinator)
-            .environmentObject(dependencies)
-            .navigationTitle("OpenAI")
+            .frame(minWidth: 600)
+            .environmentObject(dependencies.providersViewModel)
             .withCoordinatorAlert()
     }
 }
@@ -123,7 +109,7 @@ struct RealtimeWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.openai)
+        let apiKey = dependencies.providersViewModel.getAPIKey(for: Provider.openai)
         RealtimeChatScreen(viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel, apiKey: apiKey)
             .environmentObject(coordinator)
             .environmentObject(dependencies)
@@ -132,30 +118,16 @@ struct RealtimeWindowView: View {
     }
 }
 
-struct AnthropicWindowView: View {
+struct ProviderManagementWindowView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.anthropic)
-        AnthropicChatView(apiKey: apiKey)
+        ProvidersScreen(providersViewModel: dependencies.providersViewModel)
             .environmentObject(coordinator)
+            .frame(width: 400)
+            .frame(minHeight: 300)
             .environmentObject(dependencies)
-            .navigationTitle("Anthropic")
-            .withCoordinatorAlert()
-    }
-}
-
-struct GeminiWindowView: View {
-    @EnvironmentObject var coordinator: AppCoordinator
-    @EnvironmentObject var dependencies: AppDependencies
-
-    var body: some View {
-        let apiKey = dependencies.apiKeysProviderViewModel.getAPIKey(for: APIKeyType.gemini)
-        GeminiChatView(apiKey: apiKey)
-            .environmentObject(coordinator)
-            .environmentObject(dependencies)
-            .navigationTitle("Gemini")
             .withCoordinatorAlert()
     }
 }

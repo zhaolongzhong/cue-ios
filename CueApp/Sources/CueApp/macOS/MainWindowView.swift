@@ -6,7 +6,7 @@ public struct MainWindowView: View {
     // MARK: - Environment & State Objects
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var apiKeysProviderViewModel: APIKeysProviderViewModel
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
     @StateObject private var homeViewModel = HomeViewModel()
     @StateObject private var emailScreenViewModel: EmailScreenViewModel
@@ -20,6 +20,7 @@ public struct MainWindowView: View {
     #if os(macOS)
     @State private var windowDelegate: WindowDelegate?
     #endif
+    @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Initialization
 
@@ -37,7 +38,7 @@ public struct MainWindowView: View {
             detailContent
         }
         .navigationSplitViewStyle(.balanced)
-        .environmentObject(apiKeysProviderViewModel)
+        .environmentObject(providersViewModel)
         .onReceive(assistantsViewModel.$clientStatuses) { _ in
             lastStatusUpdate = Date()
         }
@@ -93,8 +94,7 @@ public struct MainWindowView: View {
     private var standardSidebarView: some View {
         Sidebar(
             assistantsViewModel: assistantsViewModel,
-            onOpenHome: handleOpenHome,
-            onOpenCueChat: handleOpenCueChat,
+            homeNavigationManager: mainNavigationManager,
             selectedAssistant: assistantBinding
         )
     }
@@ -110,6 +110,7 @@ public struct MainWindowView: View {
             #endif
         } else {
             mainNavigationContent
+                .background(colorScheme == .dark ? Color(.lightGray).opacity(0.1) : AppTheme.Colors.background)
         }
     }
 
@@ -121,13 +122,22 @@ public struct MainWindowView: View {
                     viewModel: homeViewModel,
                     onNewSession: handleNewSession
                 )
-            case .assistant(let assistant):
-                DetailContent(
-                    assistantsViewModel: assistantsViewModel,
-                    selectedAssistant: assistant
+            case .chat(let assistant):
+                ChatView(
+                    assistant: assistant,
+                    chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
+                    assistantsViewModel: assistantsViewModel
                 )
-            case .chat:
+            case .cue:
                 CueChatView()
+            case .anthropic:
+                AnthropicChatView(apiKey: providersViewModel.anthropicKey)
+            case .gemini:
+                GeminiChatScreen(apiKey: providersViewModel.geminiKey)
+            case .openai:
+                OpenAIChatView(apiKey: providersViewModel.openAIKey)
+            case .providers:
+                EmptyView()
             }
         }
     }
@@ -146,22 +156,20 @@ public struct MainWindowView: View {
     private var assistantBinding: Binding<Assistant?> {
         Binding(
             get: { mainNavigationManager.selectedAssistant },
-            set: { mainNavigationManager.selectDetailContent(.assistant($0)) }
+            set: {
+                if let assitant = $0 {
+                    mainNavigationManager.navigateTo(.chat(assitant))
+                } else {
+                    mainNavigationManager.navigateTo(.home)
+                }
+            }
         )
     }
 
     // MARK: - Action Handlers
 
-    private func handleOpenHome() {
-        mainNavigationManager.selectDetailContent(.home)
-    }
-
-    private func handleOpenCueChat() {
-        mainNavigationManager.selectDetailContent(.chat)
-    }
-
     private func handleNewSession() {
-        mainNavigationManager.selectDetailContent(.email)
+        mainNavigationManager.navigateTo(.email)
     }
 
     private func handleUserChange(_ user: User?) {
