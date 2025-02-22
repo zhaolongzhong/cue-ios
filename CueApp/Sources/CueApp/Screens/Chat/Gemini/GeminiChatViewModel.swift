@@ -232,4 +232,25 @@ public class GeminiChatViewModel: ObservableObject {
     public func clearError() {
         error = nil
     }
+
+    public func handleImage(_ image: UIImage) async {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            self.error = .sessionError("Failed to process image")
+            return
+        }
+
+        do {
+            let newContent = try ModelContent(role: "user", parts: [
+                .data(mimetype: "image/jpeg", imageData),
+                .text("Please describe this image.")
+            ])
+            
+            messages.append(newContent)
+            let userMessage = Gemini.ChatMessageParam.userMessage(newContent)
+            messageParmas.append(userMessage)
+            try await generateContent()
+        } catch {
+            self.error = .sessionError("Failed to send image: \(error.localizedDescription)")
+        }
+    }
 }

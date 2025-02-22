@@ -10,11 +10,13 @@ struct RichTextField: View {
     let onShowTools: () -> Void
     let onOpenVoiceChat: (() -> Void)?
     let onStartAXApp: ((AccessibleApplication) -> Void)?
+    let onImageSelected: ((UIImage) -> Void)?
     let onSend: () -> Void
     let toolCount: Int
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
+    @State private var showImagePicker = false
 
     init(
         isEnabled: Bool = true,
@@ -23,6 +25,7 @@ struct RichTextField: View {
         onShowTools: @escaping () -> Void,
         onOpenVoiceChat: (() -> Void)? = nil,
         onStartAXApp: ((AccessibleApplication) -> Void)? = nil,
+        onImageSelected: ((UIImage) -> Void)? = nil,
         onSend: @escaping () -> Void,
         toolCount: Int = 0,
         inputMessage: Binding<String>,
@@ -34,6 +37,7 @@ struct RichTextField: View {
         self.onShowTools = onShowTools
         self.onOpenVoiceChat = onOpenVoiceChat
         self.onStartAXApp = onStartAXApp
+        self.onImageSelected = onImageSelected
         self.onSend = onSend
         self.toolCount = toolCount
         self._inputMessage = inputMessage
@@ -65,21 +69,9 @@ struct RichTextField: View {
                 if featureFlags.enableMediaOptions {
                     Menu {
                         Button {
-                            // Handle attach photos
+                            showImagePicker = true
                         } label: {
                             Label("Attach Photos", systemImage: "photo")
-                        }
-
-                        Button {
-                            // Handle take photo
-                        } label: {
-                            Label("Take Photo", systemImage: "camera")
-                        }
-
-                        Button {
-                            // Handle attach files
-                        } label: {
-                            Label("Attach Files", systemImage: "folder")
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -156,6 +148,13 @@ struct RichTextField: View {
             if !newValue {
                 checkAndUpdateTextFieldVisibility()
             }
+        }
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker(image: { image in
+                if let onImageSelected = onImageSelected {
+                    onImageSelected(image)
+                }
+            })
         }
     }
 

@@ -17,13 +17,26 @@ public struct GeminiChatScreen: View {
     public var body: some View {
         VStack(spacing: 16) {
             messageList
-            RichTextField(showVoiceChat: true, onShowTools: {
-                showingToolsList = true
-            }, onOpenVoiceChat: { }, onSend: {
-                Task {
-                    await viewModel.sendMessage()
-                }
-            }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+            RichTextField(
+                showVoiceChat: true,
+                onShowTools: {
+                    showingToolsList = true
+                },
+                onOpenVoiceChat: { },
+                onImageSelected: { image in
+                    Task {
+                        await viewModel.handleImage(image)
+                    }
+                },
+                onSend: {
+                    Task {
+                        await viewModel.sendMessage()
+                    }
+                },
+                toolCount: viewModel.availableTools.count,
+                inputMessage: $viewModel.newMessage,
+                isFocused: $isFocused
+            )
             .padding(.all, 8)
         }
         #if os(iOS)
