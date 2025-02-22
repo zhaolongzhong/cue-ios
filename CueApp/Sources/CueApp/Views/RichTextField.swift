@@ -4,19 +4,20 @@ import Dependencies
 struct RichTextField: View {
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var viewModel = RichTextFieldViewModel()
+    
     let isEnabled: Bool
     let showVoiceChat: Bool
     let showAXApp: Bool
     let onShowTools: () -> Void
     let onOpenVoiceChat: (() -> Void)?
     let onStartAXApp: ((AccessibleApplication) -> Void)?
-    let onImageSelected: ((UIImage) -> Void)?
+    let onAttachmentSelected: ((Attachment) -> Void)?
     let onSend: () -> Void
     let toolCount: Int
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
-    @State private var showImagePicker = false
 
     init(
         isEnabled: Bool = true,
@@ -25,7 +26,7 @@ struct RichTextField: View {
         onShowTools: @escaping () -> Void,
         onOpenVoiceChat: (() -> Void)? = nil,
         onStartAXApp: ((AccessibleApplication) -> Void)? = nil,
-        onImageSelected: ((UIImage) -> Void)? = nil,
+        onAttachmentSelected: ((Attachment) -> Void)? = nil,
         onSend: @escaping () -> Void,
         toolCount: Int = 0,
         inputMessage: Binding<String>,
@@ -37,7 +38,7 @@ struct RichTextField: View {
         self.onShowTools = onShowTools
         self.onOpenVoiceChat = onOpenVoiceChat
         self.onStartAXApp = onStartAXApp
-        self.onImageSelected = onImageSelected
+        self.onAttachmentSelected = onAttachmentSelected
         self.onSend = onSend
         self.toolCount = toolCount
         self._inputMessage = inputMessage
@@ -69,9 +70,36 @@ struct RichTextField: View {
                 if featureFlags.enableMediaOptions {
                     Menu {
                         Button {
-                            showImagePicker = true
+                            Task {
+                                await viewModel.handleImage(from: .photoLibrary)
+                                if let attachment = viewModel.attachments.last {
+                                    onAttachmentSelected?(attachment)
+                                }
+                            }
                         } label: {
-                            Label("Attach Photos", systemImage: "photo")
+                            Label("Photo Library", systemImage: "photo.on.rectangle")
+                        }
+                        
+                        Button {
+                            Task {
+                                await viewModel.handleImage(from: .camera)
+                                if let attachment = viewModel.attachments.last {
+                                    onAttachmentSelected?(attachment)
+                                }
+                            }
+                        } label: {
+                            Label("Take Photo", systemImage: "camera")
+                        }
+                        
+                        Button {
+                            Task {
+                                await viewModel.handleAttachment(type: .document)
+                                if let attachment = viewModel.attachments.last {
+                                    onAttachmentSelected?(attachment)
+                                }
+                            }
+                        } label: {
+                            Label("Document", systemImage: "doc")
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -148,13 +176,6 @@ struct RichTextField: View {
             if !newValue {
                 checkAndUpdateTextFieldVisibility()
             }
-        }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePicker(image: { image in
-                if let onImageSelected = onImageSelected {
-                    onImageSelected(image)
-                }
-            })
         }
     }
 
