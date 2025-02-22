@@ -76,25 +76,31 @@ public struct CueChatView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                #if os(iOS)
-                Menu {
-                    Picker("Model", selection: $viewModel.model) {
-                        ForEach(ChatModel.allCases, id: \.self) { model in
-                            Text(model.displayName).tag(model)
+                HStack {
+                    #if os(iOS)
+                    Menu {
+                        Picker("Model", selection: $viewModel.model) {
+                            ForEach(ChatModel.allCases, id: \.self) { model in
+                                Text(model.displayName).tag(model)
+                            }
                         }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(viewModel.model.displayName)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+                        .foregroundColor(.primary)
                     }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(viewModel.model.displayName)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.secondary)
-                    }
-                    .foregroundColor(.primary)
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    #endif
+                    
+                    Text("(\(viewModel.remainingRequests) requests left)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                #endif
             }
         }
         #if os(macOS)

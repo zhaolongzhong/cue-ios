@@ -8,6 +8,7 @@ import CueAnthropic
 final class CueChatViewModel: ObservableObject {
     private let cueClient: CueClient
     private let toolManager: ToolManager
+    private let rateLimitManager: RateLimitManager
     private var tools: [JSONValue] = []
     private var cancellables = Set<AnyCancellable>()
 
@@ -16,6 +17,8 @@ final class CueChatViewModel: ObservableObject {
             updateTools()
         }
     }
+    
+    @Published var remainingRequests: Int = 50
     @Published var messages: [CueChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
@@ -29,9 +32,16 @@ final class CueChatViewModel: ObservableObject {
     init() {
         self.cueClient = CueClient()
         self.toolManager = ToolManager()
+        self.rateLimitManager = RateLimitManager()
         self.availableTools = toolManager.getTools()
         updateTools()
         setupToolsSubscription()
+        updateRateLimitInfo()
+    }
+    
+    private func updateRateLimitInfo() {
+        let (_, remaining, _) = rateLimitManager.checkRateLimit()
+        remainingRequests = remaining
     }
 
     private func updateTools() {
@@ -51,6 +61,17 @@ final class CueChatViewModel: ObservableObject {
     }
 
     func sendMessage() async {
+        // Check rate limit before proceeding
+        let (isLimited, _, timeUntilReset) = rateLimitManager.checkRateLimit()
+        if isLimited {
+            if let remainingTime = timeUntilReset {
+                error = ChatError.apiError(RateLimitError.limitExceeded(remainingTime: remainingTime).localizedDescription)
+            } else {
+                error = ChatError.apiError("Rate limit exceeded. Please try again later.")
+            }
+            return
+        }
+        
         var messageParams = Array(messages.suffix(10))
         let userMessage = CueChatMessage.anthropic(
             Anthropic.ChatMessageParam.userMessage(
@@ -68,8 +89,13 @@ final class CueChatViewModel: ObservableObject {
             let completionRequest = CompletionRequest(model: model.rawValue, tools: tools, toolChoice: "auto")
             let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
             messages = updatedMessages
+            
+            // Increment request count and update UI only on successful request
+            rateLimitManager.incrementRequestCount()
+            updateRateLimitInfo()
         } catch {
             ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
+            self.error = ChatError.unknownError(error.localizedDescription)
         }
         isLoading = false
     }
