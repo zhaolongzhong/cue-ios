@@ -97,7 +97,7 @@ public struct CueChatView: View {
                     .fixedSize()
                     #endif
                     
-                    Text("(\(viewModel.remainingRequests) requests left)")
+                    Text(viewModel.rateLimitInfo)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

@@ -1,6 +1,7 @@
 import Foundation
 
-struct RateLimit: Codable {
+struct ModelRateLimit: Codable {
+    let model: String
     let requestLimit: Int
     let timeWindowHours: Int
     let requestCount: Int
@@ -40,28 +41,51 @@ struct RateLimit: Codable {
     }
 }
 
+// Per-model rate limit configuration
+struct RateLimitConfig: Codable {
+    let model: String
+    let requestLimit: Int
+    let timeWindowHours: Int
+    
+    static let defaultConfigs: [String: RateLimitConfig] = [
+        "gpt-4": RateLimitConfig(model: "gpt-4", requestLimit: 25, timeWindowHours: 24),
+        "gpt-3.5-turbo": RateLimitConfig(model: "gpt-3.5-turbo", requestLimit: 50, timeWindowHours: 24),
+        "claude-2.1": RateLimitConfig(model: "claude-2.1", requestLimit: 25, timeWindowHours: 24),
+        "claude-instant-1.2": RateLimitConfig(model: "claude-instant-1.2", requestLimit: 50, timeWindowHours: 24),
+        "default": RateLimitConfig(model: "default", requestLimit: 50, timeWindowHours: 24)
+    ]
+}
+
 @MainActor
 final class RateLimitManager {
     private let userDefaults: UserDefaults
-    private let defaultLimit: Int
-    private let defaultTimeWindow: Int
-    private let rateLimitKey: String
+    private let rateLimitKeyPrefix: String
+    private var modelConfigs: [String: RateLimitConfig]
     
     init(
         userDefaults: UserDefaults = .standard,
-        defaultLimit: Int = 50,
-        defaultTimeWindow: Int = 24,
-        rateLimitKey: String = "chat_rate_limit"
+        rateLimitKeyPrefix: String = "chat_rate_limit_",
+        modelConfigs: [String: RateLimitConfig]? = nil
     ) {
         self.userDefaults = userDefaults
-        self.defaultLimit = defaultLimit
-        self.defaultTimeWindow = defaultTimeWindow
-        self.rateLimitKey = rateLimitKey
+        self.rateLimitKeyPrefix = rateLimitKeyPrefix
+        self.modelConfigs = modelConfigs ?? RateLimitConfig.defaultConfigs
     }
     
-    private func getCurrentRateLimit() -> RateLimit {
-        if let data = userDefaults.data(forKey: rateLimitKey),
-           let rateLimit = try? JSONDecoder().decode(RateLimit.self, from: data) {
+    private func rateLimitKey(for model: String) -> String {
+        return rateLimitKeyPrefix + model
+    }
+    
+    private func getConfig(for model: String) -> RateLimitConfig {
+        return modelConfigs[model] ?? modelConfigs["default"]!
+    }
+    
+    private func getCurrentRateLimit(for model: String) -> ModelRateLimit {
+        let key = rateLimitKey(for: model)
+        let config = getConfig(for: model)
+        
+        if let data = userDefaults.data(forKey: key),
+           let rateLimit = try? JSONDecoder().decode(ModelRateLimit.self, from: data) {
             
             // Check if window has expired
             if let windowEndTime = Calendar.current.date(
@@ -71,9 +95,10 @@ final class RateLimitManager {
             ),
                Date() >= windowEndTime {
                 // Window expired, create new window
-                return RateLimit(
-                    requestLimit: defaultLimit,
-                    timeWindowHours: defaultTimeWindow,
+                return ModelRateLimit(
+                    model: model,
+                    requestLimit: config.requestLimit,
+                    timeWindowHours: config.timeWindowHours,
                     requestCount: 0,
                     windowStartTime: Date()
                 )
@@ -83,23 +108,26 @@ final class RateLimitManager {
         }
         
         // No existing rate limit, create new one
-        return RateLimit(
-            requestLimit: defaultLimit,
-            timeWindowHours: defaultTimeWindow,
+        return ModelRateLimit(
+            model: model,
+            requestLimit: config.requestLimit,
+            timeWindowHours: config.timeWindowHours,
             requestCount: 0,
             windowStartTime: Date()
         )
     }
     
-    private func saveRateLimit(_ rateLimit: RateLimit) {
+    private func saveRateLimit(_ rateLimit: ModelRateLimit) {
+        let key = rateLimitKey(for: rateLimit.model)
         if let data = try? JSONEncoder().encode(rateLimit) {
-            userDefaults.set(data, forKey: rateLimitKey)
+            userDefaults.set(data, forKey: key)
         }
     }
     
-    func incrementRequestCount() {
-        var currentLimit = getCurrentRateLimit()
-        currentLimit = RateLimit(
+    func incrementRequestCount(for model: String) {
+        var currentLimit = getCurrentRateLimit(for: model)
+        currentLimit = ModelRateLimit(
+            model: model,
             requestLimit: currentLimit.requestLimit,
             timeWindowHours: currentLimit.timeWindowHours,
             requestCount: currentLimit.requestCount + 1,
@@ -108,8 +136,8 @@ final class RateLimitManager {
         saveRateLimit(currentLimit)
     }
     
-    func checkRateLimit() -> (isLimited: Bool, remainingRequests: Int, timeUntilReset: TimeInterval?) {
-        let currentLimit = getCurrentRateLimit()
+    func checkRateLimit(for model: String) -> (isLimited: Bool, remainingRequests: Int, timeUntilReset: TimeInterval?) {
+        let currentLimit = getCurrentRateLimit(for: model)
         return (
             isLimited: currentLimit.isLimited,
             remainingRequests: currentLimit.remainingRequests,
@@ -117,10 +145,12 @@ final class RateLimitManager {
         )
     }
     
-    func resetRateLimit() {
-        let newLimit = RateLimit(
-            requestLimit: defaultLimit,
-            timeWindowHours: defaultTimeWindow,
+    func resetRateLimit(for model: String) {
+        let config = getConfig(for: model)
+        let newLimit = ModelRateLimit(
+            model: model,
+            requestLimit: config.requestLimit,
+            timeWindowHours: config.timeWindowHours,
             requestCount: 0,
             windowStartTime: Date()
         )

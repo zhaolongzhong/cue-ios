@@ -19,6 +19,7 @@ final class CueChatViewModel: ObservableObject {
     }
     
     @Published var remainingRequests: Int = 50
+    @Published var rateLimitInfo: String = ""
     @Published var messages: [CueChatMessage] = []
     @Published var newMessage: String = ""
     @Published var isLoading = false
@@ -40,8 +41,11 @@ final class CueChatViewModel: ObservableObject {
     }
     
     private func updateRateLimitInfo() {
-        let (_, remaining, _) = rateLimitManager.checkRateLimit()
+        let modelId = model.rawValue
+        let config = RateLimitConfig.defaultConfigs[modelId] ?? RateLimitConfig.defaultConfigs["default"]!
+        let (_, remaining, _) = rateLimitManager.checkRateLimit(for: modelId)
         remainingRequests = remaining
+        rateLimitInfo = "(\(remaining)/\(config.requestLimit) requests)"
     }
 
     private func updateTools() {
@@ -62,12 +66,13 @@ final class CueChatViewModel: ObservableObject {
 
     func sendMessage() async {
         // Check rate limit before proceeding
-        let (isLimited, _, timeUntilReset) = rateLimitManager.checkRateLimit()
+        let modelId = model.rawValue
+        let (isLimited, _, timeUntilReset) = rateLimitManager.checkRateLimit(for: modelId)
         if isLimited {
             if let remainingTime = timeUntilReset {
                 error = ChatError.apiError(RateLimitError.limitExceeded(remainingTime: remainingTime).localizedDescription)
             } else {
-                error = ChatError.apiError("Rate limit exceeded. Please try again later.")
+                error = ChatError.apiError("Rate limit exceeded for \(model.displayName). Please try again later.")
             }
             return
         }
@@ -91,7 +96,7 @@ final class CueChatViewModel: ObservableObject {
             messages = updatedMessages
             
             // Increment request count and update UI only on successful request
-            rateLimitManager.incrementRequestCount()
+            rateLimitManager.incrementRequestCount(for: modelId)
             updateRateLimitInfo()
         } catch {
             ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
