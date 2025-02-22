@@ -12,47 +12,41 @@ struct ToolsListView: View {
     }
 
     var body: some View {
-        #if os(macOS)
         VStack {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                DismissButton(action: { dismiss() })
-            }
-            .padding()
+            #if os(macOS)
+            MacHeader(
+                title: "Tools",
+                onDismiss: { dismiss() }
+            )
+            #endif
+
             content
         }
-        .frame(minHeight: 400, maxHeight: 600)
-        .frame(width: 600)
-        .resizableSheet()
-        #else
-        NavigationView {
-            content
-        }
+        .defaultNavigationBar(title: "Tools")
+        #if os(macOS)
+        .frame(width: 600, height: 400)
         #endif
     }
 
     private var content: some View {
         List(tools, id: \.name) { tool in
-            VStack(alignment: .leading, spacing: 4) {
-                Text(tool.name)
-                    .font(.headline)
-                Text(tool.description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
-            }
-            .padding(.vertical, 4)
+            ToolRow(tool: tool)
         }
-        #if os(iOS)
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                DismissButton(action: { dismiss() })
-            }
+    }
+}
+
+private struct ToolRow: View {
+    var tool: Tool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(tool.name)
+                .font(.headline)
+            Text(tool.description)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .lineLimit(3)
         }
-        #endif
+        .padding(.vertical, 4)
     }
 }

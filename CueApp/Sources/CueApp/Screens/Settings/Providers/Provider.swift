@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-public enum Provider: String, CaseIterable, Identifiable {
+public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Hashable {
     case openai = "OPENAI_API_KEY"
     case anthropic = "ANTHROPIC_API_KEY"
     case gemini = "GEMINI_API_KEY"

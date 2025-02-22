@@ -217,7 +217,9 @@ struct Sidebar: View {
                         .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
                 )
                 .padding(.horizontal, 8)
-                .onTapGesture { selectedAssistant = assistant }
+                .onTapGesture {
+                    selectedAssistant = assistant
+                }
                 .tag(assistant)
             }
             .scrollContentBackground(.hidden)

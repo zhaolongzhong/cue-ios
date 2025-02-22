@@ -6,7 +6,7 @@ struct ProviderRow: View {
     @State private var showDeleteAlert = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 provider.iconView
                 Text(provider.displayName)

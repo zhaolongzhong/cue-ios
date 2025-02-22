@@ -24,6 +24,12 @@ struct SettingsListMacOS: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
+        .onAppear {
+            updateAppearance()
+        }
+        .onChange(of: colorScheme) { _, _ in
+            updateAppearance()
+        }
         #endif
     }
 
@@ -80,7 +86,9 @@ struct SettingsListMacOS: View {
                         value: "",
                         showChevron: true
                     ) {
+                        #if os(macOS)
                         navigationPath.append(SettingsRoute.developer)
+                        #endif
                     }
                 }
             } header: {
@@ -89,6 +97,28 @@ struct SettingsListMacOS: View {
 
             Section {
                 GroupBox {
+                    SettingsRow(
+                        systemIcon: "sun.max",
+                        title: "Color Scheme",
+                        value: "",
+                        showChevron: false,
+                        trailing: AnyView(
+                            HStack {
+                                Spacer()
+                                Picker("", selection: $colorScheme) {
+                                    ForEach(ColorSchemeOption.allCases, id: \.self) { option in
+                                        Text(option.rawValue).tag(option)
+                                    }
+                                }
+                                .pickerStyle(.automatic)
+                                .font(.system(size: 12))
+                                .fixedSize()
+                                .frame(height: 30)
+                                .labelsHidden()
+                            }
+                        )
+                    )
+                    #if os(macOS)
                     if let appcastUrl = viewModel.appConfig?.appcastUrl {
                         SettingsRow(
                             systemIcon: "arrow.triangle.2.circlepath",
@@ -98,6 +128,7 @@ struct SettingsListMacOS: View {
                             coordinator.checkForUpdates(withAppcastUrl: appcastUrl)
                         }
                     }
+                    #endif
 
                     SettingsRow(
                         systemIcon: "info.circle",
@@ -105,6 +136,8 @@ struct SettingsListMacOS: View {
                         value: "\(viewModel.getVersionInfo())"
                     )
                 }
+            } header: {
+                SettingsHeader(title: "App")
             }
 
             Section {
@@ -121,3 +154,42 @@ struct SettingsListMacOS: View {
         .frame(maxWidth: 600)
     }
 }
+
+#if os(macOS)
+extension SettingsListMacOS {
+    private func updateAppearance() {
+        let newAppearance: NSAppearance? = {
+            if let appearanceName = colorScheme.toNSAppearanceName() {
+                return NSAppearance(named: appearanceName)
+            }
+            return nil
+        }()
+
+        NSApplication.shared.appearance = newAppearance
+
+        DispatchQueue.main.async {
+            NSApplication.shared.windows.forEach { window in
+                window.appearance = newAppearance
+                window.contentView?.appearance = newAppearance
+                window.contentView?.setNeedsDisplay(window.contentView?.bounds ?? .zero)
+                window.contentView?.layoutSubtreeIfNeeded()
+                window.invalidateShadow()
+                window.display() // Force a redraw
+            }
+        }
+    }
+
+}
+extension ColorSchemeOption {
+    func toNSAppearanceName() -> NSAppearance.Name? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return .aqua
+        case .dark:
+            return .darkAqua
+        }
+    }
+}
+#endif

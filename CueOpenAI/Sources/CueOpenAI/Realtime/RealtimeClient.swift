@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CueCommon
 import os.log
 
 public protocol RealtimeClientProtocol: AnyObject {

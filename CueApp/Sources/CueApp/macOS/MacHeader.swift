@@ -16,7 +16,7 @@ struct MacHeader: View {
                 DismissButton(action: onDismiss)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, idealHeight: Layout.Elements.headerHeight)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }

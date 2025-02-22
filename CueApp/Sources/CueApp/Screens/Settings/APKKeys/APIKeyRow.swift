@@ -42,11 +42,11 @@ struct APIKeyRow: View {
 
             if let lastUsed = key.lastUsedAt {
                 Text("Last used: \(formatDate(lastUsed))")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundColor(.secondary)
             } else {
                 Text("Never used")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundColor(.secondary)
             }
         }

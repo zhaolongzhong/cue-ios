@@ -8,9 +8,9 @@ public enum WindowSize {
     public static let miniHeight: CGFloat = 220
     public static let sidebarMiniWidth: CGFloat = 200
     public static let sidebarIdealWidth: CGFloat = 250
-    public static let sidebarMaxWidth: CGFloat = 400
+    public static let sidebarMaxWidth: CGFloat = 500
 
-    public struct small {
+    public struct Small {
         public static let width: CGFloat = 720
         public static let height: CGFloat = 500
     }
@@ -18,6 +18,24 @@ public enum WindowSize {
     public struct Auth {
         public static let width: CGFloat = 340
         public static let height: CGFloat = 480
+    }
+
+    public struct Companion {
+        public static let width: CGFloat = 440
+        public static let height: CGFloat = 540
+        public static let minWidth: CGFloat = 320
+        public static let maxWidth: CGFloat = 600
+        public static let minHeight: CGFloat = 280
+    }
+
+    public struct Voice {
+        public static let minWidth: CGFloat = 280
+        public static let minHeight: CGFloat = 350
+    }
+
+    public struct Settings {
+        public static let minWidth: CGFloat = 600
+        public static let minHeight: CGFloat = 500
     }
 }
 

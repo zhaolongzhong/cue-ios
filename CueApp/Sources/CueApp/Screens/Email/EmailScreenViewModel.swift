@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CueCommon
 import CueOpenAI
 import Dependencies
 import OSLog

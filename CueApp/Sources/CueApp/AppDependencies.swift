@@ -16,7 +16,7 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
     public var providersViewModel: ProvidersViewModel
 
     private lazy var _viewModelFactory: ViewModelFactory = {
-        ViewModelFactory()
+        ViewModelFactory(providersViewModel: providersViewModel)
     }()
 
     public var viewModelFactory: ViewModelFactory {
@@ -40,10 +40,20 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
 @MainActor
 public class ViewModelFactory {
     private var assistantsViewModel: AssistantsViewModel?
-    private var chatViewModels: [String: ChatViewModel] = [:]
+    private var chatViewModels: [String: AssistantChatViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
-    private var realtimeChatViewModel: RealtimeChatViewModel?
+    private var openAILiveChatViewModel: OpenAILiveChatViewModel?
+    private var geminiChatViewModel: GeminiChatViewModel?
+    private var openAIChatViewModel: OpenAIChatViewModel?
+    private var anthropicChatViewModel: AnthropicChatViewModel?
+    private var cueChatViewModel: CueChatViewModel?
     private var emailScreenViewModel: EmailScreenViewModel?
+
+    let providersViewModel: ProvidersViewModel
+
+    public init(providersViewModel: ProvidersViewModel) {
+        self.providersViewModel = providersViewModel
+    }
 
     func makeAssistantsViewModel() -> AssistantsViewModel {
         if let assistantsViewModel = self.assistantsViewModel {
@@ -54,11 +64,24 @@ public class ViewModelFactory {
         return self.assistantsViewModel!
     }
 
-    func makeChatViewViewModel(assistant: Assistant) -> ChatViewModel {
+    func makeAssistantChatViewModel(assistant: Assistant) -> AssistantChatViewModel {
         if let existing = chatViewModels[assistant.id] {
             return existing
         } else {
-            let newViewModel = ChatViewModel(assistant: assistant)
+            let newViewModel = AssistantChatViewModel(assistant: assistant)
+            chatViewModels[assistant.id] = newViewModel
+            return newViewModel
+        }
+    }
+
+    func makeAssistantChatViewModelBy(id: String) -> AssistantChatViewModel? {
+        guard let assistant = assistantsViewModel?.getAssistant(for: id) else {
+            return nil
+        }
+        if let existing = chatViewModels[assistant.id] {
+            return existing
+        } else {
+            let newViewModel = AssistantChatViewModel(assistant: assistant)
             chatViewModels[assistant.id] = newViewModel
             return newViewModel
         }
@@ -74,13 +97,53 @@ public class ViewModelFactory {
         }
     }
 
-    public func makeRealtimeChatViewModel(apiKey: String) -> RealtimeChatViewModel {
-        if let realtimeChatViewModel = self.realtimeChatViewModel {
-            return realtimeChatViewModel
+    public func makeOpenAILiveChatViewModel() -> OpenAILiveChatViewModel {
+        if let openAILiveChatViewModel = self.openAILiveChatViewModel {
+            return openAILiveChatViewModel
         } else {
-            let realtimeChatViewModel = RealtimeChatViewModel(apiKey: apiKey)
-            self.realtimeChatViewModel = realtimeChatViewModel
+            let realtimeChatViewModel = OpenAILiveChatViewModel(apiKey: providersViewModel.openAIKey)
+            self.openAILiveChatViewModel = realtimeChatViewModel
             return realtimeChatViewModel
+        }
+    }
+
+    public func makeOpenAIChatViewModel() -> OpenAIChatViewModel {
+        if let openAIChatViewModel = self.openAIChatViewModel {
+            return openAIChatViewModel
+        } else {
+            let openAIChatViewModel = OpenAIChatViewModel(apiKey: providersViewModel.openAIKey)
+            self.openAIChatViewModel = openAIChatViewModel
+            return openAIChatViewModel
+        }
+    }
+
+    public func makeGeminiChatViewModel() -> GeminiChatViewModel {
+        if let geminiChatViewModel = self.geminiChatViewModel {
+            return geminiChatViewModel
+        } else {
+            let geminiChatViewModel = GeminiChatViewModel(apiKey: providersViewModel.geminiKey)
+            self.geminiChatViewModel = geminiChatViewModel
+            return geminiChatViewModel
+        }
+    }
+
+    public func makeAnthropicChatViewModel() -> AnthropicChatViewModel {
+        if let anthropicChatViewModel = self.anthropicChatViewModel {
+            return anthropicChatViewModel
+        } else {
+            let anthropicChatViewModel = AnthropicChatViewModel(apiKey: providersViewModel.anthropicKey)
+            self.anthropicChatViewModel = anthropicChatViewModel
+            return anthropicChatViewModel
+        }
+    }
+
+    public func makeCueChatViewModel() -> CueChatViewModel {
+        if let cueChatViewModel = self.cueChatViewModel {
+            return cueChatViewModel
+        } else {
+            let cueChatViewModel = CueChatViewModel()
+            self.cueChatViewModel = cueChatViewModel
+            return cueChatViewModel
         }
     }
 

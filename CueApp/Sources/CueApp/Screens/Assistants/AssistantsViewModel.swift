@@ -74,6 +74,10 @@ public final class AssistantsViewModel: ObservableObject {
         clientStatusService.getClientStatus(for: assistant.id)
     }
 
+    func getAssistant(for assistantId: String) -> Assistant? {
+        assistants.first { $0.id == assistantId }
+    }
+
     // MARK: - Assistant Operations
     func fetchAssistants() async {
         isLoading = true

@@ -28,7 +28,6 @@ struct SettingsListIOS: View {
             } header: {
                 SettingsHeader(title: "Account")
             }
-            .padding(.trailing, 0)
             .listSectionSpacing(.compact)
             Section {
                 if featureFlags.enableProviders {

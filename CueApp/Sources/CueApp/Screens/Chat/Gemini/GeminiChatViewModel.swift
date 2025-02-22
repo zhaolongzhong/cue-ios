@@ -84,6 +84,10 @@ public class GeminiChatViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
+    private func updateTools() {
+        self.geminiTool = toolManager.getGeminiTool()
+    }
+
     func startServer() async {
         #if os(macOS)
         await self.toolManager.startMcpServer()
@@ -112,8 +116,24 @@ public class GeminiChatViewModel: ObservableObject {
         }
     }
 
-    public func disconnect() {
+    public func startSession() async {
+        do {
+            try await connect()
+        } catch {
+            self.error = .sessionError(String(describing: error))
+        }
+    }
+
+    public func endSession() async {
         liveAPIClient.endSession()
+    }
+
+    public func pauseChat() {
+        liveAPIClient.pauseChat()
+    }
+
+    public func resumeChat() {
+        liveAPIClient.resumeChat()
     }
 
     public func sendMessage() async {
@@ -159,74 +179,71 @@ public class GeminiChatViewModel: ObservableObject {
 
     public func generateContent() async throws {
         do {
-            var tools: [GeminiTool] = []
-            if let tool = self.geminiTool {
-                tools.append(tool)
-            }
+            let tools = geminiTool.map { [$0] } ?? []
             let response = try await gemini.chat.generateContent(
-                model: self.model.id,
+                model: model.id,
                 messages: messages,
                 tools: tools
             )
-
             AppLog.log.debug("Response: \(String(describing: response))")
             let candidateContent = response.candidates[0].content
             messages.append(candidateContent)
-
-            let assistantMessage = Gemini.ChatMessageParam.assistantMessage(candidateContent)
-            messageParmas.append(assistantMessage)
+            messageParmas.append(Gemini.ChatMessageParam.assistantMessage(candidateContent))
 
             if case .functionCall(let functionCall) = candidateContent.parts[0] {
-                let result = await handleFunctionCall(functionCall)
-                let functionResponse = ModelContent(
-                    role: "user",
-                    parts: [.functionResponse(FunctionResponse(
-                        id: functionCall.id,
-                        name: functionCall.name,
-                        response: [
-                            "name": .string(functionCall.name),
-                            "content": .string(result)
-                        ]
-                    ))]
-                )
-                messages.append(functionResponse)
-                let toolMessage = Gemini.ChatMessageParam.toolMessage(functionResponse)
-                messageParmas.append(toolMessage)
-                try await generateContent()
+                try await handleFunctionCallAndRecursivelyGenerate(functionCall)
             } else {
-                self.messageContent = candidateContent.parts[0].text ?? ""
+                messageContent = candidateContent.parts[0].text ?? ""
             }
         } catch let error as Gemini.Error {
-            switch error {
-            case .apiError(let apiError):
-                if apiError.error.status == "INVALID_ARGUMENT" &&
-                   apiError.error.message.contains("API key expired") {
-                    self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
-                } else {
-                    // Use the most detailed error message available
-                    let detailMessage = apiError.error.details
-                        .first { $0.message != nil }?
-                        .message ?? apiError.error.message
-                    self.error = .sessionError("Error: \(detailMessage)")
-                }
-            case .unexpectedAPIResponse(let message):
-                if message.contains("API key expired") {
-                    self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
-                } else {
-                    self.error = .sessionError("An error occurred while generating content: \(message)")
-                }
-            default:
-                self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
-            }
-            AppLog.log.error("Generate content error: \(error)")
+            handleGeminiError(error)
         } catch {
             self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
             AppLog.log.error("Generate content error: \(error)")
         }
     }
 
-    private func updateTools() {
-        self.geminiTool = toolManager.getGeminiTool()
+    private func handleFunctionCallAndRecursivelyGenerate(_ functionCall: GeminiFunctionCall) async throws {
+        let result = await handleFunctionCall(functionCall)
+        let functionResponse = ModelContent(
+            role: "user",
+            parts: [.functionResponse(FunctionResponse(
+                id: functionCall.id,
+                name: functionCall.name,
+                response: [
+                    "name": .string(functionCall.name),
+                    "content": .string(result)
+                ]
+            ))]
+        )
+        messages.append(functionResponse)
+        messageParmas.append(Gemini.ChatMessageParam.toolMessage(functionResponse))
+        try await generateContent()
+    }
+
+    private func handleGeminiError(_ error: Gemini.Error) {
+        switch error {
+        case .apiError(let apiError):
+            if apiError.error.status == "INVALID_ARGUMENT" {
+                if apiError.error.message.contains("API key expired") {
+                    self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
+                } else if apiError.error.message.contains("API key not valid") {
+                    self.error = .sessionError("Your API key is invalid. Please renew your API key to continue.")
+                }
+            } else {
+                let detailMessage = apiError.error.details.first { $0.message != nil }?.message ?? apiError.error.message
+                self.error = .sessionError("Error: \(detailMessage)")
+            }
+        case .unexpectedAPIResponse(let message):
+            if message.contains("API key expired") {
+                self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
+            } else {
+                self.error = .sessionError("An error occurred while generating content: \(message)")
+            }
+        default:
+            self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
+        }
+        AppLog.log.error("Generate content error: \(error)")
     }
 
     public func clearError() {

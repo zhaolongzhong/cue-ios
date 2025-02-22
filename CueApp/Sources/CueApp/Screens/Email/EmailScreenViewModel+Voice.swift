@@ -1,4 +1,5 @@
 import Foundation
+import CueCommon
 import CueOpenAI
 
 extension EmailScreenViewModel {

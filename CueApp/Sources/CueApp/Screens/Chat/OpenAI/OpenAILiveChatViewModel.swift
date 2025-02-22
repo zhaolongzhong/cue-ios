@@ -1,11 +1,12 @@
 import Foundation
-import CueOpenAI
 import Combine
+import CueCommon
+import CueOpenAI
 import Dependencies
 import os.log
 
 @MainActor
-public final class RealtimeChatViewModel: ObservableObject {
+public final class OpenAILiveChatViewModel: ObservableObject {
     @Dependency(\.realtimeClient) public var realtimeClient
 
     private let openAI: OpenAI
@@ -21,7 +22,7 @@ public final class RealtimeChatViewModel: ObservableObject {
     private var deltaMessageItemId: String = ""
     @Published private(set) var isLoading = false
     @Published private(set) var chatError: ChatError?
-    @Published private(set) var state: VoiceChatState = .idle {
+    @Published private(set) var state: VoiceState = .idle {
         didSet {
             logger.debug("Voice state change to \(self.state.description)")
             switch state {
@@ -32,6 +33,12 @@ public final class RealtimeChatViewModel: ObservableObject {
             }
         }
     }
+    @Published var availableTools: [OpenAITool] = [] {
+        didSet {
+            updateTools()
+        }
+    }
+    private var tools: [JSONValue] = []
     private var handledEventIds: Set<String> = []
     private var cancellables = Set<AnyCancellable>()
 
@@ -39,9 +46,33 @@ public final class RealtimeChatViewModel: ObservableObject {
         self.apiKey = apiKey
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
+        self.availableTools = toolManager.getTools()
 
         self.state = realtimeClient.voiceChatState
         setupRealtimeSubscription()
+        #if os(macOS)
+        setupToolsSubscription()
+        #endif
+    }
+
+    private func setupToolsSubscription() {
+        toolManager.mcpToolsPublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.availableTools = self.toolManager.getTools()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func updateTools() {
+        tools = self.toolManager.getToolsJSONValue(model: self.model)
+    }
+
+    func startServer() async {
+        #if os(macOS)
+        await self.toolManager.startMcpServer()
+        #endif
     }
 
     private func setupRealtimeSubscription() {

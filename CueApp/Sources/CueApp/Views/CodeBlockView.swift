@@ -35,7 +35,7 @@ struct CodeBlockView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .frame(height: 32)
+                .frame(height: 42)
                 .background(Color(colorScheme == .light ? .black.opacity(0.06) : .white.opacity(0.03)))
             }
 
@@ -46,7 +46,7 @@ struct CodeBlockView: View {
                 .textSelection(.enabled)
                 .background(
                     colorScheme == .light
-                    ? .white
+                    ? .white.opacity(0.06)
                         : Color(red: 0.12, green: 0.12, blue: 0.12)
                 )
         }

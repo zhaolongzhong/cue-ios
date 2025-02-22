@@ -36,7 +36,7 @@ struct ConnectedAppsView: View {
     }
 
     var gmailRow: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label(
                     title: { Text("Gmail") },

@@ -18,14 +18,14 @@ public struct AppTabView: View {
     public var body: some View {
         TabView(selection: $selectedTab) {
             if !providerViewModel.openAIKey.isEmpty {
-            OpenAIChatView(apiKey: providerViewModel.openAIKey)
+                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
                 .tabItem {
                     Label("Chat", systemImage: "wand.and.stars")
                 }
                 .tag(TabSelection.chat)
             }
             if !providerViewModel.anthropicKey.isEmpty {
-                AnthropicChatView(apiKey: providerViewModel.anthropicKey)
+                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
                     .tabItem {
                         Label("Anthropic", systemImage: "character")
                     }

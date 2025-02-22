@@ -1,5 +1,6 @@
 import SwiftUI
 import Dependencies
+import CueCommon
 import CueOpenAI
 
 struct LiveIndicatorView: View {

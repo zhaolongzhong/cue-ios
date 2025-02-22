@@ -124,14 +124,12 @@ struct AssistantNameRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            SettingsRow(
-                systemIcon: "person.circle",
-                title: "Name",
-                value: name
-            )
-        }
-        .buttonStyle(.plain)
+        SettingsRow(
+            systemIcon: "person.circle",
+            title: "Name",
+            value: name,
+            onTap: onTap
+        )
     }
 }
 
@@ -178,14 +176,12 @@ struct AssistantSettingsRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            SettingsRow(
-                systemIcon: systemName,
-                title: title,
-                showChevron: true
-            )
-        }
-        .buttonStyle(.plain)
+        SettingsRow(
+            systemIcon: systemName,
+            title: title,
+            showChevron: true,
+            onTap: onTap
+        )
     }
 }
 
@@ -194,94 +190,12 @@ struct AssistantMaxTurnsRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            SettingsRow(
-                systemIcon: "number",
-                title: "Max Turns",
-                value: String(maxTurns),
-                showChevron: true
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - TextFieldEditorSheet
-struct TextFieldEditorSheet: View {
-    let title: String
-    @Binding var text: String
-    let onSave: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        #if os(iOS)
-        navigationView
-        #else
-        macOSView
-        #endif
-    }
-
-    private var navigationView: some View {
-        NavigationView {
-            TextEditor(text: $text)
-                .scrollContentBackground(.hidden)
-                .padding(.all, 8)
-                .background(Color.secondary.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
-                .navigationTitle(title)
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            onSave(text)
-                            dismiss()
-                        }
-                    }
-                }
-                .padding(.all, 8)
-        }
-    }
-
-    private var macOSView: some View {
-        VStack {
-            #if os(macOS)
-            MacHeader(
-                title: title,
-                onDismiss: { dismiss() }
-            )
-            #endif
-            VStack(spacing: 20) {
-                TextEditor(text: $text)
-                    .scrollContentBackground(.hidden)
-                    .padding(.vertical, 8)
-                    .background(Color.secondary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary).opacity(0.2))
-
-                HStack(spacing: 12) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .keyboardShortcut(.escape)
-
-                    Button("Save") {
-                        onSave(text)
-                        dismiss()
-                    }
-                    .keyboardShortcut(.return)
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-            .padding()
-        }
-        .frame(width: 500, height: 400)
+        SettingsRow(
+            systemIcon: "number",
+            title: "Max Turns",
+            value: String(maxTurns),
+            showChevron: true,
+            onTap: onTap
+        )
     }
 }

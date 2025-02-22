@@ -1,19 +1,20 @@
 import SwiftUI
+import CueGemini
 
-public struct CueChatView: View {
-    @EnvironmentObject private var dependencies: AppDependencies
+public struct GeminiChatView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var windowManager: CompanionWindowManager
-    @StateObject private var viewModel: CueChatViewModel
+    @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var viewModel: GeminiChatViewModel
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
+    @AppStorage("selectedGeminiModel") private var storedModel: ChatModel = .gemini20FlashExp
     @State private var showingToolsList = false
-    @AppStorage("selectedCueModel") private var storedModel: ChatModel = .gpt4oMini
     @State private var isHovering = false
 
     private let isCompanion: Bool
 
-    public init(_ viewModelFactory: @escaping () -> CueChatViewModel, isCompanion: Bool = false) {
+    public init(_ viewModelFactory: @escaping () -> GeminiChatViewModel, isCompanion: Bool = false) {
         _viewModel = StateObject(wrappedValue: viewModelFactory())
         self.isCompanion = isCompanion
     }
@@ -22,29 +23,19 @@ public struct CueChatView: View {
         ZStack(alignment: .top) {
             VStack(spacing: 16) {
                 messageList
-                RichTextField(
-                    showVoiceChat: true,
-                    showAXapp: false,
-                    onShowTools: {
-                        showingToolsList = true
-                    },
-                    onOpenVoiceChat: {
-                        #if os(macOS)
-                        openLiveChat()
-                        #else
-                        coordinator.showLiveChatSheet(.gemini)
-                        #endif
-                    },
-                    onStartAXApp: { _ in },
-                    onSend: {
-                        Task {
-                            await viewModel.sendMessage()
-                        }
-                    },
-                    toolCount: viewModel.availableTools.count,
-                    inputMessage: $viewModel.newMessage,
-                    isFocused: $isFocused
-                )
+                RichTextField(showVoiceChat: true, onShowTools: {
+                    showingToolsList = true
+                }, onOpenVoiceChat: {
+                    #if os(macOS)
+                    openLiveChat()
+                    #else
+                    coordinator.showLiveChatSheet(.gemini)
+                    #endif
+                }, onSend: {
+                    Task {
+                        await viewModel.sendMessage()
+                    }
+                }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
             }
             if isCompanion {
                 CompanionHeaderView(isHovering: $isHovering)
@@ -73,13 +64,9 @@ public struct CueChatView: View {
             #endif
         }
         .onAppear {
+            viewModel.model = storedModel
             Task {
                 await viewModel.startServer()
-            }
-        }
-        .onChange(of: viewModel.messages.count) { _, _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isFocused = true
             }
         }
         .onChange(of: viewModel.error) { _, error in
@@ -112,8 +99,8 @@ public struct CueChatView: View {
     private var toolbarContent: some ToolbarContent {
         ModelSelectorToolbar(
             currentModel: viewModel.model,
-            models: ChatModel.models(for: .cue),
-            iconView: AnyView(Provider.cue.iconView),
+            models: ChatModel.models(for: .gemini),
+            iconView: AnyView(Provider.gemini.iconView),
             getModelName: { $0.displayName },
             onModelSelected: { model in
                 storedModel = model
@@ -126,9 +113,10 @@ public struct CueChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(viewModel.messages) { message in
-                        MessageBubble(message: message)
+                    ForEach(viewModel.messageParmas) { message in
+                        MessageBubble(message: .gemini(message))
                     }
+                    // Invisible marker view at bottom
                     Color.clear
                         .frame(height: 1)
                         .id(bottomID)
@@ -159,7 +147,7 @@ public struct CueChatView: View {
     func openCompanionChat(with model: ChatModel) {
         let config = CompanionWindowConfig(
             model: model.rawValue,
-            provider: .cue,
+            provider: .gemini,
             additionalSettings: [:]
         )
         windowManager.openCompanionWindow(id: UUID().uuidString, config: config)

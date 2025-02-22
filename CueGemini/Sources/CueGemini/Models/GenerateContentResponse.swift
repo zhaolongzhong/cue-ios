@@ -124,7 +124,7 @@ public struct Citation {
   public let endIndex: Int
 
   /// A link to the cited source.
-  public let uri: String
+  public let uri: String?
 
   /// The license the cited source work is distributed under, if specified.
   public let license: String?
@@ -301,14 +301,9 @@ extension Citation: Decodable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     startIndex = try container.decodeIfPresent(Int.self, forKey: .startIndex) ?? 0
-    endIndex = try container.decode(Int.self, forKey: .endIndex)
-    uri = try container.decode(String.self, forKey: .uri)
-    if let license = try container.decodeIfPresent(String.self, forKey: .license),
-       !license.isEmpty {
-      self.license = license
-    } else {
-      license = nil
-    }
+    endIndex = try container.decodeIfPresent(Int.self, forKey: .endIndex) ?? 0
+    uri = try container.decodeIfPresent(String.self, forKey: .uri)
+    license = try container.decodeIfPresent(String.self, forKey: .license)
   }
 }
 

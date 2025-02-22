@@ -1,6 +1,6 @@
 import Foundation
 
-enum ChatModel: String, CaseIterable, Equatable, Hashable {
+public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
     case gpt4oMini = "gpt-4o-mini"
     case gpt4o = "gpt-4o"
     case o3mini = "o3-mini"

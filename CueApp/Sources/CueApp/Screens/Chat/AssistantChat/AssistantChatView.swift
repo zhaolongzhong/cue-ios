@@ -1,71 +1,52 @@
 import SwiftUI
 
-struct ChatView: View {
-    @StateObject private var viewModel: ChatViewModel
-    let assistantsViewModel: AssistantsViewModel
+struct AssistantChatView: View {
+    @EnvironmentObject private var windowManager: CompanionWindowManager
+    @StateObject private var viewModel: AssistantChatViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
     @SceneStorage("chatScrollPosition") private var scrollPosition: String?
     @FocusState private var isFocused: Bool
     @State private var scrollProxy: ScrollViewProxy?
     @State private var selectedMessage: CueChatMessage?
+    @State private var showingToolsList = false
+    @State private var isHovering = false
+    let assistantsViewModel: AssistantsViewModel
+    private let isCompanion: Bool
 
-    init(assistant: Assistant,
-         chatViewModel: ChatViewModel,
+    init(assistantChatViewModel: AssistantChatViewModel,
          assistantsViewModel: AssistantsViewModel,
-         tag: String? = nil) {
+         isCompanion: Bool = false
+    ) {
         self.assistantsViewModel = assistantsViewModel
-        _viewModel = StateObject(wrappedValue: chatViewModel)
+        _viewModel = StateObject(wrappedValue: assistantChatViewModel)
+        self.isCompanion = isCompanion
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            #if os(macOS)
-            Rectangle()
-                .fill(AppTheme.Colors.separator.opacity(0.5))
-                .frame(height: 1)
-                .frame(maxWidth: .infinity)
-            #endif
-
-            MessagesListView(
-                messages: viewModel.messageModels,
-                shouldAutoScroll: shouldAutoScroll,
-                onScrollProxyReady: { proxy in
-                    scrollProxy = proxy
-                },
-                onLoadMore: viewModel.loadMoreMessages,
-                onShowMore: { message in
-                    selectedMessage = message
-                }
-            )
-            .id(viewModel.assistant.id)
-            .overlay(
-                LoadingOverlay(isVisible: viewModel.isLoading)
-            )
-            .frame(maxHeight: .infinity)
-            #if os(iOS)
-            .simultaneousGesture(
-                TapGesture()
-                    .onEnded { _ in
-                        if isFocused {
-                            isFocused = false
+        ZStack(alignment: .top) {
+            VStack(spacing: 16) {
+                messageList
+                RichTextField(
+                    isEnabled: viewModel.isInputEnabled,
+                    onShowTools: {
+                    },
+                    onSend: {
+                        Task {
+                            await viewModel.sendMessage()
                         }
-                    }
-            )
-            #endif
-            .scrollDismissesKeyboard(.never)
-
-            RichTextField(isEnabled: viewModel.isInputEnabled, onShowTools: {
-            }, onSend: {
-                Task {
-                    await viewModel.sendMessage()
-                }
-                withAnimation {
-                    scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
-                }
-            }, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
-            .padding(.all, 8)
+                        withAnimation {
+                            scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
+                        }
+                    },
+                    inputMessage: $viewModel.newMessage,
+                    isFocused: $isFocused
+                )
+            }
+            if isCompanion {
+                CompanionHeaderView(title: viewModel.assistant.name, isHovering: $isHovering)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .withCoordinatorAlert(isCompanion: isCompanion)
         #if os(iOS)
         .defaultNavigationBar(showCustomBackButton: false, title: viewModel.assistant.name)
         #endif
@@ -92,6 +73,9 @@ struct ChatView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 Spacer()
                 Menu {
+                    Button("Open companion chat") {
+                        openCompanionChat(with: viewModel.assistant.id)
+                    }
                     Button("Details") {
                         viewModel.showAssistantDetails = true
                     }
@@ -103,6 +87,9 @@ struct ChatView: View {
             }
             #endif
         }
+        .overlay(
+            LoadingOverlay(isVisible: viewModel.isLoading)
+        )
         #if !os(iOS)
         .sheet(isPresented: $viewModel.showAssistantDetails) {
             AssistantDetailView(
@@ -117,6 +104,21 @@ struct ChatView: View {
         .sheet(item: $selectedMessage) { message in
             FullMessageView(message: message)
         }
+        #if os(iOS)
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    if isFocused {
+                        isFocused = false
+                    }
+                }
+        )
+        #endif
+        #if os(macOS)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering }
+        }
+        #endif
         .onAppear {
             Task {
                 await viewModel.setupChat()
@@ -135,7 +137,31 @@ struct ChatView: View {
         }
     }
 
+    private var messageList: some View {
+        MessagesListView(
+            messages: viewModel.messageModels,
+            shouldAutoScroll: shouldAutoScroll,
+            onScrollProxyReady: { proxy in
+                scrollProxy = proxy
+            },
+            onLoadMore: viewModel.loadMoreMessages,
+            onShowMore: { message in
+                selectedMessage = message
+            }
+        )
+        .scrollDismissesKeyboard(.never)
+        .id(viewModel.assistant.id)
+    }
+
     private func handleAssistantUpdate(updatedAssistant: Assistant) {
         viewModel.updateAssistant(updatedAssistant)
+    }
+
+    func openCompanionChat(with assistantId: String) {
+        let config = CompanionWindowConfig(
+            assistantId: assistantId,
+            additionalSettings: ["assistant_id": assistantId]
+        )
+        windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
     }
 }

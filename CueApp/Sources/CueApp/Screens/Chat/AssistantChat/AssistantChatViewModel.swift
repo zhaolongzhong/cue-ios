@@ -3,7 +3,7 @@ import Combine
 import Dependencies
 
 @MainActor
-final class ChatViewModel: ObservableObject {
+final class AssistantChatViewModel: ObservableObject {
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.assistantRepository) private var assistantRepository
     @Dependency(\.messageRepository) private var messageRepository
@@ -257,7 +257,7 @@ final class ChatViewModel: ObservableObject {
     }
 }
 
-extension ChatViewModel {
+extension AssistantChatViewModel {
     private func fetchAssistantConversation(id: String) async -> ConversationModel? {
         switch await assistantRepository.listAssistantConversations(id: id, isPrimary: true, skip: 0, limit: 20) {
         case .success(let conversations):

@@ -20,6 +20,7 @@ public class AppCoordinator: ObservableObject {
     @Published public var showSettings = false
     @Published public var showProviders = false
     @Published public var showLiveChat = false
+    @Published public var liveChatProvider: Provider = .gemini
 
     #if os(macOS)
     private let updater: SPUUpdater?
@@ -49,8 +50,9 @@ public class AppCoordinator: ObservableObject {
         showProviders = true
     }
 
-    func showLiveChatSheet() {
+    func showLiveChatSheet(_ liveChatProvider: Provider) {
         showLiveChat = true
+        self.liveChatProvider = liveChatProvider
     }
 
     public func showError(_ message: String) {
@@ -70,39 +72,49 @@ public class AppCoordinator: ObservableObject {
 public struct CoordinatorAlertModifier: ViewModifier {
     @EnvironmentObject var coordinator: AppCoordinator
 
+    let isCompanion: Bool
+
+    init(isCompanion: Bool = false) {
+        self.isCompanion = isCompanion
+    }
+
     public func body(content: Content) -> some View {
-        content
-            .alert(item: $coordinator.activeAlert) { alertType in
-                switch alertType {
-                case .error(let message):
-                    Alert(
-                        title: Text("Error"),
-                        message: Text(message),
-                        dismissButton: .default(Text("OK"))
-                    )
+        if !isCompanion {
+            content
+        } else {
+            content
+                .alert(item: $coordinator.activeAlert) { alertType in
+                    switch alertType {
+                    case .error(let message):
+                        Alert(
+                            title: Text("Error"),
+                            message: Text(message),
+                            dismissButton: .default(Text("OK"))
+                        )
 
-                case .confirmation(let title, let message):
-                    Alert(
-                        title: Text(title),
-                        message: Text(message),
-                        primaryButton: .default(Text("OK")),
-                        secondaryButton: .cancel()
-                    )
+                    case .confirmation(let title, let message):
+                        Alert(
+                            title: Text(title),
+                            message: Text(message),
+                            primaryButton: .default(Text("OK")),
+                            secondaryButton: .cancel()
+                        )
 
-                case .custom(let title, let message, let action):
-                    Alert(
-                        title: Text(title),
-                        message: Text(message),
-                        primaryButton: .default(Text("OK"), action: action),
-                        secondaryButton: .cancel()
-                    )
+                    case .custom(let title, let message, let action):
+                        Alert(
+                            title: Text(title),
+                            message: Text(message),
+                            primaryButton: .default(Text("OK"), action: action),
+                            secondaryButton: .cancel()
+                        )
+                    }
                 }
-            }
+        }
     }
 }
 
 extension View {
-    public func withCoordinatorAlert() -> some View {
-        modifier(CoordinatorAlertModifier())
+    public func withCoordinatorAlert(isCompanion: Bool = false) -> some View {
+        modifier(CoordinatorAlertModifier(isCompanion: isCompanion))
     }
 }

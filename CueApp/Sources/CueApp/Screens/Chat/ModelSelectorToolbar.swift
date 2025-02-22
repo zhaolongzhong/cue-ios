@@ -7,9 +7,39 @@ struct ModelSelectorToolbar<Model: Equatable & Hashable>: ToolbarContent {
     let getModelName: (Model) -> String
     let onModelSelected: (Model) -> Void
 
+    #if os(macOS)
     @State private var isShowingPopover = false
+    #endif
 
     var body: some ToolbarContent {
+        #if os(iOS)
+        ToolbarItem(placement: .principal) {
+            Menu {
+                ForEach(models, id: \.self) { model in
+                    Button {
+                        onModelSelected(model)
+                    } label: {
+                        HStack {
+                            Text(getModelName(model))
+                            if currentModel == model {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    iconView
+                    Text(getModelName(currentModel))
+                        .font(.body)
+                        .fontWeight(.medium)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                }
+                .foregroundColor(.primary)
+            }
+        }
+        #else
         ToolbarItem(placement: .navigation) {
             HStack {
                 Button {
@@ -40,9 +70,12 @@ struct ModelSelectorToolbar<Model: Equatable & Hashable>: ToolbarContent {
                 }
             }
         }
+        #endif
     }
 }
 
+// Keep existing HoverBorderlessButtonStyle and ModelPickerPopover for macOS
+#if os(macOS)
 struct HoverBorderlessButtonStyle: ButtonStyle {
     let isActive: Bool
 
@@ -137,3 +170,4 @@ struct ModelPickerButtonStyle: ButtonStyle {
         }
     }
 }
+#endif

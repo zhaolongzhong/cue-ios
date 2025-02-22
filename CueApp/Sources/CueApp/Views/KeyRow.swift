@@ -5,7 +5,7 @@ struct SecretView: View {
 
     var body: some View {
         Text(maskKey(secret))
-            .font(.system(.subheadline, design: .monospaced))
+            .font(.system(.footnote, design: .monospaced))
             .foregroundColor(.secondary)
     }
 

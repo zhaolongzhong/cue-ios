@@ -41,7 +41,7 @@ struct RichTextField: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack {
             if isTextFieldVisible {
                 HStack {
                     TextField("Type a message...", text: $inputMessage, axis: .vertical)
@@ -60,79 +60,7 @@ struct RichTextField: View {
                         .submitLabel(.return)
                 }
             }
-
-            HStack {
-                if featureFlags.enableMediaOptions {
-                    Menu {
-                        Button {
-                            // Handle attach photos
-                        } label: {
-                            Label("Attach Photos", systemImage: "photo")
-                        }
-
-                        Button {
-                            // Handle take photo
-                        } label: {
-                            Label("Take Photo", systemImage: "camera")
-                        }
-
-                        Button {
-                            // Handle attach files
-                        } label: {
-                            Label("Attach Files", systemImage: "folder")
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 20))
-                            .foregroundColor(Color.secondary)
-                            .frame(width: 30, height: 30)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                }
-                Text("Type a message ...")
-                    .foregroundColor(.secondary.opacity(0.6))
-                    .opacity(isTextFieldVisible ? 0 : 1)
-                Spacer()
-                if toolCount != 0 {
-                    Button {
-                        onShowTools()
-                        checkAndUpdateTextFieldVisibility()
-                    } label: {
-                        HStack(spacing: 2) {
-                            Image(systemName: "hammer")
-                                .font(.system(size: 12))
-                                .foregroundColor(Color.secondary)
-                                .background(Color.clear)
-                            Text("\(toolCount)").foregroundColor(Color.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                if showAXApp {
-                    AXAppSelectionMenu(onStartAXApp: onStartAXApp)
-                }
-                if showVoiceChat {
-                    Button {
-                        onOpenVoiceChat?()
-                        checkAndUpdateTextFieldVisibility()
-                    } label: {
-                        HStack(spacing: 2) {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 20))
-                                .foregroundColor(Color.secondary)
-                                .background(Color.clear)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                SendButton(isEnabled: isMessageValid, action: onSend)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                showTextField()
-            }
+            controlButtons
         }
         .padding(.all, 8)
         .background(
@@ -157,6 +85,44 @@ struct RichTextField: View {
                 checkAndUpdateTextFieldVisibility()
             }
         }
+        .onChange(of: inputMessage) { _, newValue in
+            if !newValue.isEmpty && !isTextFieldVisible {
+                isTextFieldVisible = true
+            }
+        }
+        .padding()
+    }
+
+    private var controlButtons: some View {
+        HStack {
+            if featureFlags.enableMediaOptions {
+                AttachmentPickerMenu()
+            }
+            Text("Type a message ...")
+                .foregroundColor(.secondary.opacity(0.6))
+                .opacity(isTextFieldVisible ? 0 : 1)
+            Spacer()
+            if toolCount != 0 {
+                ToolButton(count: toolCount, action: {
+                    onShowTools()
+                    checkAndUpdateTextFieldVisibility()
+                })
+            }
+            if showAXApp {
+                AXAppSelectionMenu(onStartAXApp: onStartAXApp)
+            }
+            if showVoiceChat {
+                VoiceChatButton(action: {
+                    onOpenVoiceChat?()
+                    checkAndUpdateTextFieldVisibility()
+                })
+            }
+            SendButton(isEnabled: isMessageValid, action: onSend)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            showTextField()
+        }
     }
 
     private func showTextField() {
@@ -171,6 +137,91 @@ struct RichTextField: View {
     }
 
     private var isMessageValid: Bool {
-        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3
+        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1
+    }
+}
+
+struct AttachmentPickerMenu: View {
+    var body: some View {
+        HoverButton {
+            Menu {
+                Button {
+                    // Handle attach photos
+                } label: {
+                    Label("Attach Photos", systemImage: "photo")
+                }
+
+                Button {
+                    // Handle attach files
+                } label: {
+                    Label("Attach Files", systemImage: "folder")
+                }
+            } label: {
+                Label("", systemImage: "plus")
+                    .font(.system(size: 18, weight: .bold))
+                    .imageScale(.large)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
+    }
+}
+
+struct ToolButton: View {
+    let count: Int
+    let action: () -> Void
+
+    var body: some View {
+        HoverButton {
+            Button(action: action) {
+                HStack(spacing: 2) {
+                    Image(systemName: "hammer")
+                        .font(.system(size: 12))
+                    Text("\(count)")
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+struct VoiceChatButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        HoverButton {
+            Button(action: action) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+struct AXAppSelectionMenu: View {
+    @State private var selectedApp: AccessibleApplication = .textEdit
+    let onStartAXApp: ((AccessibleApplication) -> Void)?
+
+    var body: some View {
+        HoverButton {
+            Menu {
+                ForEach(AccessibleApplication.allCases, id: \.self) { app in
+                    Button {
+                        selectedApp = app
+                        onStartAXApp?(selectedApp)
+                    } label: {
+                        Text(app.name)
+                            .frame(minWidth: 200, alignment: .leading)
+                    }
+                }
+            } label: {
+                Image(systemName: "link.badge.plus")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
     }
 }

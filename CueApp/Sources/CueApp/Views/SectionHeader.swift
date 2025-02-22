@@ -46,6 +46,7 @@ struct SectionHeader: View {
         switch type {
         case .system(let name):
             Image(systemName: name)
+                .font(.system(size: 16))
                 .frame(width: 24, height: 24)
                 .foregroundColor(textColor)
         case .custom(let text):

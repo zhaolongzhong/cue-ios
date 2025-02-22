@@ -3,6 +3,8 @@
 import Foundation
 import CueCommon /// For JSONObject
 
+public typealias GeminiFunctionCall = FunctionCall
+
 /// A predicted function call returned from the model.
 public struct FunctionCall: Equatable, Sendable {
   public let id: String

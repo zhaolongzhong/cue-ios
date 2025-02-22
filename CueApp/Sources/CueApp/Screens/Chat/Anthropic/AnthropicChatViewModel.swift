@@ -5,7 +5,7 @@ import CueOpenAI
 import CueAnthropic
 
 @MainActor
-final class AnthropicChatViewModel: ObservableObject {
+public final class AnthropicChatViewModel: ObservableObject {
     private let anthropic: Anthropic
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
@@ -26,7 +26,7 @@ final class AnthropicChatViewModel: ObservableObject {
     }
     @Published var error: ChatError?
 
-    init(apiKey: String) {
+    public init(apiKey: String) {
         self.anthropic = Anthropic(apiKey: apiKey)
         self.toolManager = ToolManager()
         self.availableTools = toolManager.getTools()

@@ -8,6 +8,7 @@ struct SettingsRow: View {
     let trailing: AnyView?
     let showDivider: Bool
     let onTap: (() -> Void)?
+    let horizontalPadding: CGFloat
 
     init(
         systemIcon: String? = nil,
@@ -25,13 +26,22 @@ struct SettingsRow: View {
         self.trailing = trailing
         self.showDivider = showDivider
         self.onTap = onTap
+        #if os(macOS)
+        self.horizontalPadding = 8
+        #else
+        self.horizontalPadding = 0
+        #endif
     }
 
     var body: some View {
         VStack {
             HStack(spacing: 14) {
                 if let icon = icon {
+                    #if os(macOS)
                     let size: CGFloat = 12
+                    #else
+                    let size: CGFloat = 16
+                    #endif
                     icon
                         .font(.system(size: size, weight: .semibold))
                         .foregroundColor(.primary)
@@ -67,7 +77,7 @@ struct SettingsRow: View {
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .padding(.vertical, 4)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, horizontalPadding)
             .onTapGesture {
                 if let onTap = onTap {
                     #if os(iOS)
@@ -78,7 +88,7 @@ struct SettingsRow: View {
             }
             if showDivider {
                 Divider()
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, horizontalPadding)
             }
         }
     }

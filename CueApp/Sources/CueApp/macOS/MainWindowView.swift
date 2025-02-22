@@ -123,19 +123,19 @@ public struct MainWindowView: View {
                     onNewSession: handleNewSession
                 )
             case .chat(let assistant):
-                ChatView(
-                    assistant: assistant,
-                    chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
+                AssistantChatView(
+                    assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
                     assistantsViewModel: assistantsViewModel
                 )
-            case .cue:
-                CueChatView()
+                .id(assistant.id)
             case .anthropic:
-                AnthropicChatView(apiKey: providersViewModel.anthropicKey)
+                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
             case .gemini:
-                GeminiChatScreen(apiKey: providersViewModel.geminiKey)
+                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel)
             case .openai:
-                OpenAIChatView(apiKey: providersViewModel.openAIKey)
+                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
+            case .cue:
+                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
             case .providers:
                 EmptyView()
             }

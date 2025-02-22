@@ -78,11 +78,9 @@ struct AssistantsView: View {
             .navigationDestination(for: AppDestination.self) { destination in
                 switch destination {
                 case .chat(let assistant):
-                    ChatView(
-                        assistant: assistant,
-                        chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
-                        assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(),
-                        tag: "assistants"
+                    AssistantChatView(
+                        assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
+                        assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel()
                     )
                 case .details(let assistant):
                     AssistantDetailView(

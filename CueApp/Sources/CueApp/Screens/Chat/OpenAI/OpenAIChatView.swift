@@ -2,22 +2,26 @@ import SwiftUI
 import CueOpenAI
 
 public struct OpenAIChatView: View {
-    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
+    @EnvironmentObject private var windowConfigStore: WindowConfigurationStore
+    @EnvironmentObject private var windowManager: CompanionWindowManager
+
     @StateObject private var viewModel: OpenAIChatViewModel
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
+    @AppStorage("selectedOpenAIModel") private var storedModel: ChatModel = .gpt4o
     @State private var showingToolsList = false
     @State private var selectedApp: AccessibleApplication = .textEdit
-    @AppStorage("selectedOpenAIModel") private var storedModel: ChatModel = .gpt4o
+    @State private var isHovering = false
 
-    private let apiKey: String
     private let showAXapp: Bool
+    private let isCompanion: Bool
 
-    public init(apiKey: String) {
-        self.apiKey = apiKey
-        _viewModel = StateObject(wrappedValue: OpenAIChatViewModel(apiKey: apiKey))
+    public init(_ viewModelFactory: @escaping () -> OpenAIChatViewModel, isCompanion: Bool = false) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory())
+        self.isCompanion = isCompanion
+
         #if os(macOS)
         self.showAXapp = true
         #else
@@ -26,31 +30,58 @@ public struct OpenAIChatView: View {
     }
 
     public var body: some View {
-        VStack {
-            messageList
-            observedAppView
-            RichTextField(showVoiceChat: true, showAXapp: showAXapp, onShowTools: {
-                showingToolsList = true
-            }, onOpenVoiceChat: {
-                #if os(macOS)
-                openWindow(id: "realtime-chat-window")
-                #else
-                coordinator.showLiveChatSheet()
-                #endif
-            }, onStartAXApp: { app in
-                viewModel.updateObservedApplication(to: app)
-            },
-              onSend: {
-                Task {
-                    await viewModel.sendMessage()
-                }
-            },
-            toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
-            .padding(.all, 8)
+        ZStack(alignment: .top) {
+            VStack {
+                messageList
+                observedAppView
+                RichTextField(
+                    showVoiceChat: true,
+                    showAXapp: showAXapp,
+                    onShowTools: {
+                        showingToolsList = true
+                    },
+                    onOpenVoiceChat: {
+                        #if os(macOS)
+                        openLiveChat()
+                        #else
+                        coordinator.showLiveChatSheet(.openai)
+                        #endif
+                    },
+                    onStartAXApp: { app in
+                        viewModel.updateObservedApplication(to: app)
+                    },
+                    onSend: {
+                        Task {
+                            await viewModel.sendMessage()
+                        }
+                    },
+                    toolCount: viewModel.availableTools.count,
+                    inputMessage: $viewModel.newMessage,
+                    isFocused: $isFocused
+                )
+            }
+            if isCompanion {
+                CompanionHeaderView(isHovering: $isHovering)
+            }
         }
+        .withCoordinatorAlert(isCompanion: isCompanion)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             toolbarContent
+            #if os(macOS)
+            ToolbarItemGroup(placement: .primaryAction) {
+                Spacer()
+                Menu {
+                    Button("Open companion chat") {
+                        openCompanionChat(with: viewModel.model)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.primary)
+                }
+                .menuIndicator(.hidden)
+            }
+            #endif
         }
         .onAppear {
             viewModel.model = storedModel
@@ -82,6 +113,11 @@ public struct OpenAIChatView: View {
                 }
         )
         #endif
+        #if os(macOS)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering }
+        }
+        #endif
     }
 
     @ToolbarContentBuilder
@@ -112,17 +148,24 @@ public struct OpenAIChatView: View {
                 }
                 .padding(.top)
             }
+            #if os(macOS)
+           .safeAreaInset(edge: .top) {
+               if isCompanion {
+                   Color.clear.frame(height: 36)
+               }
+           }
+           #endif
             #if os(iOS)
            .simultaneousGesture(DragGesture().onChanged { _ in
                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                             to: nil, from: nil, for: nil)
            })
            #endif
-            .onChange(of: viewModel.messages.count) { _, _ in
-                withAnimation {
-                    proxy.scrollTo(bottomID, anchor: .bottom)
-                }
-            }
+           .onChange(of: viewModel.messages.count) { _, _ in
+               withAnimation {
+                   proxy.scrollTo(bottomID, anchor: .bottom)
+               }
+           }
         }
     }
 
@@ -145,5 +188,18 @@ public struct OpenAIChatView: View {
                     .fill(AppTheme.Colors.separator))
             }
         }
+    }
+
+    func openCompanionChat(with model: ChatModel) {
+        let config = CompanionWindowConfig(
+            model: model.rawValue,
+            provider: .openai,
+            additionalSettings: [:]
+        )
+        windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
+    }
+
+    func openLiveChat() {
+        windowManager.openGeminiLiveChatWindow(id: WindowId.openaiLiveChatWindow.rawValue)
     }
 }

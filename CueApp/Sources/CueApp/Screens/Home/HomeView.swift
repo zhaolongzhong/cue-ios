@@ -46,10 +46,16 @@ struct HomeView: View {
         }
         #if os(iOS)
         .fullScreenCover(isPresented: $coordinator.showLiveChat) {
-            RealtimeChatScreen(
-                viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel,
-                apiKey: providersViewModel.openAIKey
-            )
+            switch coordinator.liveChatProvider {
+            case .openai:
+                OpenAILiveChatView(
+                    viewModelFactory: dependencies.viewModelFactory.makeOpenAILiveChatViewModel
+                )
+            case .gemini:
+                GeminiLiveChatView(viewModelFactory: dependencies.viewModelFactory.makeGeminiChatViewModel)
+            default:
+                EmptyView()
+            }
         }
         #endif
 
@@ -133,18 +139,17 @@ private extension HomeView {
                 HomeDefaultView(viewModel: homeViewModel, onNewSession: {
                     homeViewModel.navigateToDestination(.email)
                 })
-            case .cue:
-                CueChatView()
-            case .openai:
-                OpenAIChatView(apiKey: providersViewModel.openAIKey)
             case .anthropic:
-                AnthropicChatView(apiKey: providersViewModel.anthropicKey)
+                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
             case .gemini:
-                GeminiChatScreen(apiKey: providersViewModel.geminiKey)
+                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel)
+            case .openai:
+                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
+            case .cue:
+                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
             case .chat(let assistant):
-                ChatView(
-                    assistant: assistant,
-                    chatViewModel: dependencies.viewModelFactory.makeChatViewViewModel(assistant: assistant),
+                AssistantChatView(
+                    assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
                     assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel()
                 )
                 .id(assistant.id)

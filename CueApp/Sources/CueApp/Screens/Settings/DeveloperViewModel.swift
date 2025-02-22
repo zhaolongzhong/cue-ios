@@ -42,10 +42,30 @@ class DeveloperViewModel: ObservableObject {
 
     func createDefaultConfig() {
         #if os(macOS)
+        // Get Documents directory URL
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+
+        // Create MCP directory URL
+        let mcpFolderURL = documentsURL.appendingPathComponent("MCP", isDirectory: true)
+
+        // Create MCP directory if it doesn't exist
+        do {
+            try FileManager.default.createDirectory(at: mcpFolderURL,
+                                                  withIntermediateDirectories: true,
+                                                  attributes: nil)
+        } catch {
+            print("Error creating MCP directory: \(error)")
+            return
+        }
+
+        // Configure save panel
         let savePanel = NSSavePanel()
         savePanel.title = "Create MCP Config"
         savePanel.nameFieldStringValue = "mcp_config.json"
         savePanel.allowedContentTypes = [.json]
+        savePanel.directoryURL = mcpFolderURL  // Set initial directory to MCP folder
 
         if savePanel.runModal() == .OK, let url = savePanel.url {
             ConfigManager.shared.createDefaultConfig(at: url)

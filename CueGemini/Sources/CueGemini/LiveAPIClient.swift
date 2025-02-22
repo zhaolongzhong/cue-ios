@@ -100,6 +100,43 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
         state = .idle
     }
 
+    @MainActor public func pauseChat() {
+        guard case .active = state else {
+            logger.warning("Cannot pause chat in current state: \(self.state.description)")
+            return
+        }
+
+        audioManager.pauseRecording()
+        connection?.muteAudio()
+        state = .paused
+    }
+
+    @MainActor public func resumeChat() {
+        guard case .paused = state else {
+            logger.warning("Cannot resume chat in current state: \(self.state.description)")
+            return
+        }
+
+        audioManager.resumeRecording()
+        connection?.unmuteAudio()
+        state = .active
+    }
+
+    @MainActor public func endChat() async {
+        logger.debug("End chat")
+        switch state {
+        case .active, .paused:
+            endSession()
+            state = .idle
+        case .connecting:
+            state = .idle
+        case .error:
+            endSession()
+        case .idle:
+            break
+        }
+    }
+
     @MainActor
     public func disconnect() {
         self.logger.debug("disconnect")

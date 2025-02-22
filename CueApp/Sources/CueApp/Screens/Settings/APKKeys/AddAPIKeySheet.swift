@@ -74,8 +74,7 @@ struct AddAPIKeySheet: View {
                     }
                 }
                 .keyboardShortcut(.return)
-                .disabled(name.isEmpty)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.borderless)
             }
         }
         .padding()

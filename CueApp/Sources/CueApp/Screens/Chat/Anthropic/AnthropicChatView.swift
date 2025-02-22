@@ -3,31 +3,63 @@ import CueAnthropic
 
 public struct AnthropicChatView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @EnvironmentObject private var windowManager: CompanionWindowManager
     @StateObject private var viewModel: AnthropicChatViewModel
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
-    @State private var showingToolsList = false
     @AppStorage("selectedAnthropicModel") private var storedModel: ChatModel = .claude35Sonnet
+    @State private var showingToolsList = false
+    @State private var isHovering = false
+    private let isCompanion: Bool
 
-    public init(apiKey: String) {
-        _viewModel = StateObject(wrappedValue: AnthropicChatViewModel(apiKey: apiKey))
+    public init(_ viewModelFactory: @escaping () -> AnthropicChatViewModel, isCompanion: Bool = false) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory())
+        self.isCompanion = isCompanion
     }
 
     public var body: some View {
-        VStack {
-            messageList
-            RichTextField(onShowTools: {
-                showingToolsList = true
-            }, onSend: {
-                Task {
-                    await viewModel.sendMessage()
-                }
-            }, toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
-            .padding(.all, 8)
+        ZStack(alignment: .top) {
+            VStack {
+                messageList
+                RichTextField(
+                    onShowTools: {
+                        showingToolsList = true
+                    },
+                    onSend: {
+                        Task {
+                            await viewModel.sendMessage()
+                        }
+                    },
+                    toolCount: viewModel.availableTools.count,
+                    inputMessage: $viewModel.newMessage,
+                    isFocused: $isFocused
+                )
+            }
+            if isCompanion {
+                CompanionHeaderView(isHovering: $isHovering)
+            }
         }
+        .withCoordinatorAlert(isCompanion: isCompanion)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .navigationBarBackButtonHidden(true)
         .toolbar {
             toolbarContent
+            #if os(macOS)
+            ToolbarItemGroup(placement: .primaryAction) {
+                Spacer()
+                Menu {
+                    Button("Open companion chat") {
+                        openCompanionChat(with: viewModel.model)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.primary)
+                }
+                .menuIndicator(.hidden)
+            }
+            #endif
         }
         .onAppear {
             viewModel.model = storedModel
@@ -55,6 +87,11 @@ public struct AnthropicChatView: View {
                     }
                 }
         )
+        #endif
+        #if os(macOS)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering }
+        }
         #endif
     }
 
@@ -86,6 +123,13 @@ public struct AnthropicChatView: View {
                 }
                 .padding(.top)
             }
+            #if os(macOS)
+            .safeAreaInset(edge: .top) {
+               if isCompanion {
+                   Color.clear.frame(height: 36)
+               }
+            }
+            #endif
             #if os(iOS)
             .simultaneousGesture(DragGesture().onChanged { _ in
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
@@ -101,6 +145,15 @@ public struct AnthropicChatView: View {
                 ToolsListView(tools: viewModel.availableTools)
             }
         }
+    }
+
+    func openCompanionChat(with model: ChatModel) {
+        let config = CompanionWindowConfig(
+            model: model.rawValue,
+            provider: .anthropic,
+            additionalSettings: [:]
+        )
+        windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
     }
 }
 

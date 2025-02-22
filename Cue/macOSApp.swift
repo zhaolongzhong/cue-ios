@@ -10,6 +10,8 @@ struct macOSApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) var appDelegate
     @StateObject private var dependencies = AppDependencies()
     @StateObject private var mainCoordinator: AppCoordinator
+    @StateObject private var windowConfigStore: WindowConfigurationStore
+    @StateObject private var windowManager: CompanionWindowManager
     private let updaterController: SPUStandardUpdaterController
 
     init() {
@@ -17,6 +19,9 @@ struct macOSApp: App {
         let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: dynamicDelegate, userDriverDelegate: nil)
         _mainCoordinator = StateObject(wrappedValue: AppCoordinator(updater: updaterController.updater, dynamicDelegate: dynamicDelegate))
         self.updaterController = updaterController
+        let windowConfigStore = WindowConfigurationStore()
+        _windowConfigStore = StateObject(wrappedValue: windowConfigStore)
+        _windowManager = StateObject(wrappedValue: CompanionWindowManager(configStore: windowConfigStore))
     }
 
     var body: some Scene {
@@ -24,6 +29,8 @@ struct macOSApp: App {
             AuthenticatedView()
                 .environmentObject(dependencies)
                 .environmentObject(mainCoordinator)
+                .environmentObject(windowConfigStore)
+                .environmentObject(windowManager)
         }
         .windowToolbarStyle(.unified(showsTitle: false))
         .windowResizability(.contentSize)
@@ -35,12 +42,28 @@ struct macOSApp: App {
             }
         }
 
+        CompanionWindows(
+            dependencies: dependencies,
+            configStore: windowConfigStore,
+            windowManager: windowManager
+        )
+
+        CompanionWindows(
+            windowId: WindowId.openaiLiveChatWindow,
+            dependencies: dependencies,
+            configStore: windowConfigStore,
+            windowManager: windowManager
+        )
+
+        CompanionWindows(
+            windowId: WindowId.geminiLiveChatWindow,
+            dependencies: dependencies,
+            configStore: windowConfigStore,
+            windowManager: windowManager
+        )
+
         CommonWindowGroup(id: WindowId.settings.rawValue, dependencies: dependencies, appCoordinator: mainCoordinator) {
             SettingsWindowView()
-        }
-
-        CommonWindowGroup(id: "realtime-chat-window", dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
-            RealtimeWindowView()
         }
 
         CommonWindowGroup(id: WindowId.providersManagement.rawValue, dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
@@ -84,7 +107,7 @@ struct CommonWindowGroup<Content: View>: Scene {
             }
         }
         .windowToolbarStyle(.unified(showsTitle: false))
-        .defaultSize(width: WindowSize.small.width, height: WindowSize.small.height)
+        .defaultSize(width: WindowSize.Small.width, height: WindowSize.Small.height)
         .defaultPosition(.center)
         .windowResizability(.contentSize)
     }
@@ -104,20 +127,6 @@ struct SettingsWindowView: View {
     }
 }
 
-struct RealtimeWindowView: View {
-    @EnvironmentObject var coordinator: AppCoordinator
-    @EnvironmentObject var dependencies: AppDependencies
-
-    var body: some View {
-        let apiKey = dependencies.providersViewModel.getAPIKey(for: Provider.openai)
-        RealtimeChatScreen(viewModelFactory: dependencies.viewModelFactory.makeRealtimeChatViewModel, apiKey: apiKey)
-            .environmentObject(coordinator)
-            .environmentObject(dependencies)
-            .navigationTitle("")
-            .withCoordinatorAlert()
-    }
-}
-
 struct ProviderManagementWindowView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var dependencies: AppDependencies
@@ -131,5 +140,4 @@ struct ProviderManagementWindowView: View {
             .withCoordinatorAlert()
     }
 }
-
 #endif

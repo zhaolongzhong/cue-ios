@@ -108,23 +108,48 @@ enum ScreenshotService {
 
     private static func saveScreenshot(_ image: NSImage, to path: String?) throws -> String {
         let fileManager = FileManager.default
-        let desktopURL = fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+        let homeDirectory = fileManager.homeDirectoryForCurrentUser
 
+        // Get the timestamp for the filename
         let timestamp = DateFormatter.localizedString(
             from: Date(),
             dateStyle: .short,
             timeStyle: .medium
         ).replacingOccurrences(of: "/", with: "-")
-                .replacingOccurrences(of: ":", with: "-")
+         .replacingOccurrences(of: ":", with: "-")
 
         let fileName = "Screenshot-\(timestamp).png"
         let saveURL: URL
 
         if let customPath = path {
-            saveURL = URL(fileURLWithPath: customPath).appendingPathComponent(fileName)
+            // Handle special directories and relative paths
+            switch customPath.lowercased() {
+            case "desktop":
+                saveURL = homeDirectory.appendingPathComponent("Desktop").appendingPathComponent(fileName)
+            case "documents":
+                saveURL = homeDirectory.appendingPathComponent("Documents").appendingPathComponent(fileName)
+            case "downloads":
+                saveURL = homeDirectory.appendingPathComponent("Downloads").appendingPathComponent(fileName)
+            default:
+                // Handle both absolute and relative paths
+                let customURL = URL(fileURLWithPath: customPath, relativeTo: homeDirectory)
+
+                // Create directories if they don't exist
+                if !customPath.hasPrefix("/") {
+                    // For relative paths, create directories if needed
+                    try? fileManager.createDirectory(at: customURL, withIntermediateDirectories: true)
+                }
+
+                saveURL = customURL.appendingPathComponent(fileName)
+            }
         } else {
-            saveURL = desktopURL.appendingPathComponent(fileName)
+            // Default to Desktop
+            saveURL = homeDirectory.appendingPathComponent("Desktop").appendingPathComponent(fileName)
         }
+
+        // Ensure the directory exists
+        try fileManager.createDirectory(at: saveURL.deletingLastPathComponent(),
+                                     withIntermediateDirectories: true)
 
         if let tiffData = image.tiffRepresentation,
            let bitmapImage = NSBitmapImageRep(data: tiffData),

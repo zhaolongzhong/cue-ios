@@ -24,7 +24,7 @@ extension MainWindowView {
             window.setFrame(newFrame, display: true)
         } else {
             // Set default size if no saved state
-            window.setContentSize(NSSize(width: WindowSize.small.width, height: WindowSize.small.height))
+            window.setContentSize(NSSize(width: WindowSize.Small.width, height: WindowSize.Small.height))
             window.center()
         }
     }

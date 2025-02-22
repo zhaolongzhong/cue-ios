@@ -16,14 +16,32 @@ struct DeveloperView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     configSection
                     serversSection
-                    createConfigButton
                 }
                 .padding()
             }
             .padding()
         }
-        .frame(minWidth: 500, minHeight: 300)
-        .navigationTitle("Developer")
+        .defaultNavigationBar(title: "Developer")
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Spacer()
+                Menu {
+                    if viewModel.configPath != nil {
+                        Button("MCP Config") {
+                            viewModel.openConfigFile()
+                        }
+                    } else {
+                        Button("Create MCP Config") {
+                            viewModel.createDefaultConfig()
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.primary)
+                }
+                .menuIndicator(.hidden)
+            }
+        }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .tools(let serverName, let tools):
@@ -44,11 +62,6 @@ struct DeveloperView: View {
         Section(header: Text("Model Context Protocol")
             .font(.headline)
             .padding(.bottom, 8)) {
-                Button("Edit Config") {
-                    viewModel.openConfigFile()
-                }
-                .disabled(viewModel.configPath == nil)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -65,13 +78,9 @@ struct DeveloperView: View {
         }
     }
 
-    private var createConfigButton: some View {
-        Group {
-            if viewModel.configPath == nil {
-                Button("Create Default Config", action: viewModel.createDefaultConfig)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 16)
-            }
+    private func openDocumentsFolder() {
+        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            NSWorkspace.shared.open(documentsURL)
         }
     }
 }

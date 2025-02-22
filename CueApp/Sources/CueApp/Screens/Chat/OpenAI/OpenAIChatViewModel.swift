@@ -4,7 +4,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-final class OpenAIChatViewModel: ObservableObject {
+public final class OpenAIChatViewModel: ObservableObject {
     @Published var model: ChatModel = .gpt4oMini {
         didSet {
             updateTools()
@@ -25,6 +25,7 @@ final class OpenAIChatViewModel: ObservableObject {
     #endif
     @Published var focusedLines: String?
 
+    @Published var apiKey: String
     private let openAI: OpenAI
     private let toolManager: ToolManager
     private var tools: [JSONValue] = []
@@ -33,7 +34,8 @@ final class OpenAIChatViewModel: ObservableObject {
     #endif
     private var cancellables = Set<AnyCancellable>()
 
-    init(apiKey: String) {
+    public init(apiKey: String) {
+        self.apiKey = apiKey
         self.openAI = OpenAI(apiKey: apiKey)
         self.toolManager = ToolManager()
         #if os(macOS)

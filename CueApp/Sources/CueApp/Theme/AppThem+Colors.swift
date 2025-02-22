@@ -61,6 +61,14 @@ extension AppTheme {
             #endif
         }
 
+        public static var textColor: Color {
+            #if os(iOS)
+            Color(uiColor: .label)
+            #elseif os(macOS)
+            Color(nsColor: .textColor)
+            #endif
+        }
+
         // System fills
         public static var systemFill: Color {
             #if os(iOS)
