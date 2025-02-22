@@ -16,7 +16,12 @@ final class AnthropicChatViewModel: ObservableObject {
             updateTools()
         }
     }
-    @Published var messages: [Anthropic.ChatMessageParam] = []
+    // Stored messages in MessageModel format
+    @Published private(set) var storedMessages: [MessageModel] = []
+    
+    // Current messages in Anthropic format for chat
+    @Published private(set) var messages: [Anthropic.ChatMessageParam] = []
+    
     @Published var newMessage: String = ""
     @Published var isLoading = false
     @Published var availableTools: [Tool] = [] {
@@ -25,14 +30,40 @@ final class AnthropicChatViewModel: ObservableObject {
         }
     }
     @Published var error: ChatError?
+    
+    private let conversationId: String
+    
+    // Storage manager would be injected here
+    private let storageManager: StorageManager
 
-    init(apiKey: String) {
+    init(apiKey: String, conversationId: String, storageManager: StorageManager) {
         self.anthropic = Anthropic(apiKey: apiKey)
         self.toolManager = ToolManager()
+        self.conversationId = conversationId
+        self.storageManager = storageManager
         self.availableTools = toolManager.getTools()
         #if os(macOS)
         setupToolsSubscription()
         #endif
+        
+        // Load stored messages
+        Task {
+            await loadStoredMessages()
+        }
+    }
+    
+    private func loadStoredMessages() async {
+        // Load messages from storage
+        if let stored = await storageManager.getMessages(forConversation: conversationId) {
+            self.storedMessages = stored
+            // Convert stored messages to Anthropic format
+            self.messages = stored.compactMap { messageModel in
+                if case .anthropic(let msg) = messageModel.toCueChatMessage() {
+                    return msg
+                }
+                return nil
+            }
+        }
     }
 
     private func updateTools() {
@@ -60,6 +91,11 @@ final class AnthropicChatViewModel: ObservableObject {
             Anthropic.MessageParam(role: "user", content: [Anthropic.ContentBlock(content: newMessage)])
         )
         messages.append(userMessage)
+        
+        // Convert and store user message
+        let userMessageModel = userMessage.toMessageModel(conversationId: conversationId)
+        storedMessages.append(userMessageModel)
+        await storageManager.saveMessage(userMessageModel)
 
         isLoading = true
         newMessage = ""
@@ -69,6 +105,14 @@ final class AnthropicChatViewModel: ObservableObject {
             let completionRequest = CompletionRequest(model: model.id, tools: tools, toolChoice: "auto")
             let updatedMessages = try await agent.run(with: messages, request: completionRequest)
             self.messages = updatedMessages
+            
+            // Convert and store new messages
+            let newMessages = updatedMessages.dropFirst(storedMessages.count)
+            for message in newMessages {
+                let messageModel = message.toMessageModel(conversationId: conversationId)
+                storedMessages.append(messageModel)
+                await storageManager.saveMessage(messageModel)
+            }
 
         } catch let error as Anthropic.Error {
             let chatError: ChatError = {
