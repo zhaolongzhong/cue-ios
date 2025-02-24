@@ -1,35 +1,64 @@
 import SwiftUI
+import os
 
 public struct SyntaxHighlighter {
+    static let log = Logger(subsystem: "SyntaxHighlighter", category: "SyntaxHighlighter")
+
     public static func syntaxColors(_ colorScheme: ColorScheme) -> [String: Color] {
-        if colorScheme == .light {
-            return [
-                "default": Color.black,
-                "keyword": Color(red: 0.607, green: 0.156, blue: 0.560),
-                "string": Color(red: 0.800, green: 0.063, blue: 0.063),
-                "comment": Color(red: 0.000, green: 0.456, blue: 0.000),
-                "number": Color.black,
-                "type": Color.black,
-                "function": Color.black,
-                "property": Color.black,
-                "binding": Color.black
-            ]
-        } else {
-            return [
-                "default": Color(red: 0.85, green: 0.85, blue: 0.85), // Slightly Grayish White
-                "keyword": Color(red: 0.776, green: 0.472, blue: 0.768),
-                "string": Color(red: 0.56, green: 0.93, blue: 0.56), // Light Green
-                "comment": Color(red: 0.6, green: 0.6, blue: 0.6),
-                "number": Color(hex: "#D19A66"),
-                "type": Color(hex: "#D19A66"),
-                "function": Color(hex: "#61AFEF"),
-                "property": Color(hex: "#D19A66"),
-                "binding": Color(hex: "#D19A66"),
-            ]
-        }
+        var colors = colorScheme == .light ? [
+            "default": Color.black,
+            "keyword": Color(red: 0.607, green: 0.156, blue: 0.560),
+            "string": Color(red: 0.800, green: 0.063, blue: 0.063),
+            "comment": Color(red: 0.000, green: 0.456, blue: 0.000),
+            "number": Color.black,
+            "type": Color.black,
+            "function": Color.black,
+            "property": Color.black,
+            "binding": Color.black
+        ] : [
+            "default": Color(red: 0.85, green: 0.85, blue: 0.85),
+            "keyword": Color(red: 0.776, green: 0.472, blue: 0.768),
+            "string": Color(red: 0.56, green: 0.93, blue: 0.56),
+            "comment": Color(red: 0.6, green: 0.6, blue: 0.6),
+            "number": Color(hex: "#D19A66"),
+            "type": Color(hex: "#D19A66"),
+            "function": Color(hex: "#61AFEF"),
+            "property": Color(hex: "#D19A66"),
+            "binding": Color(hex: "#D19A66")
+        ]
+
+        // Add Markdown-specific colors
+        let markdownColors: [String: Color] = colorScheme == .light ? [
+            "header": Color(red: 0.607, green: 0.156, blue: 0.560),
+            "bold": Color.black.opacity(0.9),
+            "italic": Color.black.opacity(0.9),
+            "link": Color(hex: "#0969DA"),
+            "image": Color(hex: "#0969DA"),
+            "blockquote": Color(red: 0.000, green: 0.456, blue: 0.000),
+            "list": Color.black,
+            "orderedlist": Color.blue,
+            "hr": Color(hex: "#57606A"),
+            "code": Color(red: 0.800, green: 0.063, blue: 0.063),
+            "nested-code": Color(red: 0.800, green: 0.063, blue: 0.063)
+        ] : [
+            "header": Color(red: 0.776, green: 0.472, blue: 0.768),
+            "bold": Color.white.opacity(0.9),
+            "italic": Color.white.opacity(0.9),
+            "link": Color(hex: "#539BF5"),
+            "image": Color(hex: "#539BF5"),
+            "blockquote": Color(red: 0.56, green: 0.93, blue: 0.56),
+            "list": Color.white,
+            "orderedlist": Color(hex: "#61AFEF"),
+            "hr": Color(hex: "#768390"),
+            "code": Color(hex: "#F47067"),
+            "nested-code": Color(hex: "#F47067")
+        ]
+
+        colors.merge(markdownColors) { current, _ in current }
+        return colors
     }
 
-    private static func highlight(pattern: String, in attributedString: NSMutableAttributedString, with color: Color) {
+    static func highlight(pattern: String, in attributedString: NSMutableAttributedString, with color: Color) {
         do {
             let regex = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
             let range = NSRange(location: 0, length: attributedString.length)
@@ -62,62 +91,62 @@ public struct SyntaxHighlighter {
     public static func highlightedCode(colorScheme: ColorScheme, language: String, code: String) -> NSAttributedString {
         let syntaxColors = syntaxColors(colorScheme)
         let attributedString = NSMutableAttributedString(string: code)
+        let languageDef = LanguageDefinitions.getDefinition(for: language)
+        let defaultFont = NSFont.systemFont(ofSize: 14)
+        attributedString.addAttribute(
+            .font,
+            value: defaultFont,
+            range: NSRange(location: 0, length: attributedString.length)
+        )
 
-        // Set default color first
         attributedString.addAttribute(
             .foregroundColor,
             value: colorToNative(syntaxColors["default"]!),
             range: NSRange(location: 0, length: attributedString.length)
         )
 
-        // Get language definition
-        let languageDef = LanguageDefinitions.getDefinition(for: language)
+        if language.lowercased() == "markdown" {
+            highlightMarkdown(attributedString, syntaxColors: syntaxColors)
+        } else {
+            // Standard language highlighting
+            if !languageDef.commentPattern.isEmpty {
+                highlight(pattern: languageDef.commentPattern, in: attributedString, with: syntaxColors["comment"]!)
+            }
 
-        // Comments (process first to prevent keyword highlighting inside comments)
-        if !languageDef.commentPattern.isEmpty {
-            highlight(pattern: languageDef.commentPattern, in: attributedString, with: syntaxColors["comment"]!)
-        }
+            if !languageDef.keywords.isEmpty {
+                let keywordPattern = "\\b(" + languageDef.keywords.joined(separator: "|") + ")\\b"
+                highlight(pattern: keywordPattern, in: attributedString, with: syntaxColors["keyword"]!)
+            }
 
-        // Keywords
-        if !languageDef.keywords.isEmpty {
-            let keywordPattern = "\\b(" + languageDef.keywords.joined(separator: "|") + ")\\b"
-            highlight(pattern: keywordPattern, in: attributedString, with: syntaxColors["keyword"]!)
-        }
+            if !languageDef.stringPattern.isEmpty {
+                highlight(pattern: languageDef.stringPattern, in: attributedString, with: syntaxColors["string"]!)
+            }
 
-        // String literals
-        if !languageDef.stringPattern.isEmpty {
-            highlight(pattern: languageDef.stringPattern, in: attributedString, with: syntaxColors["string"]!)
-        }
+            if !languageDef.typePattern.isEmpty {
+                highlight(pattern: languageDef.typePattern, in: attributedString, with: syntaxColors["type"]!)
+            }
 
-        // Type names
-        if !languageDef.typePattern.isEmpty {
-            highlight(pattern: languageDef.typePattern, in: attributedString, with: syntaxColors["type"]!)
-        }
+            if !languageDef.numberPattern.isEmpty {
+                highlight(pattern: languageDef.numberPattern, in: attributedString, with: syntaxColors["number"]!)
+            }
 
-        // Number literals
-        if !languageDef.numberPattern.isEmpty {
-            highlight(pattern: languageDef.numberPattern, in: attributedString, with: syntaxColors["number"]!)
-        }
+            if !languageDef.functionPattern.isEmpty {
+                highlight(pattern: languageDef.functionPattern, in: attributedString, with: syntaxColors["function"]!)
+            }
 
-        // Function names
-        if !languageDef.functionPattern.isEmpty {
-            highlight(pattern: languageDef.functionPattern, in: attributedString, with: syntaxColors["function"]!)
-        }
+            if !languageDef.propertyPattern.isEmpty {
+                highlight(pattern: languageDef.propertyPattern, in: attributedString, with: syntaxColors["property"]!)
+            }
 
-        // Property wrappers
-        if !languageDef.propertyPattern.isEmpty {
-            highlight(pattern: languageDef.propertyPattern, in: attributedString, with: syntaxColors["property"]!)
-        }
-
-        // Bindings
-        if !languageDef.bindingPattern.isEmpty {
-            highlight(pattern: languageDef.bindingPattern, in: attributedString, with: syntaxColors["binding"]!)
+            if !languageDef.bindingPattern.isEmpty {
+                highlight(pattern: languageDef.bindingPattern, in: attributedString, with: syntaxColors["binding"]!)
+            }
         }
 
         return attributedString
     }
 
-    private static func colorToNative(_ color: Color) -> Any {
+    static func colorToNative(_ color: Color) -> Any {
         #if os(macOS)
         return NSColor(color)
         #else

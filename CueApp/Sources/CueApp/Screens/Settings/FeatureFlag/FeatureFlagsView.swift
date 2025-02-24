@@ -18,6 +18,7 @@ struct FeatureFlagsView: View {
                 Toggle("Enable OpenAI Provider", isOn: $featureFlags.enableOpenAI)
                 Toggle("Enable Anthropic Provider", isOn: $featureFlags.enableAnthropic)
                 Toggle("Enable Gemini Provider", isOn: $featureFlags.enableGemini)
+                Toggle("Enable Ollama Provider", isOn: $featureFlags.enableLocal)
                 Toggle("Enable Media Option", isOn: $featureFlags.enableMediaOptions)
                 Toggle("Enable Assistants", isOn: $featureFlags.enableAssistants)
             }

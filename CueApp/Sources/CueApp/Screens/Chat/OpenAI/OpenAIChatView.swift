@@ -4,7 +4,6 @@ import CueOpenAI
 public struct OpenAIChatView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
-    @EnvironmentObject private var windowConfigStore: WindowConfigurationStore
     @EnvironmentObject private var windowManager: CompanionWindowManager
 
     @StateObject private var viewModel: OpenAIChatViewModel
@@ -54,6 +53,9 @@ public struct OpenAIChatView: View {
                         Task {
                             await viewModel.sendMessage()
                         }
+                    },
+                    onAttachmentPicked: { attachment in
+                        viewModel.addAttachment(attachment)
                     },
                     toolCount: viewModel.availableTools.count,
                     inputMessage: $viewModel.newMessage,

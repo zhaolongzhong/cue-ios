@@ -196,6 +196,42 @@ class ToolManager {
 
         return results
     }
+
+    func callToolUse(_ toolUseBlock: Anthropic.ToolUseBlock) async -> Anthropic.ToolResultMessage {
+        do {
+            var arguments: [String: Any] = [:]
+            for (key, value) in toolUseBlock.input {
+                switch value {
+                case .string(let str): arguments[key] = str
+                case .int(let int): arguments[key] = int
+                case .number(let double): arguments[key] = double
+                case .bool(let bool): arguments[key] = bool
+                case .array(let arr): arguments[key] = arr
+                case .object(let dict): arguments[key] = dict
+                case .null: arguments[key] = NSNull()
+                }
+            }
+            let toolResult = try await callTool(name: toolUseBlock.name, arguments: arguments)
+            let result = Anthropic.ToolResultContent(
+                isError: false,
+                toolUseId: toolUseBlock.id,
+                type: "tool_result",
+                content: [Anthropic.ContentBlock(content: toolResult)]
+            )
+            let toolResultMessage = Anthropic.ToolResultMessage(role: "user", content: [result])
+            return toolResultMessage
+        } catch {
+            AppLog.log.error("Tool error: \(error)")
+            let result = Anthropic.ToolResultContent(
+                isError: false,
+                toolUseId: toolUseBlock.id,
+                type: "tool_result",
+                content: [Anthropic.ContentBlock(content: "Tool error: \(error)")]
+            )
+            let toolResultMessage = Anthropic.ToolResultMessage(role: "user", content: [result])
+            return toolResultMessage
+        }
+    }
 }
 
 #if os(macOS)

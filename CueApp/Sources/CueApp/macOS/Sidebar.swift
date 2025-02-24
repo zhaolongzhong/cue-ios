@@ -182,6 +182,10 @@ struct Sidebar: View {
                         ProviderSidebarRow(provider: provider) {
                             homeNavigationManager.navigateTo(.gemini)
                         }
+                    case .local where featureFlags.enableLocal:
+                        ProviderSidebarRow(provider: provider) {
+                            homeNavigationManager.navigateTo(.local)
+                        }
                     default:
                         AnyView(EmptyView())
                     }

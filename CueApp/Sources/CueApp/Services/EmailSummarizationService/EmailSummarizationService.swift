@@ -171,7 +171,7 @@ extension EmailSummarizationService {
 
         let userMessage = CueChatMessage.openAI(
             OpenAI.ChatMessageParam.userMessage(
-                OpenAI.MessageParam(role: "user", content: content)
+                OpenAI.MessageParam(role: "user", content: .string(content))
             )
         )
         messageParams.append(userMessage)

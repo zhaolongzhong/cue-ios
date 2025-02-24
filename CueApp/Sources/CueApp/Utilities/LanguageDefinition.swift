@@ -9,8 +9,19 @@ public struct LanguageDefinition: Sendable {
     public let functionPattern: String
     public let propertyPattern: String
     public let bindingPattern: String
+    public let markdownPatterns: [(pattern: String, type: String)]
 
-    public init(keywords: [String], commentPattern: String, stringPattern: String, typePattern: String, numberPattern: String, functionPattern: String = "", propertyPattern: String = "", bindingPattern: String = "") {
+    public init(
+        keywords: [String],
+        commentPattern: String,
+        stringPattern: String,
+        typePattern: String,
+        numberPattern: String,
+        functionPattern: String = "",
+        propertyPattern: String = "",
+        bindingPattern: String = "",
+        markdownPatterns: [(pattern: String, type: String)] = []
+    ) {
         self.keywords = keywords
         self.commentPattern = commentPattern
         self.stringPattern = stringPattern
@@ -19,8 +30,10 @@ public struct LanguageDefinition: Sendable {
         self.functionPattern = functionPattern
         self.propertyPattern = propertyPattern
         self.bindingPattern = bindingPattern
+        self.markdownPatterns = markdownPatterns
     }
 }
+
 public struct LanguageDefinitions {
     public static func getDefinition(for language: String) -> LanguageDefinition {
         return definitions[language.lowercased()] ?? definitions["plaintext"]!
@@ -34,6 +47,48 @@ public struct LanguageDefinitions {
             typePattern: "",
             numberPattern: "-?\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b",
             propertyPattern: "['\"][^'\"]+['\"](?=\\s*:)"
+        ),
+
+        "markdown": LanguageDefinition(
+            keywords: [],
+            commentPattern: "",
+            stringPattern: "",
+            typePattern: "",
+            numberPattern: "",
+            functionPattern: "",
+            propertyPattern: "",
+            bindingPattern: "",
+            markdownPatterns: [
+                // Bold - using negative lookbehind to avoid matches inside code blocks
+                ("(?<!`.*?)\\*\\*.*?\\*\\*(?!.*?`)|(?<!`.*?)__.*?__(?!.*?`)", "bold"),
+
+                // Italic - using negative lookbehind to avoid matches inside code blocks
+                ("(?<!`.*?)\\*[^*]+\\*(?!.*?`)|(?<!`.*?)_[^_]+_(?!.*?`)", "italic"),
+
+                // Links
+                ("\\[([^\\]]+)\\]\\(([^\\)]+)\\)", "link"),
+
+                // Images
+                ("!\\[([^\\]]+)\\]\\(([^\\)]+)\\)", "image"),
+
+                // Blockquotes - using negative lookbehind to avoid matches inside code blocks
+                ("(?<!`{3}\\n.*)^>\\s.*$", "blockquote"),
+
+                // Lists (will be transformed to dots in the text transformation step)
+                ("^\\s*•\\s.*$", "list"),
+
+                // Ordered lists
+                ("^\\s*\\d+\\.\\s.*$", "orderedlist"),
+
+                // Horizontal rules
+                ("^\\s*([-*_]\\s*){3,}$", "hr"),
+
+                // Code blocks
+                ("```[\\s\\S]*?```", "code"),
+
+                // Inline code
+                ("`[^`]+`", "code")
+            ]
         ),
 
         "python": LanguageDefinition(

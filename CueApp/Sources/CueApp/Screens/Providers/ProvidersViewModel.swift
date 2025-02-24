@@ -33,7 +33,8 @@ public final class ProvidersViewModel: ObservableObject {
         case .openai: return openAIKey
         case .anthropic: return anthropicKey
         case .gemini: return geminiKey
-        case .cue: return ""
+        default:
+            return ""
         }
     }
 
@@ -49,7 +50,7 @@ public final class ProvidersViewModel: ObservableObject {
         case .gemini:
             geminiKey = trimmedValue
             saveKey(.gemini, value: trimmedValue)
-        case .cue:
+        default:
             break
         }
     }
@@ -86,7 +87,9 @@ public final class ProvidersViewModel: ObservableObject {
 
     var enabledProviders: [Provider] {
         do {
-            return try [.openai, .anthropic, .gemini].filter(isProviderEnabled)
+            var providers = try [.openai, .anthropic, .gemini].filter(isProviderEnabled)
+            providers.append(.local)
+            return providers
         } catch {
             debugPrint("Error: \(error)")
         }

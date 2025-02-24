@@ -6,6 +6,7 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
     case anthropic = "ANTHROPIC_API_KEY"
     case gemini = "GEMINI_API_KEY"
     case cue = "CUE_API_KEY"
+    case local = "LOCAL_API_KEY"
 
     public  var id: String { self.rawValue }
 
@@ -15,6 +16,17 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
         case .anthropic: return "Anthropic"
         case .gemini: return "Gemini"
         case .cue: return "Cue"
+        case .local: return "Local"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .openai: return "GPT-4 and other OpenAI models"
+        case .anthropic: return "Claude and other Anthropic models"
+        case .gemini: return "Gemini Flash and Pro 2.0 models"
+        case .cue: return "Many models"
+        case .local: return "Run models on your device"
         }
     }
 
@@ -22,8 +34,8 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
         switch self {
         case .openai: return "sk-..."
         case .anthropic: return "sk-ant-..."
-        case .gemini: return "..."
-        case .cue: return "..."
+        default:
+            return "..."
         }
     }
 
@@ -33,6 +45,7 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
         case .anthropic: return "anthropic"
         case .gemini: return "sparkle"
         case .cue: return ""
+        case .local: return "lock.laptopcomputer"
         }
     }
 
@@ -40,8 +53,17 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
         switch self {
         case .openai, .anthropic, .cue:
             return false
-        case .gemini:
+        case .gemini, .local:
             return true
+        }
+    }
+
+    var requiresAPIKey: Bool {
+        switch self {
+        case .openai, .anthropic, .gemini:
+            return true
+        case .cue, .local:
+            return false
         }
     }
 }
@@ -64,4 +86,8 @@ extension Provider {
                 .frame(width: size, height: size)
         }
     }
+}
+
+extension Provider {
+    nonisolated(unsafe) static var localBaseURL: String = "http://localhost:11434"
 }

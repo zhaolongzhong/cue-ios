@@ -4,6 +4,7 @@ import CueOpenAI
 import CueAnthropic
 
 public enum CueAssistantMessage {
+    case local(OpenAI.AssistantMessage)
     case openAI(OpenAI.AssistantMessage)
     case anthropic(Anthropic.AnthropicMessage)
 }
@@ -21,6 +22,30 @@ protocol ChatClientProtocol {
     ) async throws -> ChatCompletionType
 
     func extractAssistantMessage(from completion: ChatCompletionType) -> CueAssistantMessage?
+}
+
+extension LocalClient: ChatClientProtocol {
+    public typealias MessageParamType = OpenAI.ChatMessageParam
+    public typealias ChatCompletionType = LocalResponse
+
+    public func createChatCompletion(
+        model: String,
+        messages: [OpenAI.ChatMessageParam],
+        tools: [JSONValue]? = nil,
+        toolChoice: String? = nil
+    ) async throws -> LocalResponse {
+        return try await self.send(
+            model: model,
+            messages: messages,
+            tools: tools,
+            toolChoice: toolChoice
+        )
+    }
+
+    public func extractAssistantMessage(from completion: LocalResponse) -> CueAssistantMessage? {
+        let message = completion.message
+        return .local(message)
+    }
 }
 
 extension OpenAI: ChatClientProtocol {

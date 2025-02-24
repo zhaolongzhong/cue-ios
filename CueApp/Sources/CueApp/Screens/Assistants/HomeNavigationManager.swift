@@ -38,6 +38,7 @@ enum HomeDestination: Hashable {
     case openai
     case anthropic
     case gemini
+    case local
     case chat(Assistant)
     case providers
 }
@@ -75,6 +76,8 @@ final class HomeNavigationManager: ObservableObject {
             currentView = .gemini
         case .openai:
             currentView = .openai
+        case .local:
+            currentView = .local
         case .providers:
             #if os(macOS)
             openMacOSWindow(WindowId.providersManagement)

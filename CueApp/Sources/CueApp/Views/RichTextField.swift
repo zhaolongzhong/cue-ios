@@ -11,9 +11,11 @@ struct RichTextField: View {
     let onOpenVoiceChat: (() -> Void)?
     let onStartAXApp: ((AccessibleApplication) -> Void)?
     let onSend: () -> Void
+    var onAttachmentPicked: ((Attachment) -> Void)?
     let toolCount: Int
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
+    @State private var attachments: [Attachment] = []
     @State private var isTextFieldVisible = false
 
     init(
@@ -24,6 +26,7 @@ struct RichTextField: View {
         onOpenVoiceChat: (() -> Void)? = nil,
         onStartAXApp: ((AccessibleApplication) -> Void)? = nil,
         onSend: @escaping () -> Void,
+        onAttachmentPicked: ((Attachment) -> Void)? = nil,
         toolCount: Int = 0,
         inputMessage: Binding<String>,
         isFocused: FocusState<Bool>.Binding
@@ -35,6 +38,7 @@ struct RichTextField: View {
         self.onOpenVoiceChat = onOpenVoiceChat
         self.onStartAXApp = onStartAXApp
         self.onSend = onSend
+        self.onAttachmentPicked = onAttachmentPicked
         self.toolCount = toolCount
         self._inputMessage = inputMessage
         self._isFocused = isFocused
@@ -42,23 +46,27 @@ struct RichTextField: View {
 
     var body: some View {
         VStack {
+            if !attachments.isEmpty {
+                attachmentsView
+            }
+
             if isTextFieldVisible {
-                HStack {
-                    TextField("Type a message...", text: $inputMessage, axis: .vertical)
-                        .scrollContentBackground(.hidden)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 8)
-                        .padding(.top, 12)
-                        .lineLimit(1...5)
-                        .focused($isFocused)
-                        .background(.clear)
-                        .onSubmit {
-                            if isMessageValid {
-                                onSend()
-                            }
+                TextField("Type a message...", text: $inputMessage, axis: .vertical)
+                    .scrollContentBackground(.hidden)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 12)
+                    .lineLimit(1...5)
+                    .focused($isFocused)
+                    .background(.clear)
+                    .onSubmit {
+                        if isMessageValid {
+                            attachments.removeAll()
+                            onSend()
                         }
-                        .submitLabel(.return)
-                }
+                    }
+                    .submitLabel(.return)
+
             }
             controlButtons
         }
@@ -95,8 +103,11 @@ struct RichTextField: View {
 
     private var controlButtons: some View {
         HStack {
-            if featureFlags.enableMediaOptions {
-                AttachmentPickerMenu()
+            if featureFlags.enableMediaOptions && onAttachmentPicked != nil {
+                AttachmentPickerMenu { attachment in
+                    attachments.append(attachment)
+                    onAttachmentPicked?(attachment)
+                }
             }
             Text("Type a message ...")
                 .foregroundColor(.secondary.opacity(0.6))
@@ -117,11 +128,39 @@ struct RichTextField: View {
                     checkAndUpdateTextFieldVisibility()
                 })
             }
-            SendButton(isEnabled: isMessageValid, action: onSend)
+            SendButton(isEnabled: isMessageValid) {
+                attachments.removeAll()
+                onSend()
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture {
             showTextField()
+        }
+    }
+
+    private var attachmentsView: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(attachments.indices, id: \.self) { index in
+                    HStack {
+                        Text(attachments[index].name)
+                            .lineLimit(1)
+                        Button {
+                            attachments.remove(at: index)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                    )
+                }
+            }
+            .padding(.horizontal, 4)
         }
     }
 
@@ -142,20 +181,30 @@ struct RichTextField: View {
 }
 
 struct AttachmentPickerMenu: View {
+    var onAttachmentPicked: ((Attachment) -> Void)?
+    private let attachmentService = AttachmentService()
+
     var body: some View {
         HoverButton {
             Menu {
                 Button {
-                    // Handle attach photos
+                    Task {
+                        if let attachment = try? await attachmentService.pickFile(of: .document) {
+                            onAttachmentPicked?(attachment)
+                        }
+                    }
                 } label: {
-                    Label("Attach Photos", systemImage: "photo")
+                    Label("Upload File", systemImage: "folder")
                 }
-
-                Button {
-                    // Handle attach files
-                } label: {
-                    Label("Attach Files", systemImage: "folder")
-                }
+//                Button {
+//                    Task {
+//                        if let attachment = try? await attachmentService.pickImage(from: .photoLibrary) {
+//                            onAttachmentPicked?(attachment)
+//                        }
+//                    }
+//                } label: {
+//                    Label("Upload Photo", systemImage: "photo")
+//                }
             } label: {
                 Label("", systemImage: "plus")
                     .font(.system(size: 18, weight: .bold))
