@@ -67,7 +67,7 @@ public final class CueChatViewModel: ObservableObject {
             let agent = AgentLoop(chatClient: cueClient, toolManager: toolManager, model: model.rawValue)
             let completionRequest = CompletionRequest(model: model.rawValue, tools: tools, toolChoice: "auto")
             let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
-            messages = updatedMessages
+            messages.append(contentsOf: updatedMessages)
         } catch {
             ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
         }

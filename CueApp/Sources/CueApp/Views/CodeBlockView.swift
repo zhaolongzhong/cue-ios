@@ -31,7 +31,7 @@ struct CodeBlockView: View {
                 HStack {
                     Text(language.isEmpty ? "plaintext" : language.lowercased())
                     Spacer()
-                    CopyCodeButton(code: code)
+                    CopyCodeButton(code: code.strippedCodeBlock(for: language))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -39,7 +39,7 @@ struct CodeBlockView: View {
                 .background(Color(colorScheme == .light ? .black.opacity(0.06) : .white.opacity(0.03)))
             }
 
-            Text(AttributedString(SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: language, code: code)))
+            Text(AttributedString(SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: language, code: code.strippedCodeBlock(for: language))))
                 .font(.system(size: 12, design: .monospaced))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
@@ -120,5 +120,21 @@ struct CopyCodeButton: View {
         #else
         UIPasteboard.general.string = code
         #endif
+    }
+}
+
+extension String {
+    func strippedCodeBlock(for language: String) -> String {
+        var result = self
+        let openingMarker = "```\(language)"
+        let closingMarker = "```"
+
+        if result.hasPrefix(openingMarker) {
+            result = String(result.dropFirst(openingMarker.count))
+        }
+        if result.hasSuffix(closingMarker) {
+            result = String(result.dropLast(closingMarker.count))
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

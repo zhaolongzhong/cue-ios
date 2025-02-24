@@ -8,6 +8,9 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
     case claude35Haiku = "claude-3-5-haiku-20241022"
     case gemini20FlashExp = "gemini-2.0-flash-exp"
     case gemini20Pro = "gemini-2.0-pro-exp-02-05"
+    case deepSeekR17B = "deepseek-r1:7b"
+    case llama323B = "llama3.2:latest"
+    case qwen257B = "qwen2.5:7b"
 
     var id: String {
         return self.rawValue
@@ -22,6 +25,9 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
         case .claude35Haiku: return "Claude 3.5 Haiku"
         case .gemini20FlashExp: return "Gemini 2.0 Flash Exp"
         case .gemini20Pro: return "Gemini 2.0 Pro Exp"
+        case .deepSeekR17B: return "Deep Seek R1 7B"
+        case .llama323B: return "LLaMA 3.2 3B"
+        case .qwen257B: return "Qwen 2.5 7B"
         }
     }
 
@@ -33,6 +39,8 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
             return .anthropic
         case .gemini20Pro, .gemini20FlashExp:
             return .gemini
+        case .deepSeekR17B, .llama323B, .qwen257B:
+            return .local
         }
     }
 
@@ -46,6 +54,15 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
             ]
         }
         return Self.allCases.filter { $0.provider == provider }
+    }
+
+    var isToolSupported: Bool {
+        switch self {
+        case .deepSeekR17B:
+            return false
+        default:
+            return true
+        }
     }
 }
 

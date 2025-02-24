@@ -136,6 +136,8 @@ public struct MainWindowView: View {
                 OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
             case .cue:
                 CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
+            case .local:
+                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel)
             case .providers:
                 EmptyView()
             }

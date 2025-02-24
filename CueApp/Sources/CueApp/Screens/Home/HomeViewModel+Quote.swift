@@ -38,7 +38,7 @@ extension HomeViewModel {
 
         let userMessage = CueChatMessage.openAI(
             OpenAI.ChatMessageParam.userMessage(
-                OpenAI.MessageParam(role: "user", content: prompt)
+                OpenAI.MessageParam(role: "user", content: .string(prompt))
             )
         )
         messageParams.append(userMessage)

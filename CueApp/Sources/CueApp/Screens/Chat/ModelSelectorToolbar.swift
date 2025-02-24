@@ -6,10 +6,30 @@ struct ModelSelectorToolbar<Model: Equatable & Hashable>: ToolbarContent {
     let iconView: AnyView
     let getModelName: (Model) -> String
     let onModelSelected: (Model) -> Void
+    let isStreamingEnabled: Binding<Bool>?
+    let isToolEnabled: Binding<Bool>?
 
     #if os(macOS)
     @State private var isShowingPopover = false
     #endif
+
+    init(
+        currentModel: Model,
+        models: [Model],
+        iconView: AnyView,
+        getModelName: @escaping (Model) -> String,
+        onModelSelected: @escaping (Model) -> Void,
+        isStreamingEnabled: Binding<Bool>? = nil,
+        isToolEnabled: Binding<Bool>? = nil
+    ) {
+        self.currentModel = currentModel
+        self.models = models
+        self.iconView = iconView
+        self.getModelName = getModelName
+        self.onModelSelected = onModelSelected
+        self.isStreamingEnabled = isStreamingEnabled
+        self.isToolEnabled = isToolEnabled
+    }
 
     var body: some ToolbarContent {
         #if os(iOS)
@@ -65,7 +85,9 @@ struct ModelSelectorToolbar<Model: Equatable & Hashable>: ToolbarContent {
                         onModelSelected: { model in
                             onModelSelected(model)
                             isShowingPopover = false
-                        }
+                        },
+                        isStreamingEnabled: isStreamingEnabled,
+                        isToolEnabled: isToolEnabled
                     )
                 }
             }
@@ -74,7 +96,6 @@ struct ModelSelectorToolbar<Model: Equatable & Hashable>: ToolbarContent {
     }
 }
 
-// Keep existing HoverBorderlessButtonStyle and ModelPickerPopover for macOS
 #if os(macOS)
 struct HoverBorderlessButtonStyle: ButtonStyle {
     let isActive: Bool
@@ -110,26 +131,37 @@ struct ModelPickerPopover<Model: Equatable & Hashable>: View {
     let currentModel: Model
     let getModelName: (Model) -> String
     let onModelSelected: (Model) -> Void
+    let isStreamingEnabled: Binding<Bool>?
+    let isToolEnabled: Binding<Bool>?
+
+    @State private var isStreamingRowHovered = false
 
     var body: some View {
         VStack(spacing: 0) {
+            // Model list
             ForEach(models, id: \.self) { model in
-                Button {
-                    onModelSelected(model)
-                } label: {
-                    HStack {
-                        Text(getModelName(model))
-                            .font(.body)
-                        Spacer()
-                        if currentModel == model {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    .frame(minWidth: 200)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(ModelPickerButtonStyle(isSelected: currentModel == model))
+                ModelSelectionRow(
+                    model: model,
+                    currentModel: currentModel,
+                    modelName: getModelName(model),
+                    onSelect: onModelSelected
+                )
+            }
+
+            if let streamingBinding = isStreamingEnabled {
+                Divider()
+                    .padding(.vertical, 4)
+
+                PopoverToggleRow(title: "Enable streaming", binding: streamingBinding)
+                    .padding(.bottom, 4)
+            }
+
+            if let isToolEnabled = isToolEnabled {
+                Divider()
+                    .padding(.vertical, 4)
+
+                PopoverToggleRow(title: "Enable tools", binding: isToolEnabled)
+                    .padding(.bottom, 4)
             }
         }
         .padding(.vertical, 4)
@@ -171,3 +203,69 @@ struct ModelPickerButtonStyle: ButtonStyle {
     }
 }
 #endif
+
+struct ModelSelectionRow<Model: Equatable>: View {
+    let model: Model
+    let currentModel: Model
+    let modelName: String
+    let onSelect: (Model) -> Void
+
+    var body: some View {
+        Button {
+            onSelect(model)
+        } label: {
+            HStack {
+                Text(modelName)
+                    .font(.body)
+                Spacer()
+                if currentModel == model {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.primary)
+                }
+            }
+            .frame(minWidth: 200)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(ModelPickerButtonStyle(isSelected: currentModel == model))
+    }
+}
+
+struct PopoverToggleRow: View {
+    let title: String
+    let binding: Binding<Bool>
+    @State private var isHovered = false
+
+    var body: some View {
+        Button {
+            binding.wrappedValue.toggle()
+        } label: {
+            HStack {
+                Text(title)
+                    .font(.body)
+                    .padding(.leading, 12)
+                Spacer()
+                Toggle(title, isOn: binding)
+                    .scaleEffect(0.8)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
+            .frame(height: 36)
+            .frame(minWidth: 200)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    isHovered
+                        ? Color.gray.opacity(0.15)
+                        : Color.clear
+                )
+                .padding(.horizontal, 8)
+        )
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}

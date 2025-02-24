@@ -8,6 +8,7 @@ extension FeatureFlagsViewModel {
         case enableOpenAI
         case enableAnthropic
         case enableGemini
+        case enableLocal
         case enableMediaOptions
         case enableAssistants
 
@@ -45,6 +46,9 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
     @Published var enableGemini: Bool {
         didSet { UserDefaults.standard.set(enableGemini, forKey: Keys.enableGemini.key) }
     }
+    @Published var enableLocal: Bool {
+        didSet { UserDefaults.standard.set(enableGemini, forKey: Keys.enableLocal.key) }
+    }
     @Published var enableMediaOptions: Bool {
         didSet { UserDefaults.standard.set(enableMediaOptions, forKey: Keys.enableMediaOptions.key) }
     }
@@ -58,6 +62,7 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
         enableOpenAI = UserDefaults.standard.bool(forKey: Keys.enableOpenAI.key)
         enableAnthropic = UserDefaults.standard.bool(forKey: Keys.enableAnthropic.key)
         enableGemini = UserDefaults.standard.bool(forKey: Keys.enableGemini.key)
+        enableLocal = UserDefaults.standard.bool(forKey: Keys.enableLocal.key)
         enableMediaOptions = UserDefaults.standard.bool(forKey: Keys.enableMediaOptions.key)
         enableAssistants = UserDefaults.standard.bool(forKey: Keys.enableAssistants.key)
     }

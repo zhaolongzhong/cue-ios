@@ -40,13 +40,18 @@ struct StyledTextView: View {
     }
 
     private func styledText(_ content: String) -> some View {
-        let segments = parseInlineStyles(text: content)
+        // Pre-process content to convert dash bullet points to dot bullet points
+        let processedContent = convertDashesToDots(content)
+
+        // Parse content for different markdown styles
+        let segments = parseMarkdownStyles(text: processedContent)
+
         return segments.reduce(Text("")) { result, segment in
             switch segment {
             case .plain(let text):
-                return result + Text(text).font(.body).foregroundColor(colorScheme == .dark ? .white :.black)
+                return result + Text(text).font(.body).foregroundColor(colorScheme == .dark ? .white : .black)
             case .bold(let text):
-                return result + Text(text).bold().foregroundColor(colorScheme == .dark ? .white :.black)
+                return result + Text(text).bold().foregroundColor(colorScheme == .dark ? .white : .black)
             case .inlineCode(let code):
                 let highlightedCode = SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: "", code: code)
                 let attributedString = NSMutableAttributedString(attributedString: highlightedCode)
@@ -63,19 +68,83 @@ struct StyledTextView: View {
                 ], range: NSRange(location: 0, length: attributedString.length))
 
                 return result + Text(AttributedString(attributedString))
+            case .header1(let text):
+                return result + Text(text).font(.title).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+            case .header2(let text):
+                return result + Text(text).font(.title2).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+            case .header3(let text):
+                return result + Text(text).font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+            case .bulletPoint(let text):
+                return result + Text(text).font(.body).foregroundColor(colorScheme == .dark ? .white : .black)
             }
         }
         .textSelection(.enabled)
     }
 
-    enum InlineSegment {
+    enum MarkdownSegment {
         case plain(String)
         case bold(String)
         case inlineCode(String)
+        case header1(String)
+        case header2(String)
+        case header3(String)
+        case bulletPoint(String)
     }
 
-    private func parseInlineStyles(text: String) -> [InlineSegment] {
-        var segments: [InlineSegment] = []
+    // Convert dash bullet points to dot bullet points
+    private func convertDashesToDots(_ text: String) -> String {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        let processedLines = lines.map { line -> String in
+            if line.trimmingCharacters(in: .whitespaces).starts(with: "- ") {
+                let dashIndex = line.firstIndex(of: "-")!
+                var newLine = line
+                newLine.replaceSubrange(dashIndex...dashIndex, with: "•")
+                return String(newLine)
+            }
+            return String(line)
+        }
+        return processedLines.joined(separator: "\n")
+    }
+
+    private func parseMarkdownStyles(text: String) -> [MarkdownSegment] {
+        var segments: [MarkdownSegment] = []
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
+            // Check for headers
+            if trimmedLine.starts(with: "# ") {
+                let headerText = String(trimmedLine.dropFirst(2))
+                segments.append(.header1(headerText))
+            } else if trimmedLine.starts(with: "## ") {
+                let headerText = String(trimmedLine.dropFirst(3))
+                segments.append(.header2(headerText))
+            } else if trimmedLine.starts(with: "### ") {
+                let headerText = String(trimmedLine.dropFirst(4))
+                segments.append(.header3(headerText))
+            }
+            // Check for bullet points
+            else if trimmedLine.starts(with: "• ") {
+                segments.append(.bulletPoint(String(line)))
+            }
+            // Process inline styles
+            else {
+                let inlineSegments = parseInlineStyles(text: String(line))
+                segments.append(contentsOf: inlineSegments)
+
+                // Add a newline after each line except the last one
+                if line != lines.last {
+                    segments.append(.plain("\n"))
+                }
+            }
+        }
+
+        return segments
+    }
+
+    private func parseInlineStyles(text: String) -> [MarkdownSegment] {
+        var segments: [MarkdownSegment] = []
         var currentIndex = text.startIndex
 
         let pattern = "\\*\\*(.*?)\\*\\*|`([^`]+)`"

@@ -12,6 +12,7 @@ public final class OpenAIChatViewModel: ObservableObject {
     }
     @Published var messages: [OpenAI.ChatMessageParam] = []
     @Published var newMessage: String = ""
+    @Published var attachments: [Attachment] = []
     @Published var isLoading = false
     @Published var availableTools: [Tool] = [] {
         didSet {
@@ -104,21 +105,73 @@ public final class OpenAIChatViewModel: ObservableObject {
         }
         #endif
 
-        // Add the user's new message.
-        let userMessage = OpenAI.ChatMessageParam.userMessage(
-            OpenAI.MessageParam(role: Role.user.rawValue, content: newMessage)
-        )
-        self.messages.append(userMessage)
-        messageParams.append(userMessage)
+        do {
+            var contentBlocks: [OpenAI.ContentBlock] = []
+
+            if !newMessage.isEmpty {
+                let textBlock = OpenAI.ContentBlock(
+                    type: .text,
+                    text: newMessage
+                )
+                contentBlocks.append(textBlock)
+            }
+
+            // Process attachments
+            for attachment in attachments {
+                switch attachment.type {
+                case .document:
+                    let fullText = try await AttachmentUtil.extractText(from: attachment)
+                    let maxCharacters = 20000
+                    let truncatedText = fullText.count > maxCharacters
+                        ? String(fullText.prefix(maxCharacters)) + " [truncated]"
+                        : fullText
+                    let prefixedText = "<file_name>\(attachment.name)<file_name>" + truncatedText
+                    let documentBlock = OpenAI.ContentBlock(
+                        type: .text,
+                        text: prefixedText
+                    )
+                    contentBlocks.append(documentBlock)
+                case .image:
+                    if let imageBlock = try await AttachmentUtil.processImage(from: attachment) {
+                        contentBlocks.append(imageBlock)
+                    }
+                }
+            }
+
+            // Create a MessageParam with content blocks
+            let userMessage: OpenAI.ChatMessageParam
+            if contentBlocks.isEmpty {
+                // If no content blocks were created, use a simple empty text block
+                userMessage = .userMessage(
+                    OpenAI.MessageParam(
+                        role: "user",
+                        contentBlocks: [OpenAI.ContentBlock(type: .text, text: "")]
+                    )
+                )
+            } else {
+                userMessage = .userMessage(
+                    OpenAI.MessageParam(
+                        role: "user",
+                        contentBlocks: contentBlocks
+                    )
+                )
+            }
+
+            self.messages.append(userMessage)
+            messageParams.append(userMessage)
+        } catch {
+            AppLog.log.error("Error processing message content: \(error.localizedDescription)")
+        }
 
         isLoading = true
         newMessage = ""
+        attachments.removeAll()
 
         do {
             let agent = AgentLoop(chatClient: openAI, toolManager: toolManager, model: model.id)
             let completionRequest = CompletionRequest(model: model.id, tools: tools, toolChoice: "auto")
             let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
-            messages = updatedMessages
+            messages.append(contentsOf: updatedMessages)
         } catch {
             let chatError = ChatError.unknownError(error.localizedDescription)
             self.error = chatError
@@ -129,5 +182,9 @@ public final class OpenAIChatViewModel: ObservableObject {
 
     func clearError() {
         error = nil
+    }
+
+    func addAttachment(_ attachment: Attachment) {
+        attachments.append(attachment)
     }
 }

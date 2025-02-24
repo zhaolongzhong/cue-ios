@@ -94,6 +94,8 @@ struct CompanionWindowContent: View {
                                 GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel, isCompanion: true)
                             case .cue:
                                 CueChatView(dependencies.viewModelFactory.makeCueChatViewModel, isCompanion: true)
+                            case .local:
+                                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel, isCompanion: true)
                             }
                         } else if let assistantId = windowConfig.assistantId, let chatViewModel = dependencies.viewModelFactory.makeAssistantChatViewModelBy(id: assistantId) {
                             AssistantChatView(assistantChatViewModel: chatViewModel, assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(), isCompanion: true)

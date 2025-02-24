@@ -5,6 +5,7 @@ import CueAnthropic
 import CueGemini
 
 public enum CueChatMessage: Encodable, Sendable, Identifiable {
+    case local(OpenAI.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
     case openAI(OpenAI.ChatMessageParam)
     case anthropic(Anthropic.ChatMessageParam)
     case gemini(Gemini.ChatMessageParam)
@@ -13,6 +14,8 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
+        case .local(let msg, _, _):
+            try container.encode(msg)
         case .openAI(let msg):
             try container.encode(msg)
         case .anthropic(let msg):
@@ -26,6 +29,8 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
 
     public var id: String {
         switch self {
+        case .local(let msg, let stableId, _):
+            return stableId ?? msg.id
         case .openAI(let msg):
             return msg.id
         case .anthropic(let msg):
@@ -37,8 +42,28 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
         }
     }
 
+    static func streamingMessage(
+        id: String,
+        content: String,
+        toolCalls: [ToolCall] = [],
+        streamingState: StreamingState? = nil
+    ) -> Self {
+        .local(
+            .assistantMessage(
+                OpenAI.AssistantMessage(
+                    role: Role.assistant.rawValue,
+                    content: content,
+                    toolCalls: toolCalls
+                )
+            ),
+            stableId: id,
+            streamingState: streamingState
+        )
+    }
+
     var role: String {
         switch self {
+        case .local(let msg, _, _): return msg.role
         case .openAI(let msg): return msg.role
         case .anthropic(let msg): return msg.role
         case .gemini(let msg): return msg.role
@@ -46,17 +71,19 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
         }
     }
 
-    var content: String {
+    var content: OpenAI.ContentValue {
         switch self {
+        case .local(let msg, _, _): return msg.content
         case .openAI(let msg): return msg.content
-        case .anthropic(let msg): return msg.content
-        case .gemini(let msg): return msg.content
-        case .cue(let msg): return msg.content.text
+        case .anthropic(let msg): return .string(msg.content)
+        case .gemini(let msg): return .string(msg.content)
+        case .cue(let msg): return .string(msg.content.text)
         }
     }
 
     var isUser: Bool {
         switch self {
+        case .local(let msg, _, _): return msg.role == "user"
         case .openAI(let msg): return msg.role == "user"
         case .anthropic(let msg):
             if case .userMessage = msg {
@@ -74,6 +101,10 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
 
     var isTool: Bool {
         switch self {
+        case .local(let msg, _, _):
+            if case .assistantMessage(let message) = msg {
+                return message.hasToolCall
+            }
         case .openAI(let msg):
             if case .assistantMessage(let message) = msg {
                 return message.hasToolCall
@@ -93,6 +124,10 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
 
     var isToolMessage: Bool {
         switch self {
+        case .local(let msg, _, _):
+            if case .toolMessage = msg {
+                return true
+            }
         case .openAI(let msg):
             if case .toolMessage = msg {
                 return true
@@ -113,11 +148,16 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
     var toolResultContent: String {
         let content: String = {
             switch self {
+            case .local(let msg, _, _):
+                if case .toolMessage(let toolMessage) = msg {
+                    return toolMessage.content
+                }
+                return msg.content.contentAsString
             case .openAI(let msg):
                 if case .toolMessage(let toolMessage) = msg {
                     return toolMessage.content
                 }
-                return msg.content
+                return msg.content.contentAsString
             case .anthropic(let msg):
                 if case .toolMessage(let toolMessage) = msg {
                     if let content = toolMessage.content.first?.content.first {
@@ -149,6 +189,8 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
 
     var toolName: String? {
         switch self {
+        case .local(let msg, _, _):
+            return msg.toolName
         case .openAI(let msg):
             return msg.toolName
         case .anthropic(let msg):
@@ -162,6 +204,8 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
 
     var toolArgs: String? {
         switch self {
+        case .local(let msg, _, _):
+            return msg.toolArgs
         case .openAI(let msg):
             return msg.toolArgs
         case .anthropic(let msg):
@@ -176,6 +220,22 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
 
 extension CueChatMessage: Equatable {
     public static func == (lhs: CueChatMessage, rhs: CueChatMessage) -> Bool {
-        return lhs.id == rhs.id
+        // Basic identity check
+        guard lhs.id == rhs.id, lhs.content == rhs.content else {
+            return false
+        }
+
+        // If both are .local, compare the streamingState in detail
+        if case .local(_, _, let lhsStreaming) = lhs,
+           case .local(_, _, let rhsStreaming) = rhs {
+            // Specifically check expandedThinkingBlocks
+            if let lhsStreamingState = lhsStreaming,
+               let rhsStreamingState = rhsStreaming {
+                return lhsStreamingState.isComplete == rhsStreamingState.isComplete &&
+                       lhsStreamingState.expandedThinkingBlocks == rhsStreamingState.expandedThinkingBlocks
+            }
+        }
+
+        return true
     }
 }

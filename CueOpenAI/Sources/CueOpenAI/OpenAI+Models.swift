@@ -99,11 +99,11 @@ extension OpenAI {
         }
     }
     
-    public struct AssistantMessage: Decodable, Encodable, Sendable {
+    public struct AssistantMessage: Decodable, Encodable, Equatable, Sendable {
         public let role: String
         public let content: String?
         public let toolCalls: [ToolCall]?
-    
+
         public init(role: String, content: String?, toolCalls: [ToolCall]? = nil) {
             self.role = role
             self.content = content
@@ -232,14 +232,14 @@ extension OpenAI {
             }
         }
         
-        public var content: String {
+        public var content: ContentValue {
             switch self {
             case .userMessage(let message):
                 return message.content
             case .assistantMessage(let message):
-                return message.content ?? ""
+                return .string(message.content ?? "")
             case .toolMessage(let message):
-                return message.content
+                return .string(message.content)
             }
         }
 
@@ -260,17 +260,7 @@ extension OpenAI {
             toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
         }
     }
-    
-    public struct MessageParam: Codable, Sendable {
-        public let role: String
-        public let content: String
-        
-        public init(role: String, content: String) {
-            self.role = role
-            self.content = content
-        }
-    }
-    
+
     public struct ChatCompletionRequest: Codable, Sendable {
         public let model: String
         public let messages: [ChatMessageParam]

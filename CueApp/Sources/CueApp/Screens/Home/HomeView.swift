@@ -147,6 +147,8 @@ private extension HomeView {
                 OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
             case .cue:
                 CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
+            case .local:
+                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel)
             case .chat(let assistant):
                 AssistantChatView(
                     assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),

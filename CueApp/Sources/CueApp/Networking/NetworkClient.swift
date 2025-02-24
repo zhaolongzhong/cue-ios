@@ -190,3 +190,44 @@ extension DebugPrintable {
         }
     }
 }
+
+extension NetworkClient {
+    func requestStream<T: Decodable>(
+        _ endpoint: Endpoint,
+        onChunk: @escaping @Sendable (T) async -> Void
+    ) async throws {
+        let token = await TokenManager.shared.accessToken
+        try validateAuthToken(token, requiresAuth: endpoint.requiresAuth)
+
+        let request = try endpoint.urlRequest(with: token)
+        logRequest(request)
+
+        let (bytes, response) = try await session.bytes(for: request)
+        let httpResponse = try validateHTTPResponse(response)
+        try handleHTTPStatusCode(httpResponse.statusCode, data: Data())
+
+        var buffer = ""
+
+        for try await byte in bytes {
+            guard let char = String(bytes: [byte], encoding: .utf8) else {
+                continue
+            }
+
+            buffer += char
+
+            if char == "\n" && !buffer.isEmpty {
+                do {
+                    if let data = buffer.data(using: .utf8) {
+                        let chunk = try decoder.decode(T.self, from: data)
+                        await onChunk(chunk)
+                    }
+                } catch {
+                    logger.error("Failed to decode chunk: \(error)")
+                    throw error
+                }
+
+                buffer = ""
+            }
+        }
+    }
+}

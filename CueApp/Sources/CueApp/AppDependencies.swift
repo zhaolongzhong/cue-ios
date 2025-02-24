@@ -47,6 +47,7 @@ public class ViewModelFactory {
     private var openAIChatViewModel: OpenAIChatViewModel?
     private var anthropicChatViewModel: AnthropicChatViewModel?
     private var cueChatViewModel: CueChatViewModel?
+    private var localChatViewModel: LocalChatViewModel?
     private var emailScreenViewModel: EmailScreenViewModel?
 
     let providersViewModel: ProvidersViewModel
@@ -144,6 +145,16 @@ public class ViewModelFactory {
             let cueChatViewModel = CueChatViewModel()
             self.cueChatViewModel = cueChatViewModel
             return cueChatViewModel
+        }
+    }
+
+    public func makeLocalChatViewModel() -> LocalChatViewModel {
+        if let localChatViewModel = self.localChatViewModel {
+            return localChatViewModel
+        } else {
+            let localChatViewModel = LocalChatViewModel(apiKey: providersViewModel.openAIKey)
+            self.localChatViewModel = localChatViewModel
+            return localChatViewModel
         }
     }
 

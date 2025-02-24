@@ -68,7 +68,7 @@ public final class AnthropicChatViewModel: ObservableObject {
             let agent = AgentLoop(chatClient: anthropic, toolManager: toolManager, model: model.id)
             let completionRequest = CompletionRequest(model: model.id, tools: tools, toolChoice: "auto")
             let updatedMessages = try await agent.run(with: messages, request: completionRequest)
-            self.messages = updatedMessages
+            messages.append(contentsOf: updatedMessages)
 
         } catch let error as Anthropic.Error {
             let chatError: ChatError = {
