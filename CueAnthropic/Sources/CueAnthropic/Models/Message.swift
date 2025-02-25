@@ -8,7 +8,7 @@ extension Anthropic {
         case image
     }
 
-    public struct TextBlock: Codable, Sendable {
+    public struct TextBlock: Codable, Equatable, Sendable {
         public let text: String
         public let type: String  // Will always be "text"
 
@@ -18,7 +18,7 @@ extension Anthropic {
         }
     }
 
-    public struct ToolUseBlock: Codable, Sendable {
+    public struct ToolUseBlock: Codable, Equatable, Sendable {
         public let type: String  // Will always be "tool_use"
         public let id: String
         public let input: [String: JSONValue]
@@ -39,9 +39,10 @@ extension Anthropic {
         }
     }
 
-    public enum ContentBlock: Codable, Sendable {
+    public enum ContentBlock: Codable, Equatable, Sendable {
         case text(TextBlock)
         case toolUse(ToolUseBlock)
+        case thinking(ThinkingBlock)
 
         private enum CodingKeys: String, CodingKey {
             case type
@@ -73,6 +74,8 @@ extension Anthropic {
                 try block.encode(to: encoder)
             case .toolUse(let block):
                 try block.encode(to: encoder)
+            case .thinking(let block):
+                try block.encode(to: encoder)
             }
         }
 
@@ -84,21 +87,45 @@ extension Anthropic {
             self = .toolUse(toolUseBlock)
         }
 
+        public init(thinkingBlock: Anthropic.ThinkingBlock) {
+            self = .thinking(thinkingBlock)
+        }
+
         public var text: String {
             switch self {
             case .text(let text):
                 return text.text
             case .toolUse(let toolUse):
                 return String(describing: toolUse)
+            case .thinking(let thinking):
+                return thinking.thinking
+            }
+        }
+
+        public var isText: Bool {
+            switch self {
+            case .text:
+                return true
+            default:
+                return false
             }
         }
 
         public var isToolUse: Bool {
             switch self {
-            case .text:
-                return false
             case .toolUse:
                 return true
+            default:
+                return false
+            }
+        }
+
+        public var isThinking: Bool {
+            switch self {
+            case .thinking:
+                return true
+            default:
+                return false
             }
         }
     }

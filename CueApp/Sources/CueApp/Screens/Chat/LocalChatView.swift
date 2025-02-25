@@ -176,10 +176,7 @@ public struct LocalChatView: View {
                         MessageBubble(
                             message: message,
                             isExpanded: expandedMessageIds.contains(message.id),
-                            onShowMore: { expandMessage($0) },
-                            onToggleThinking: { message, blockId in
-                                toggleThinkingBlock(for: message, blockId: blockId)
-                            }
+                            onShowMore: { expandMessage($0) }
                         )
                     }
                     // Invisible marker view at bottom with a fixed ID
@@ -267,32 +264,5 @@ public struct LocalChatView: View {
         } else {
             viewModel.baseURL = UserDefaults.standard.baseURLWithDefault(for: .local)
         }
-    }
-}
-extension LocalChatView {
-    private func toggleThinkingBlock(for message: CueChatMessage, blockId: String) {
-        // Find the message in the viewModel
-        guard let index = viewModel.messages.firstIndex(where: { $0.id == message.id }) else {
-            return
-        }
-
-        // Create a message with toggled thinking block state
-        let updatedMessage = message.toggleThinkingBlock(id: blockId)
-
-        // Handle type conversion for OpenAI messages to preserve state
-        let finalMessage: CueChatMessage
-        if case .openAI = message, let streamingState = updatedMessage.streamingState {
-            switch updatedMessage {
-            case .openAI(let msg):
-                finalMessage = .local(msg, stableId: message.id, streamingState: streamingState)
-            default:
-                finalMessage = updatedMessage
-            }
-        } else {
-            finalMessage = updatedMessage
-        }
-
-        viewModel.messages[index] = finalMessage
-        viewModel.objectWillChange.send()
     }
 }

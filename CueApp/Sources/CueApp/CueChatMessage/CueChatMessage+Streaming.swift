@@ -11,13 +11,18 @@ extension CueChatMessage {
         switch self {
         case .local(_, _, let streamingState):
             return streamingState
+        case .anthropic(_, _, let streamingState):
+            return streamingState
         default:
             return nil
         }
     }
 
     var isStreaming: Bool {
-        return streamingState?.isComplete == false
+        guard let streamingState = streamingState else {
+            return false
+        }
+        return streamingState.isComplete == false
     }
 
     /// Returns true if message contains thinking block tags

@@ -80,6 +80,7 @@ public struct CompletionRequest: Encodable {
     let maxTokens: Int?
     let temperature: Double?
     let maxTurns: Int
+    let stream: Bool
 
     enum CodingKeys: String, CodingKey {
         case model
@@ -103,7 +104,8 @@ public struct CompletionRequest: Encodable {
         temperature: Double = 1.0,
         tools: [JSONValue]? = nil,
         toolChoice: String? = nil,
-        maxTurns: Int = 30
+        maxTurns: Int = 30,
+        stream: Bool = false
     ) {
         self.model = model
         self.messages = messages
@@ -115,6 +117,7 @@ public struct CompletionRequest: Encodable {
         self.tools = tools
         self.toolChoice = toolChoice
         self.maxTurns = maxTurns
+        self.stream = stream
     }
 }
 

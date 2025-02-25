@@ -192,7 +192,7 @@ extension EmailSummarizationService {
             let content = msg.content ?? ""
             let validJSONString = parseToJSON(content).trimmingCharacters(in: .whitespacesAndNewlines)
             return parseEmailSummaries(validJSONString, inboxEmailDetails: inboxEmailDetails)
-        } else if case .anthropic(let param) = message, case .assistantMessage(let msg) = param {
+        } else if case .anthropic(let param, _, _) = message, case .assistantMessage(let msg) = param {
             let content = msg.content.first?.text ?? ""
             let validJSONString = parseToJSON(content).trimmingCharacters(in: .whitespacesAndNewlines)
             return parseEmailSummaries(validJSONString, inboxEmailDetails: inboxEmailDetails)

@@ -6,7 +6,7 @@ import CueAnthropic
 import CueMCP
 
 @MainActor
-class ToolManager {
+public class ToolManager {
     var localTools: [LocalTool] = []
     #if os(macOS)
     let mcpManager: MCPServerManager?
@@ -16,12 +16,12 @@ class ToolManager {
         mcpToolsSubject.eraseToAnyPublisher()
     }
 
-    init() {
+    public init(enabledTools: [LocalTool] = []) {
         #if os(macOS)
         self.localTools.append(ScreenshotTool())
         self.mcpManager = MCPServerManager()
         #endif
-        self.localTools.append(GmailTool())
+        self.localTools.append(contentsOf: enabledTools)
     }
     func startMcpServer() async {
         #if os(macOS)
@@ -230,6 +230,46 @@ class ToolManager {
             )
             let toolResultMessage = Anthropic.ToolResultMessage(role: "user", content: [result])
             return toolResultMessage
+        }
+    }
+
+    func handleToolCall(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
+        var results: [OpenAI.ToolMessage] = []
+        for toolCall in toolCalls {
+            if let data = toolCall.function.arguments.data(using: .utf8),
+               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                do {
+                    let result = try await self.callTool(name: toolCall.function.name, arguments: args)
+                    results.append(OpenAI.ToolMessage(role: "tool", content: result, toolCallId: toolCall.id))
+                } catch {
+                    results.append(OpenAI.ToolMessage(role: "tool", content: "Error: \(error.localizedDescription)", toolCallId: toolCall.id))
+                }
+            }
+        }
+        return results
+    }
+
+    func handleToolUse(_ toolBlock: Anthropic.ToolUseBlock) async -> String {
+        do {
+            var arguments: [String: Any] = [:]
+            for (key, value) in toolBlock.input {
+                switch value {
+                case .string(let str): arguments[key] = str
+                case .int(let int): arguments[key] = int
+                case .number(let double): arguments[key] = double
+                case .bool(let bool): arguments[key] = bool
+                case .array(let arr): arguments[key] = arr
+                case .object(let dict): arguments[key] = dict
+                case .null: arguments[key] = NSNull()
+                }
+            }
+
+            let result = try await self.callTool(name: toolBlock.name, arguments: arguments)
+            return result
+
+        } catch {
+            AppLog.log.error("Tool error: \(error)")
+            return "Error: \(error.localizedDescription)"
         }
     }
 }

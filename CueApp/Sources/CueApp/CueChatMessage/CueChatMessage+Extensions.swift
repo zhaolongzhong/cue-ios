@@ -1,16 +1,40 @@
 import SwiftUI
 
-extension MessageBubbleContent {
+extension CueChatMessage {
     enum MessageSegment {
         case text(String)
         case code(language: String, code: String)
         case thinking(String)
+
+        var text: String {
+            switch self {
+            case .text(let text):
+                return text
+            case .code(language: _, code: let text):
+                return text
+            case .thinking(let text):
+                return text
+            }
+        }
+
+        var isThinking: Bool {
+            switch self {
+            case .thinking:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
-    func extractSegments(from text: String) -> [MessageSegment] {
+    func extractSegments(from text: String, isThinking: Bool = false) -> [MessageSegment] {
         var segments: [MessageSegment] = []
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         var lineIndex = 0
+
+        if isThinking {
+            return [.thinking(text)]
+        }
 
         // Process thinking block at the beginning if present
         if let newIndex = processInitialThinkingBlock(lines: lines, startIndex: lineIndex, segments: &segments) {

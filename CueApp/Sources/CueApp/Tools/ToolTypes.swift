@@ -1,21 +1,21 @@
 import Foundation
 import CueOpenAI
 
-// Base protocol for tool parameters
-protocol ToolParameters: Sendable {
-    var schema: [String: OpenAIParametersProperty] { get }
-    var required: [String] { get }
-}
-
 // Generic local tool definition
-protocol LocalTool: Sendable {
+public protocol LocalTool: Sendable {
     var name: String { get }
     var description: String { get }
     var parameterDefinition: ToolParameters { get }
     func call(_ args: ToolArguments) async throws -> String
 }
 
-struct ToolArguments {
+// Base protocol for tool parameters
+public protocol ToolParameters: Sendable {
+    var schema: [String: OpenAIParametersProperty] { get }
+    var required: [String] { get }
+}
+
+public struct ToolArguments {
     private let args: [String: Any]
 
     init(_ dictionary: [String: Any]) {

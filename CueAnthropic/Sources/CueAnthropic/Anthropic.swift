@@ -77,108 +77,18 @@ public struct Anthropic {
         }
     }
 
-    public enum ChatMessageParam: Codable, Sendable, Identifiable {
-        case userMessage(MessageParam)
-        case assistantMessage(MessageParam)
-        case toolMessage(ToolResultMessage)
+    public struct Thinking: Codable, Sendable {
+        public let type: String
+        public let budgetTokens: Int
 
-        // Add coding keys if needed
-        private enum CodingKeys: String, CodingKey {
-            case role, content, toolCalls, toolCallId
+        public init(type: String, budgetTokens: Int) {
+            self.type = type
+            self.budgetTokens = budgetTokens
         }
 
-        // Implement encoding/decoding logic as needed
-        public func encode(to encoder: Encoder) throws {
-            _ = encoder.container(keyedBy: CodingKeys.self)
-            switch self {
-            case .userMessage(let message):
-                try message.encode(to: encoder)
-            case .assistantMessage(let message):
-                try message.encode(to: encoder)
-            case .toolMessage(let message):
-                try message.encode(to: encoder)
-            }
-        }
-
-        public init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            let role = try container.decode(String.self, forKey: .role)
-
-            switch role {
-            case "user":
-                do {
-                    let messageParam = try MessageParam(from: decoder)
-                    self = .userMessage(messageParam)
-                } catch {
-                    let toolResultMessage = try ToolResultMessage(from: decoder)
-                    self = .toolMessage(toolResultMessage)
-                }
-            case "assistant":
-                self = .assistantMessage(try MessageParam(from: decoder))
-            default:
-                throw DecodingError.dataCorruptedError(forKey: .role, in: container, debugDescription: "Unknown role type")
-            }
-        }
-
-        public var role: String {
-            switch self {
-            case .userMessage:
-                return "user"
-            case .assistantMessage:
-                return "assistant"
-            case .toolMessage:
-                return "user"
-            }
-        }
-
-        public var content: String {
-            switch self {
-            case .userMessage(let message):
-                return message.content[0].text
-            case .assistantMessage(let message):
-                return message.content[0].text
-            case .toolMessage(let message):
-                return message.content[0].content[0].text
-            }
-        }
-        
-        public var id: String {
-            switch self {
-            case .userMessage(let message):
-                return "user_\(message)"
-            case .assistantMessage(let message):
-                return "assistant_\(message)"
-            case .toolMessage(let message):
-                return "tool_\(message)"
-            }
-        }
-
-        public var toolUses: [ToolUseBlock] {
-            switch self {
-            case .assistantMessage(let message):
-                let toolUses = message.content.filter { $0.isToolUse }
-                if  toolUses.count > 0 {
-                    return toolUses.compactMap {
-                        if case .toolUse(let toolUse) = $0 {
-                            return toolUse
-                        }
-                        return nil
-                    }
-                }
-                return []
-            default:
-                return []
-            }
-        }
-
-        public var toolName: String? {
-            return toolUses.map {
-                $0.name
-            }.joined(separator: ", ")
-        }
-
-        public var toolArgs: String? {
-            return toolUses.map { $0.prettyInput }.joined(separator: ", ")
+        enum CodingKeys: String, CodingKey {
+            case type
+            case budgetTokens = "budget_tokens"
         }
     }
 
@@ -188,6 +98,8 @@ public struct Anthropic {
         public let messages: [ChatMessageParam]
         public let tools: [JSONValue]?
         public let toolChoice: [String: String]?
+        public let thinking: Thinking?
+        public let stream: Bool?
 
         enum CodingKeys: String, CodingKey {
             case model
@@ -195,6 +107,8 @@ public struct Anthropic {
             case messages
             case tools
             case toolChoice = "tool_choice"
+            case thinking
+            case stream
         }
 
         public init(
@@ -202,13 +116,17 @@ public struct Anthropic {
             maxTokens: Int,
             messages: [ChatMessageParam],
             tools: [JSONValue]? = nil,
-            toolChoice: [String: String]? = nil
+            toolChoice: [String: String]? = nil,
+            stream: Bool = false,
+            thinking: Thinking? = nil
         ) {
             self.model = model
             self.maxTokens = maxTokens
             self.messages = messages
             self.tools = tools
             self.toolChoice = toolChoice
+            self.stream = stream
+            self.thinking = thinking
         }
     }
 
@@ -225,9 +143,9 @@ public struct Anthropic {
 // MARK: - APIs
 @MainActor
 public struct MessagesAPI {
-    private let client: AnthropicClient
+    public let client: AnthropicClient
 
-    init(client: AnthropicClient) {
+    public init(client: AnthropicClient) {
         self.client = client
     }
 

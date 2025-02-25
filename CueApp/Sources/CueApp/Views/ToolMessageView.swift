@@ -12,8 +12,8 @@ struct ToolMessageView: View {
         case fullyExpanded
     }
 
-    var isCollapsed: Bool {
-        expansionState == .collapsed
+    var isExpanded: Bool {
+        expansionState == .halfExpanded || expansionState == .fullyExpanded
     }
 
     var headerText: String {
@@ -82,9 +82,11 @@ struct ToolMessageView: View {
                         Text(headerText)
                             .font(.callout)
                             .foregroundColor(.primary.opacity(0.8))
-                        Image(systemName: expansionState == .collapsed ? "chevron.right" : "chevron.down")
+                        Image(systemName: "chevron.right")
                             .foregroundColor(.secondary)
-                            .font(.system(size: 10))
+                            .font(.system(size: 12))
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                            .animation(.easeInOut(duration: 0.2), value: isExpanded)
                     }
                 }
             )

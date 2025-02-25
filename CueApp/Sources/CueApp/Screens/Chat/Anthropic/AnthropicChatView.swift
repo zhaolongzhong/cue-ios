@@ -7,6 +7,7 @@ public struct AnthropicChatView: View {
     @StateObject private var viewModel: AnthropicChatViewModel
     @FocusState private var isFocused: Bool
     @Namespace private var bottomID
+    @State private var scrollThrottleWorkItem: DispatchWorkItem?
     @AppStorage("selectedAnthropicModel") private var storedModel: ChatModel = .claude35Sonnet
     @State private var showingToolsList = false
     @State private var isHovering = false
@@ -67,11 +68,6 @@ public struct AnthropicChatView: View {
                 await viewModel.startServer()
             }
         }
-        .onChange(of: viewModel.messages.count) { _, _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isFocused = true
-            }
-        }
         .onChange(of: viewModel.error) { _, error in
             if let error = error {
                 coordinator.showError(error.message)
@@ -95,6 +91,22 @@ public struct AnthropicChatView: View {
         #endif
     }
 
+    private func throttledScroll(proxy: ScrollViewProxy) {
+        guard scrollThrottleWorkItem == nil else { return }
+
+        let workItem = DispatchWorkItem {
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+                self.scrollThrottleWorkItem = nil
+            }
+        }
+
+        scrollThrottleWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+    }
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ModelSelectorToolbar(
@@ -113,8 +125,8 @@ public struct AnthropicChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(viewModel.messages) { message in
-                        MessageBubble(message: .anthropic(message))
+                    ForEach(viewModel.cueMessages) { message in
+                        MessageBubble(message: message)
                     }
                     // Invisible marker view at bottom
                     Color.clear
@@ -136,14 +148,36 @@ public struct AnthropicChatView: View {
                                                 to: nil, from: nil, for: nil)
             })
             #endif
-            .onChange(of: viewModel.messages.count) { _, _ in
-                withAnimation {
-                    proxy.scrollTo(bottomID, anchor: .bottom)
-                }
+            .onChange(of: viewModel.cueMessages.count) { _, _ in
+                throttledScroll(proxy: proxy)
+            }
+            .onChange(of: viewModel.streamedThinking) { _, _ in
+                throttledScroll(proxy: proxy)
+            }
+            .onChange(of: viewModel.streamedMessage) { _, _ in
+                throttledScroll(proxy: proxy)
             }
             .sheet(isPresented: $showingToolsList) {
                 ToolsListView(tools: viewModel.availableTools)
             }
+        }
+    }
+
+    private var messagesContent: some View {
+        ForEach(viewModel.cueMessages) { message in
+            MessageBubble(message: message)
+        }
+    }
+
+    private var bottomMarker: some View {
+        Color.clear
+            .frame(height: 1)
+            .id(bottomID)
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        withAnimation {
+            proxy.scrollTo(bottomID, anchor: .bottom)
         }
     }
 

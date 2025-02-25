@@ -1,11 +1,11 @@
 import Foundation
 
 @MainActor
-final class AnthropicClient {
-    private let configuration: Anthropic.Configuration
-    private let session: URLSession
+public final class AnthropicClient {
+    public let configuration: Anthropic.Configuration
+    public let session: URLSession
 
-    init(configuration: Anthropic.Configuration, session: URLSession = .shared) {
+    public init(configuration: Anthropic.Configuration, session: URLSession = .shared) {
         self.configuration = configuration
         self.session = session
     }

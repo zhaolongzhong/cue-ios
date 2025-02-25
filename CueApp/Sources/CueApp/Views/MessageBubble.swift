@@ -1,4 +1,5 @@
 import SwiftUI
+import CueAnthropic
 
 struct MessageBubble: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -6,11 +7,10 @@ struct MessageBubble: View {
 
     let message: CueChatMessage
     let isExpanded: Bool
+    let isStreaming: Bool
     let onShowMore: (CueChatMessage) -> Void
-    let onToggleThinking: (CueChatMessage, String) -> Void
 
     var isUser: Bool { message.isUser }
-    var isStreaming: Bool { message.isStreaming }
 
     #if os(iOS)
     let maxCharacters = 1000
@@ -26,8 +26,8 @@ struct MessageBubble: View {
     ) {
         self.message = message
         self.isExpanded = isExpanded
+        self.isStreaming = message.isStreaming
         self.onShowMore = onShowMore
-        self.onToggleThinking = onToggleThinking
     }
 
     var bubbleColor: Color {
@@ -45,8 +45,7 @@ struct MessageBubble: View {
                             message: message,
                             maxCharacters: maxCharacters,
                             isExpanded: isExpanded,
-                            onShowMore: onShowMore,
-                            onToggleThinking: onToggleThinking
+                            onShowMore: onShowMore
                         )
                     }
                     .padding(.horizontal, isUser ? 16 : 6)
@@ -65,6 +64,23 @@ struct MessageBubble: View {
                             .padding(.top, 4)
                         if !isUser { Spacer() }
                     }
+                }
+                if isStreaming {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { index in
+                            Circle()
+                                .fill(Color.gray.opacity(0.5))
+                                .frame(width: 5, height: 5)
+                                .opacity(isStreaming ? 1 : 0)
+                                .animation(
+                                    Animation.easeInOut(duration: 0.5)
+                                        .repeatForever()
+                                        .delay(0.2 * Double(index)),
+                                    value: isStreaming
+                                )
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             }
             if !isUser { Spacer() }
@@ -86,11 +102,17 @@ struct MessageBubbleContent: View {
     let maxCharacters: Int
     let isExpanded: Bool
     let onShowMore: (CueChatMessage) -> Void
-    let onToggleThinking: (CueChatMessage, String) -> Void
+    let segments: [CueChatMessage.MessageSegment]
+
+    init(message: CueChatMessage, maxCharacters: Int, isExpanded: Bool, onShowMore: @escaping (CueChatMessage) -> Void) {
+        self.message = message
+        self.maxCharacters = maxCharacters
+        self.isExpanded = isExpanded
+        self.onShowMore = onShowMore
+        self.segments = message.segments
+    }
 
     var body: some View {
-        let text = message.content.contentAsString
-        let segments = extractSegments(from: text)
         return VStack(alignment: .leading, spacing: 4) {
             if message.isUser {
                 VStack(alignment: .leading, spacing: 4) {
@@ -110,9 +132,20 @@ struct MessageBubbleContent: View {
                         }
                     }
                 }
-            } else if message.isTool || message.isToolMessage {
-                ToolMessageView(message: message)
-            } else {
+            } else if message.isTool {
+                VStack(alignment: .leading) {
+                    if let segment = segments.filter({ $0.isThinking }).first {
+                        ThinkingBlockView(
+                            text: segment.text,
+                            blockId: "",
+                            message: message
+                        )
+                    }
+                    ToolMessageView(message: message)
+                }
+            } else if message.isToolMessage {
+               ToolMessageView(message: message)
+           } else {
                 ForEach(segments.indices, id: \.self) { index in
                     switch segments[index] {
                     case .text(let content):
@@ -132,10 +165,7 @@ struct MessageBubbleContent: View {
                             ThinkingBlockView(
                                 text: text,
                                 blockId: blockId,
-                                message: message,
-                                onToggle: { blockId in
-                                    onToggleThinking(message, blockId)
-                                }
+                                message: message
                             )
                         }
                     }
@@ -152,4 +182,26 @@ func extractFileName(from text: String) -> String? {
         return nil
     }
     return String(text[startRange.upperBound..<endRange.lowerBound])
+}
+
+extension CueChatMessage {
+    var segments: [MessageSegment] {
+        var finalSegments: [MessageSegment] = []
+        if case .anthropic(let msg, _, let streamingState) = self {
+            let contentBlocks: [Anthropic.ContentBlock]
+            if let blocks = streamingState?.contentBlocks {
+                contentBlocks = blocks
+            } else {
+                contentBlocks = msg.contentBlocks
+            }
+            for contentBlock in contentBlocks {
+                let newSegments = extractSegments(from: contentBlock.text, isThinking: contentBlock.isThinking)
+                finalSegments.append(contentsOf: newSegments)
+            }
+        } else {
+            let newSegments = extractSegments(from: self.content.contentAsString)
+            finalSegments.append(contentsOf: newSegments)
+        }
+        return finalSegments
+    }
 }

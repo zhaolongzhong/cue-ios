@@ -1,8 +1,13 @@
 import Foundation
+import CueAnthropic
 import CueOpenAI
 
 public struct StreamingState: Equatable, Sendable {
+    var id: String?
+    var currentIndex: Int?
+    var accumulatedText = ""
     var content: String = ""
+    var contentBlocks: [Anthropic.ContentBlock] = []
     var chunks: [LocalStreamChunk] = []
     var toolCalls: [ToolCall] = []
     var isComplete: Bool = false
