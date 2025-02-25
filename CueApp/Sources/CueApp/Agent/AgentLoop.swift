@@ -1,15 +1,17 @@
+import os
 import Foundation
 import CueCommon
 import CueOpenAI
 import CueAnthropic
 
 @MainActor
-final class AgentLoop<Client: ChatClientProtocol> {
-    private let chatClient: Client
-    private let toolManager: ToolManager?
+public final class AgentLoop<Client: ChatClientProtocol> {
+    let chatClient: Client
+    let toolManager: ToolManager?
     private let model: String
+    public let logger = Logger(subsystem: "AgentLoop", category: "AgentLoop")
 
-    init(chatClient: Client, toolManager: ToolManager? = nil, model: String) {
+    public init(chatClient: Client, toolManager: ToolManager? = nil, model: String) {
         self.chatClient = chatClient
         self.toolManager = toolManager
         self.model = model
@@ -46,11 +48,14 @@ final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Handles an OpenAI message by appending the assistant’s response and processing any tool calls.
     private func handleOpenAIMessage(_ msg: OpenAI.AssistantMessage, conversation: inout [Client.MessageParamType]) async -> Bool {
+        guard let toolManager = self.toolManager else {
+            return false
+        }
         let nativeAssistantMsg = OpenAI.ChatMessageParam.assistantMessage(msg)
         appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: CueChatMessage.openAI, conversation: &conversation)
 
         if let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
-            let toolMessages = await handleToolCall(toolCalls)
+            let toolMessages = await toolManager.handleToolCall(toolCalls)
             for tm in toolMessages {
                 let nativeToolMsg = OpenAI.ChatMessageParam.toolMessage(tm)
                 appendWrappedMessage(nativeMsg: nativeToolMsg, wrap: CueChatMessage.openAI, conversation: &conversation)
@@ -64,6 +69,9 @@ final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Handles an Anthropic message by processing its content blocks.
     private func handleAnthropicMessage(_ msg: Anthropic.Message, conversation: inout [Client.MessageParamType]) async -> Bool {
+        guard let toolManager = self.toolManager else {
+            return false
+        }
         var processedToolUse = false
         AppLog.log.debug("Usage: \(String(describing: msg))")
         for contentBlock in msg.content {
@@ -86,7 +94,7 @@ final class AgentLoop<Client: ChatClientProtocol> {
                 )
                 appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: CueChatMessage.anthropic, conversation: &conversation)
 
-                let toolResult = await handleToolUse(toolBlock)
+                let toolResult = await toolManager.handleToolUse(toolBlock)
                 let result = Anthropic.ToolResultContent(
                     isError: false,
                     toolUseId: toolBlock.id,
@@ -97,6 +105,8 @@ final class AgentLoop<Client: ChatClientProtocol> {
                     Anthropic.ToolResultMessage(role: "user", content: [result])
                 )
                 appendWrappedMessage(nativeMsg: toolResultMessage, wrap: CueChatMessage.anthropic, conversation: &conversation)
+            case .thinking:
+                break
             }
         }
         return processedToolUse
@@ -110,52 +120,6 @@ final class AgentLoop<Client: ChatClientProtocol> {
             }
         } else if let native = nativeMsg as? Client.MessageParamType {
             conversation.append(native)
-        }
-    }
-
-    /// Processes a list of ToolCall objects (used for OpenAI messages).
-    private func handleToolCall(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
-        guard let toolManager = self.toolManager else {
-            return []
-        }
-        var results: [OpenAI.ToolMessage] = []
-        for toolCall in toolCalls {
-            if let data = toolCall.function.arguments.data(using: .utf8),
-               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                do {
-                    let result = try await toolManager.callTool(name: toolCall.function.name, arguments: args)
-                    results.append(OpenAI.ToolMessage(role: "tool", content: result, toolCallId: toolCall.id))
-                } catch {
-                    results.append(OpenAI.ToolMessage(role: "tool", content: "Error: \(error.localizedDescription)", toolCallId: toolCall.id))
-                }
-            }
-        }
-        return results
-    }
-
-    /// Processes a tool use block from an Anthropic message.
-    private func handleToolUse(_ toolBlock: Anthropic.ToolUseBlock) async -> String {
-        guard let toolManager = self.toolManager else {
-            return ""
-        }
-        do {
-            var arguments: [String: Any] = [:]
-            for (key, value) in toolBlock.input {
-                switch value {
-                case .string(let str): arguments[key] = str
-                case .int(let int): arguments[key] = int
-                case .number(let double): arguments[key] = double
-                case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = arr
-                case .object(let dict): arguments[key] = dict
-                case .null: arguments[key] = NSNull()
-                }
-            }
-            let result = try await toolManager.callTool(name: toolBlock.name, arguments: arguments)
-            return result
-        } catch {
-            AppLog.log.error("Tool error: \(error)")
-            return "Error: \(error.localizedDescription)"
         }
     }
 }

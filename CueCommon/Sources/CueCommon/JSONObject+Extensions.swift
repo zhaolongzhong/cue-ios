@@ -61,6 +61,28 @@ public extension JSONValue {
     }
 }
 
+extension JSONValue {
+    public init(any value: Any) {
+        if value is NSNull {
+            self = .null
+        } else if let string = value as? String {
+            self = .string(string)
+        } else if let bool = value as? Bool {
+            self = .bool(bool)
+        } else if let int = value as? Int {
+            self = .int(int)
+        } else if let double = value as? Double {
+            self = .number(double)
+        } else if let array = value as? [Any] {
+            self = .array(array.map { JSONValue(any: $0) })
+        } else if let dict = value as? [String: Any] {
+            self = .object(dict.mapValues { JSONValue(any: $0) })
+        } else {
+            self = .null
+        }
+    }
+}
+
 // MARK: - Dictionary Extensions
 public extension Dictionary where Key == String, Value == JSONValue {
     /// Converts JSONObject to [String: Any]
@@ -167,28 +189,6 @@ extension JSONValue {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         self = try decoder.decode(JSONValue.self, from: data)
-    }
-}
-
-extension JSONValue {
-    public init(any value: Any) {
-        if value is NSNull {
-            self = .null
-        } else if let string = value as? String {
-            self = .string(string)
-        } else if let bool = value as? Bool {
-            self = .bool(bool)
-        } else if let int = value as? Int {
-            self = .int(int)
-        } else if let double = value as? Double {
-            self = .number(double)
-        } else if let array = value as? [Any] {
-            self = .array(array.map { JSONValue(any: $0) })
-        } else if let dict = value as? [String: Any] {
-            self = .object(dict.mapValues { JSONValue(any: $0) })
-        } else {
-            self = .null
-        }
     }
 }
 

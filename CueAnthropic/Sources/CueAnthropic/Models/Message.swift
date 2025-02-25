@@ -42,6 +42,7 @@ extension Anthropic {
     public enum ContentBlock: Codable, Sendable {
         case text(TextBlock)
         case toolUse(ToolUseBlock)
+        case thinking(ThinkingBlock)
 
         private enum CodingKeys: String, CodingKey {
             case type
@@ -73,6 +74,8 @@ extension Anthropic {
                 try block.encode(to: encoder)
             case .toolUse(let block):
                 try block.encode(to: encoder)
+            case .thinking(let block):
+                try block.encode(to: encoder)
             }
         }
 
@@ -84,21 +87,27 @@ extension Anthropic {
             self = .toolUse(toolUseBlock)
         }
 
+        public init(thinkingBlock: Anthropic.ThinkingBlock) {
+            self = .thinking(thinkingBlock)
+        }
+
         public var text: String {
             switch self {
             case .text(let text):
                 return text.text
             case .toolUse(let toolUse):
                 return String(describing: toolUse)
+            case .thinking(let thinking):
+                return thinking.thinking
             }
         }
 
         public var isToolUse: Bool {
             switch self {
-            case .text:
-                return false
             case .toolUse:
                 return true
+            default:
+                return false
             }
         }
     }

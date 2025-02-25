@@ -74,7 +74,8 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
         self.clientId = EnvironmentConfig.shared.clientId
 
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForResource = 60
+        config.timeoutIntervalForResource = 120
+        config.timeoutIntervalForRequest = 30
         config.waitsForConnectivity = true
         self.session = URLSession(configuration: config)
     }
@@ -267,15 +268,23 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
     }
 
     private func ping() async throws {
-        webSocketTask?.sendPing(pongReceiveHandler: { [weak self] error in
+        guard connectionState == .connected, let task = webSocketTask else {
+            AppLog.websocket.error("Attempted to ping while not connected")
+            return
+        }
+
+        task.sendPing { [weak self] error in
             if let error {
-                AppLog.websocket.error("Send ping error. \(String(describing: error))")
+                AppLog.websocket.error("Send ping error: \(error.localizedDescription)")
+                Task { [weak self] in
+                    self?.handleError(.connectionFailed("Ping failed: \(error.localizedDescription)"))
+                }
             } else {
                 Task { [weak self] in
                     self?.updateLastPongReceived()
                 }
             }
-        })
+        }
     }
 
     func scheduleReconnection() {
@@ -297,6 +306,9 @@ public final class WebSocketService: NSObject, URLSessionWebSocketDelegate, @unc
             isReconnecting = false
             return
         }
+
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        webSocketTask = nil
 
         isReconnecting = true
 

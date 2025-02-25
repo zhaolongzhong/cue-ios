@@ -13,11 +13,13 @@ struct MessageBubble: View {
     let isUser: Bool
     let maxCharacters: Int
     let isExpanded: Bool
+    let isStreaming: Bool
     let onShowMore: (CueChatMessage) -> Void
 
     init(
         message: CueChatMessage,
         isExpanded: Bool = false,
+        isStreaming: Bool = false,
         onShowMore: @escaping (CueChatMessage) -> Void = { _ in }
     ) {
         self.message = message
@@ -28,6 +30,7 @@ struct MessageBubble: View {
         self.maxCharacters = 20000
         #endif
         self.isExpanded = isExpanded
+        self.isStreaming = isStreaming
         self.onShowMore = onShowMore
     }
 
@@ -72,6 +75,23 @@ struct MessageBubble: View {
                             Spacer()
                         }
                     }
+                }
+                if isStreaming {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { index in
+                            Circle()
+                                .fill(Color.gray.opacity(0.5))
+                                .frame(width: 5, height: 5)
+                                .opacity(isStreaming ? 1 : 0)
+                                .animation(
+                                    Animation.easeInOut(duration: 0.5)
+                                        .repeatForever()
+                                        .delay(0.2 * Double(index)),
+                                    value: isStreaming
+                                )
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             }
             if !isUser {

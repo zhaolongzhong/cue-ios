@@ -9,7 +9,7 @@ public enum CueAssistantMessage {
 }
 
 @MainActor
-protocol ChatClientProtocol {
+public protocol ChatClientProtocol {
     associatedtype MessageParamType: Encodable
     associatedtype ChatCompletionType
 
