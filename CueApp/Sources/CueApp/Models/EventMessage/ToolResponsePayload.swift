@@ -1,3 +1,5 @@
+import CueCommon
+
 struct ToolResponsePayload: Codable {
     let msgId: String
     let model: String

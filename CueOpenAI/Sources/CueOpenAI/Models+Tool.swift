@@ -33,6 +33,7 @@ public enum ToolChoice: String, Codable, Sendable {
 public struct Function: Codable, Sendable, Equatable {
     public let name: String
     public let arguments: String
+    public var encodeArgsAsDict: Bool = false
 
     public init(name: String, arguments: String) {
         self.name = name
@@ -63,8 +64,9 @@ public struct Function: Codable, Sendable, Equatable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
-        if let data = arguments.data(using: .utf8),
-           let decodedDict = try? JSONDecoder().decode([String: JSONValue].self, from: data) {
+
+        if encodeArgsAsDict, let data = arguments.data(using: .utf8),
+               let decodedDict = try? JSONDecoder().decode([String: JSONValue].self, from: data) {
             try container.encode(decodedDict, forKey: .arguments)
         } else {
             try container.encode(arguments, forKey: .arguments)
@@ -87,11 +89,14 @@ public struct ToolCall: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
+        let encodeArgsAsDict: Bool
         if container.contains(.id) {
             id = try container.decode(String.self, forKey: .id)
+            encodeArgsAsDict = false
         } else {
             let randomString = String((0..<4).map { _ in "abcdefghijklmnopqrstuvwxyz0123456789".randomElement()! })
             id = "tool_call_id_\(randomString)"
+            encodeArgsAsDict = true
         }
 
         if container.contains(.type) {
@@ -100,7 +105,9 @@ public struct ToolCall: Codable, Sendable, Equatable {
             type = "function"
         }
 
-        function = try container.decode(Function.self, forKey: .function)
+        var function = try container.decode(Function.self, forKey: .function)
+        function.encodeArgsAsDict = encodeArgsAsDict
+        self.function = function
     }
 
     private enum CodingKeys: String, CodingKey {

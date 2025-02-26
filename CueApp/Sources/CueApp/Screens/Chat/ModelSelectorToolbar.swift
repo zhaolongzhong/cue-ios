@@ -171,6 +171,8 @@ struct ModelPickerPopover<Model: Equatable & Hashable>: View {
     }
 }
 
+#endif
+
 struct ModelPickerButtonStyle: ButtonStyle {
     let isSelected: Bool
 
@@ -202,7 +204,6 @@ struct ModelPickerButtonStyle: ButtonStyle {
         }
     }
 }
-#endif
 
 struct ModelSelectionRow<Model: Equatable>: View {
     let model: Model

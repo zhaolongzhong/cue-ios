@@ -37,3 +37,8 @@ protocol AttachmentServiceProtocol {
     func generateThumbnail(for attachment: Attachment) async -> Image?
     func delete(attachment: Attachment) async
 }
+
+struct FileData {
+    let fileName: String
+    let content: String
+}

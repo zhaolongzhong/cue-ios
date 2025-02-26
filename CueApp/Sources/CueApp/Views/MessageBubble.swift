@@ -2,7 +2,6 @@ import SwiftUI
 import CueAnthropic
 
 struct MessageBubble: View {
-    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
     let message: CueChatMessage
@@ -21,8 +20,7 @@ struct MessageBubble: View {
     init(
         message: CueChatMessage,
         isExpanded: Bool = false,
-        onShowMore: @escaping (CueChatMessage) -> Void = { _ in },
-        onToggleThinking: @escaping (CueChatMessage, String) -> Void = { _, _ in }
+        onShowMore: @escaping (CueChatMessage) -> Void = { _ in }
     ) {
         self.message = message
         self.isExpanded = isExpanded
@@ -117,17 +115,12 @@ struct MessageBubbleContent: View {
             if message.isUser {
                 VStack(alignment: .leading, spacing: 4) {
                     if message.isUser {
-                        switch message.content {
-                        case .string(let text):
-                            Text(text)
-                        case .array(let blocks):
-                            ForEach(blocks.indices, id: \.self) { index in
-                                if let blockText = blocks[index].text,
-                                   let fileName = extractFileName(from: blockText) {
-                                    Text(fileName)
-                                } else {
-                                    Text(blocks[index].text ?? "")
-                                }
+                        ForEach(segments.indices, id: \.self) { index in
+                            switch segments[index] {
+                            case .text(let content):
+                                Text(content)
+                            default:
+                                EmptyView()
                             }
                         }
                     }
@@ -151,7 +144,6 @@ struct MessageBubbleContent: View {
                     case .text(let content):
                         StyledTextView(
                             content: content,
-                            colorScheme: colorScheme,
                             maxCharacters: maxCharacters,
                             isExpanded: isExpanded,
                             onShowMore: { onShowMore(message) }
@@ -168,40 +160,11 @@ struct MessageBubbleContent: View {
                                 message: message
                             )
                         }
+                    case .file(let fileData):
+                        Text(fileData.fileName)
                     }
                 }
             }
         }
-    }
-}
-
-func extractFileName(from text: String) -> String? {
-    let marker = "<file_name>"
-    guard let startRange = text.range(of: marker),
-          let endRange = text.range(of: marker, range: startRange.upperBound..<text.endIndex) else {
-        return nil
-    }
-    return String(text[startRange.upperBound..<endRange.lowerBound])
-}
-
-extension CueChatMessage {
-    var segments: [MessageSegment] {
-        var finalSegments: [MessageSegment] = []
-        if case .anthropic(let msg, _, let streamingState) = self {
-            let contentBlocks: [Anthropic.ContentBlock]
-            if let blocks = streamingState?.contentBlocks {
-                contentBlocks = blocks
-            } else {
-                contentBlocks = msg.contentBlocks
-            }
-            for contentBlock in contentBlocks {
-                let newSegments = extractSegments(from: contentBlock.text, isThinking: contentBlock.isThinking)
-                finalSegments.append(contentsOf: newSegments)
-            }
-        } else {
-            let newSegments = extractSegments(from: self.content.contentAsString)
-            finalSegments.append(contentsOf: newSegments)
-        }
-        return finalSegments
     }
 }

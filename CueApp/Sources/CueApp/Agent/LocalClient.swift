@@ -173,7 +173,7 @@ public struct LocalMessage: Codable, Sendable, DebugPrintable {
 }
 
 /// Single stream chunk
-public struct LocalStreamChunk: Decodable, Equatable, Sendable {
+public struct LocalStreamChunk: Codable, Equatable, Sendable {
     public let model: String
     public let createdAt: Date
     public let message: OpenAI.AssistantMessage

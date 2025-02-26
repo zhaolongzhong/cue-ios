@@ -56,7 +56,7 @@ struct CollapsibleSettingsSection<Content: View, Header: View>: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(NSColor.controlBackgroundColor))
+                .fill(AppTheme.Colors.controlButtonBackground)
         )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
     }

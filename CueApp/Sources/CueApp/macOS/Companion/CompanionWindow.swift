@@ -85,18 +85,7 @@ struct CompanionWindowContent: View {
                 case .compainionChatWindow:
                     if let windowConfig = windowConfig {
                         if let provider = windowConfig.provider {
-                            switch provider {
-                            case .openai:
-                                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel, isCompanion: true)
-                            case .anthropic:
-                                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel, isCompanion: true)
-                            case .gemini:
-                                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel, isCompanion: true)
-                            case .cue:
-                                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel, isCompanion: true)
-                            case .local:
-                                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel, isCompanion: true)
-                            }
+                            ChatViewFactory.createChatView(for: provider, isCompanion: true, appDependencies: dependencies)
                         } else if let assistantId = windowConfig.assistantId, let chatViewModel = dependencies.viewModelFactory.makeAssistantChatViewModelBy(id: assistantId) {
                             AssistantChatView(assistantChatViewModel: chatViewModel, assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(), isCompanion: true)
                         }

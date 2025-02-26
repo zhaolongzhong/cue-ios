@@ -1,10 +1,12 @@
 import SwiftUI
+import CueAnthropic
 
 extension CueChatMessage {
     enum MessageSegment {
         case text(String)
         case code(language: String, code: String)
         case thinking(String)
+        case file(FileData)
 
         var text: String {
             switch self {
@@ -14,6 +16,8 @@ extension CueChatMessage {
                 return text
             case .thinking(let text):
                 return text
+            case .file:
+                return ""
             }
         }
 
@@ -181,5 +185,78 @@ extension CueChatMessage {
         }
 
         return index
+    }
+}
+
+extension CueChatMessage {
+    var segments: [MessageSegment] {
+        var finalSegments: [MessageSegment] = []
+        if isUser {
+            if case .anthropic(let msg, _, _) = self {
+                // Check if we have any content blocks
+                if msg.contentBlocks.count > 0 {
+                    // Handle the first block
+                    let firstBlock = msg.contentBlocks[0]
+                    if firstBlock.isText {
+                        finalSegments.append(.text(firstBlock.text))
+                    }
+
+                    // Process all remaining blocks
+                    for i in 1..<msg.contentBlocks.count {
+                        let block = msg.contentBlocks[i]
+                        if block.isText, let fileData = extractFileData(from: block.text) {
+                            finalSegments.append(.file(fileData))
+                        }
+                    }
+                }
+            } else if case .gemini(let msg, _, _) = self {
+                if msg.modelContent.parts.count > 0 {
+                    finalSegments.append(.text(msg.modelContent.parts[0].text ?? ""))
+                }
+                // Process all parts from index 1 onwards (since we already handled index 0)
+                for i in 1..<msg.modelContent.parts.count {
+                    let block = msg.modelContent.parts[i]
+                    if let text = block.text, let fileData = extractFileData(from: text) {
+                        finalSegments.append(.file(fileData))
+                    }
+                }
+            } else if case .openAI(let msg, _, _) = self {
+                if msg.contentBlocks.count > 0, case .text(let text) = msg.contentBlocks[0] {
+                    finalSegments.append(.text(text))
+                }
+                for i in 1..<msg.contentBlocks.count {
+                    let block = msg.contentBlocks[i]
+                    if case .text(let text) = block, let fileData = extractFileData(from: text) {
+                        finalSegments.append(.file(fileData))
+                    }
+                }
+            } else {
+                switch self.content {
+                case .string(let text):
+                    finalSegments.append(.text(text))
+                case .array(let blocks):
+                    for block in blocks {
+                        if case .text(let text) = block, let fileData = extractFileData(from: text) {
+                            finalSegments.append(.file(fileData))
+                        }
+                    }
+                }
+            }
+        } else if case .anthropic(let msg, _, let streamingState) = self {
+            let contentBlocks: [Anthropic.ContentBlock]
+            if let blocks = streamingState?.contentBlocks {
+                contentBlocks = blocks
+            } else {
+                contentBlocks = msg.contentBlocks
+            }
+            for contentBlock in contentBlocks {
+                let newSegments = extractSegments(from: contentBlock.text, isThinking: contentBlock.isThinking)
+                finalSegments.append(contentsOf: newSegments)
+            }
+        } else {
+            let newSegments = extractSegments(from: self.content.contentAsString)
+            finalSegments.append(contentsOf: newSegments)
+        }
+        return finalSegments
     }
 }

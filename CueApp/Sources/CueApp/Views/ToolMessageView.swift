@@ -16,6 +16,13 @@ struct ToolMessageView: View {
         expansionState == .halfExpanded || expansionState == .fullyExpanded
     }
 
+    var assistantMessage: String? {
+        if case .string(let text)  = message.content {
+            return text
+        }
+        return nil
+    }
+
     var headerText: String {
         if message.isTool {
             return "View tool use details\(message.toolName.map { ": \($0.capitalized)" } ?? "")"
@@ -36,7 +43,8 @@ struct ToolMessageView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            headerView
+            assistantMessageView
+            viewToolDetailButton
             if expansionState != .collapsed {
                 ZStack {
                     ScrollView {
@@ -69,7 +77,15 @@ struct ToolMessageView: View {
         .padding(.bottom, message.isToolMessage ? 8 : 0)
     }
 
-    private var headerView: some View {
+    private var assistantMessageView: some View {
+        Group {
+            if let text = assistantMessage {
+                StyledTextView(content: text)
+            }
+        }
+    }
+
+    private var viewToolDetailButton: some View {
         HStack {
             Button(
                 action: {

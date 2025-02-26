@@ -173,7 +173,7 @@ extension OpenAI {
     
     public enum ChatMessageParam: Codable, Sendable, Identifiable {
         case userMessage(MessageParam)
-        case assistantMessage(AssistantMessage)
+        case assistantMessage(AssistantMessage, ChatCompletion? = nil)
         case toolMessage(ToolMessage)
         
         // Add coding keys if needed
@@ -187,7 +187,7 @@ extension OpenAI {
             switch self {
             case .userMessage(let message):
                 try message.encode(to: encoder)
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 try message.encode(to: encoder)
             case .toolMessage(let message):
                 try message.encode(to: encoder)
@@ -202,7 +202,7 @@ extension OpenAI {
             case "user":
                 self = .userMessage(try MessageParam(from: decoder))
             case "assistant":
-                self = .assistantMessage(try AssistantMessage(from: decoder))
+                self = .assistantMessage(try AssistantMessage(from: decoder), nil)
             case "tool":
                 self = .toolMessage(try ToolMessage(from: decoder))
             default:
@@ -214,7 +214,7 @@ extension OpenAI {
             switch self {
             case .userMessage(let message):
                 return "user_\(message)"
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 return "assistant_\(message)"
             case .toolMessage(let message):
                 return "tool_\(message)"
@@ -236,16 +236,32 @@ extension OpenAI {
             switch self {
             case .userMessage(let message):
                 return message.content
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 return .string(message.content ?? "")
             case .toolMessage(let message):
                 return .string(message.content)
             }
         }
 
+        public var contentBlocks: [ContentBlock] {
+            switch self {
+            case .userMessage(let message):
+                if case .string(let text) = content {
+                    return [.text(text)]
+                } else if case .array(let array) = content {
+                    return array
+                }
+                return []
+            case .assistantMessage(let message, _):
+                return [.text(message.content ?? "")]
+            case .toolMessage(let message):
+                return [.text(message.content)]
+            }
+        }
+
         public var toolCalls: [ToolCall] {
             switch self {
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 return message.toolCalls ?? []
             default:
                 return []

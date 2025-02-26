@@ -120,7 +120,9 @@ struct RichTextField: View {
                 })
             }
             if showAXApp {
+                #if os(macOS)
                 AXAppSelectionMenu(onStartAXApp: onStartAXApp)
+                #endif
             }
             if showVoiceChat {
                 VoiceChatButton(action: {
@@ -245,32 +247,6 @@ struct VoiceChatButton: View {
                     .font(.system(size: 12))
             }
             .buttonStyle(.plain)
-        }
-    }
-}
-
-struct AXAppSelectionMenu: View {
-    @State private var selectedApp: AccessibleApplication = .textEdit
-    let onStartAXApp: ((AccessibleApplication) -> Void)?
-
-    var body: some View {
-        HoverButton {
-            Menu {
-                ForEach(AccessibleApplication.allCases, id: \.self) { app in
-                    Button {
-                        selectedApp = app
-                        onStartAXApp?(selectedApp)
-                    } label: {
-                        Text(app.name)
-                            .frame(minWidth: 200, alignment: .leading)
-                    }
-                }
-            } label: {
-                Image(systemName: "link.badge.plus")
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
         }
     }
 }

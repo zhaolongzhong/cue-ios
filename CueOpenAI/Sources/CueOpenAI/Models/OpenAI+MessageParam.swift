@@ -84,10 +84,12 @@ extension OpenAI.MessageParam {
             return stringContent
         case .array(let contentBlocks):
             return contentBlocks.compactMap { block -> String? in
-                if block.type == .text, let text = block.text {
+                switch block {
+                case .text(let text):
                     return text
+                default:
+                    return nil
                 }
-                return nil
             }.joined(separator: "\n")
         }
     }
@@ -99,10 +101,12 @@ extension OpenAI.MessageParam {
             return []
         case .array(let contentBlocks):
             return contentBlocks.compactMap { block -> String? in
-                if block.type == .imageUrl, let imageUrl = block.imageUrl {
-                    return imageUrl.url
+                switch block {
+                case .imageUrl(let image):
+                    return image.url
+                default:
+                    return nil
                 }
-                return nil
             }
         }
     }
@@ -115,10 +119,12 @@ extension OpenAI.ContentValue {
             return stringContent
         case .array(let contentBlocks):
             return contentBlocks.compactMap { block -> String? in
-                if block.type == .text, let text = block.text {
+                switch block {
+                case .text(let text):
                     return text
+                default:
+                    return nil
                 }
-                return nil
             }.joined(separator: "\n")
         }
     }

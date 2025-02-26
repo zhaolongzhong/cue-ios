@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import Dependencies
+import CueCommon
 
 enum MessageRepositoryError: Error {
     case saveFailed(underlying: Error)
@@ -13,7 +14,10 @@ enum MessageRepositoryError: Error {
 typealias MessageResult<T> = Result<T, MessageRepositoryError>
 
 private enum MessageRepositoryKey: DependencyKey {
-    static let liveValue: MessageRepositoryProtocol & Cleanable = MessageRepository()
+    static let liveValue: MessageRepositoryProtocol & Cleanable = MessageRepository(database: AppDatabase.shared)
+    static var testValue: MessageRepository {
+        MessageRepository(database: AppDatabase.empty())
+    }
 }
 
 extension DependencyValues {
@@ -29,20 +33,24 @@ protocol MessageRepositoryProtocol: Sendable {
     func getMessage(id: String) async -> MessageResult<MessageModel?>
     func fetchCachedMessages(forConversation conversationId: String, skip: Int, limit: Int) async -> MessageResult<[MessageModel]>
     func makeMessageStream(forConversation conversationId: String) async -> AsyncStream<MessageModel>
+    func deleteCachedMessage(id: String) async
+    func deleteAllCachedMessages(forConversation conversationId: String) async
+    func deleteAllCachedMessages() async
 }
 
 actor MessageRepository: MessageRepositoryProtocol, Cleanable {
     @Dependency(\.assistantService) private var assistantService
-    @Dependency(\.messageModelStore) private var messageModelStore
+    private let database: AppDatabase
     private let streamManager: MessageStreamManager
 
-    init(streamManager: MessageStreamManager = MessageStreamManager()) {
+    init(database: AppDatabase, streamManager: MessageStreamManager = MessageStreamManager()) {
         self.streamManager = streamManager
+        self.database = database
     }
 
     func saveMessage(messageModel: MessageModel) async -> MessageResult<MessageModel> {
         do {
-            try await messageModelStore.save(messageModel)
+            try await database.saveMessage(messageModel)
             await streamManager.emit(messageModel)
             return .success(messageModel)
         } catch {
@@ -57,7 +65,7 @@ actor MessageRepository: MessageRepositoryProtocol, Cleanable {
                 skip: skip,
                 limit: limit
             )
-            try await messageModelStore.saveList(messages)
+            try await database.saveMessages(messages)
             messages.sort { $0.createdAt < $1.createdAt }
             return .success(messages)
         } catch {
@@ -67,7 +75,7 @@ actor MessageRepository: MessageRepositoryProtocol, Cleanable {
 
     func fetchCachedMessages(forConversation conversationId: String, skip: Int = 0, limit: Int = 50) async -> MessageResult<[MessageModel]> {
         do {
-            var messages = try await messageModelStore.fetchMessages(forConversation: conversationId, skip: skip, limit: limit)
+            var messages = try await database.fetchMessages(forConversation: conversationId, limit: limit, offset: skip)
             messages.sort { $0.createdAt < $1.createdAt }
             return .success(messages)
         } catch {
@@ -88,9 +96,22 @@ actor MessageRepository: MessageRepositoryProtocol, Cleanable {
         await streamManager.createStream(for: conversationId)
     }
 
+    func deleteAllCachedMessages() async {
+        try? await database.deleteAllMessages()
+    }
+
+    func deleteCachedMessage(id: String) async {
+        try? await database.deleteMessage(id: id)
+    }
+
+    func deleteAllCachedMessages(forConversation conversationId: String) async {
+        await streamManager.removePublisher(for: conversationId)
+        try? await database.deleteConversation(id: conversationId)
+    }
+
     func cleanup() async {
-        try? await messageModelStore.cleanup()
         await streamManager.clearAllStreams()
+        try? await database.deleteAllMessages()
     }
 }
 
@@ -133,7 +154,7 @@ actor MessageStreamManager {
         continuations[conversationId] = continuation
     }
 
-    private func removePublisher(for conversationId: String) {
+    func removePublisher(for conversationId: String) {
         continuations[conversationId]?.finish()
         continuations.removeValue(forKey: conversationId)
     }

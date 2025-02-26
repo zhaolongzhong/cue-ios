@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Dependencies
+import CueCommon
 
 @MainActor
 final class AssistantChatViewModel: ObservableObject {
@@ -131,6 +132,7 @@ final class AssistantChatViewModel: ObservableObject {
         switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
         case .success(let messages):
             self.messageModels = messages.map { .cue($0) }
+            AppLog.log.debug("Initial messages loaded: \(messages.count)")
         case .failure(let error):
             handleError(error, context: "Loading cached messages failed")
         }

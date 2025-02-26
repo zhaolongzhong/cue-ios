@@ -122,21 +122,21 @@ struct LocalProviderSettingsSection: View {
             advancedSettingsView
         }
         .numberInputAlert(
-            title: "Set Maximum Turns",
-            message: "Enter the maximum number of turns you want to allow the model to take.",
-            isPresented: $showingMaxTurnAlert,
-            inputValue: $maxTurnInput,
-            onSave: { newValue in
-                viewModel.saveMaxTurns(newValue)
-            }
-        )
-        .numberInputAlert(
             title: "Set Maximum Messages Per Turn",
-            message: "Enter the maximum number of messages you want to allow the model to take.",
+            message: "Enter the maximum number of messages you want to use for each request.",
             isPresented: $showingMaxMessageAlert,
             inputValue: $maxMessagesInput,
             onSave: { newValue in
                 viewModel.saveMaxMessages(newValue)
+            }
+        )
+        .numberInputAlert(
+            title: "Set Maximum Turns",
+            message: "Enter the maximum number of turns you want to allow the model to run automatically.",
+            isPresented: $showingMaxTurnAlert,
+            inputValue: $maxTurnInput,
+            onSave: { newValue in
+                viewModel.saveMaxTurns(newValue)
             }
         )
         .alert("Server URL", isPresented: $viewModel.showingBaseURLAlert) {
@@ -162,14 +162,21 @@ struct LocalProviderSettingsSection: View {
 
     private func settingRow(
         title: String,
+        description: String? = nil,
         value: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             HStack {
-                Text(title)
-                    .font(.body)
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading) {
+                    Text(title)
+                        .font(.body)
+                    if let description = description {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
                 Spacer()
                 Text(value)
                     .foregroundColor(.secondary)
@@ -178,6 +185,8 @@ struct LocalProviderSettingsSection: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -187,6 +196,7 @@ struct LocalProviderSettingsSection: View {
             GroupBox {
                 settingRow(
                     title: "Maximum Messages",
+                    description: "The maximum number of messages for each request",
                     value: "\(viewModel.maxMessages)"
                 ) {
                     maxMessagesInput = "\(viewModel.maxMessages)"
@@ -197,6 +207,7 @@ struct LocalProviderSettingsSection: View {
                     .padding(.all, 4)
                 settingRow(
                     title: "Maximum Turns",
+                    description: "The maximum number of turns to allow the model to run automatically",
                     value: "\(viewModel.maxTurns)"
                 ) {
                     maxTurnInput = "\(viewModel.maxTurns)"

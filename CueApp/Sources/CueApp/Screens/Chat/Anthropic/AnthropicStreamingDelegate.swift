@@ -8,8 +8,8 @@ public enum StreamEvent {
     case text(String, String)
     case thinking(String, String)
     case thinkingSignature(String, Bool)
-    case toolCall(String, Anthropic.ToolUseBlock)
-    case toolResult(String, String)
+    case toolCall(String, [Anthropic.ToolUseBlock])
+    case toolResult(String, CueChatMessage)
 
     // Streaming task lifecycle events
     case streamTaskStarted(String)  // messageId
@@ -43,7 +43,6 @@ class AnthropicStreamingDelegate: Anthropic.StreamingDelegate {
     private let onEvent: (StreamEvent) async -> Void
     private let onToolCall: ToolCallHandler
 
-    // State tracking
     var messageId = "" {
         didSet {
             logger.debug("Message ID updated to \(self.messageId)")
@@ -64,7 +63,7 @@ class AnthropicStreamingDelegate: Anthropic.StreamingDelegate {
 
     // Final message construction
     var contentBlocks: [Anthropic.ContentBlock] = []
-    public private(set) var toolResults: [Anthropic.ToolResultMessage] = []
+    public private(set) var toolResultContents: [Anthropic.ToolResultContent] = []
     public private(set) var finalMessage: Anthropic.ChatMessageParam?
     private let logger = Logger(subsystem: "Anthropic", category: "AnthropicAgentStreamingDelegate")
 
@@ -185,7 +184,7 @@ class AnthropicStreamingDelegate: Anthropic.StreamingDelegate {
                     observedToolUses.append(toolUseBlock)
 
                     // Tell the event handler
-                    await onEvent(.toolCall(messageId, toolUseBlock))
+                    await onEvent(.toolCall(messageId, observedToolUses))
 
                     // Execute the tool and get the result
                     let result = await onToolCall(messageId, toolUseBlock)
@@ -194,19 +193,13 @@ class AnthropicStreamingDelegate: Anthropic.StreamingDelegate {
                     let resultBlock = Anthropic.ContentBlock.text(
                         Anthropic.TextBlock(text: result, type: "text")
                     )
-
-                    let toolResult = Anthropic.ToolResultMessage(
-                        role: "user",
-                        content: [
-                            Anthropic.ToolResultContent(
-                                isError: false,
-                                toolUseId: toolUseBlock.id,
-                                type: "tool_result",
-                                content: [resultBlock]
-                            )
-                        ]
+                    let toolResultContent = Anthropic.ToolResultContent(
+                        isError: false,
+                        toolUseId: toolUseBlock.id,
+                        type: "tool_result",
+                        content: [resultBlock]
                     )
-                    toolResults.append(toolResult)
+                    toolResultContents.append(toolResultContent)
                 }
             } catch {
                 logger.error("[\(self.messageId)] Error processing tool input: \(error)")
@@ -301,7 +294,7 @@ extension AnthropicStreamingDelegate {
         // If we have observed tool uses but no tool results yet, add a small delay
         // This is a safety mechanism to ensure tool results are processed
         let toolUseCount = observedToolUses.count
-        let toolResultCount = toolResults.count
+        let toolResultCount = toolResultContents.count
 
         if toolUseCount > 0 && toolResultCount < toolUseCount {
             logger.debug("[\(self.messageId)] Waiting for tool results to be processed: \(toolResultCount)/\(toolUseCount)")
@@ -310,17 +303,17 @@ extension AnthropicStreamingDelegate {
             try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
 
             // Check again and log warning if still not complete
-            if toolResults.count < observedToolUses.count {
-                logger.warning("[\(self.messageId)] Tool results may not be fully processed: \(self.toolResults.count)/\(self.observedToolUses.count)")
+            if toolResultContents.count < observedToolUses.count {
+                logger.warning("[\(self.messageId)] Tool results may not be fully processed: \(self.toolResultContents.count)/\(self.observedToolUses.count)")
             }
         }
     }
 
     // Add a helper method to check if all tool uses have corresponding results
     func hasCompleteToolResults() -> Bool {
-        let res = toolResults.count >= observedToolUses.count
+        let res = toolResultContents.count >= observedToolUses.count
         if !res {
-            logger.warning("[\(self.messageId)] Incomplete tool results: \(self.toolResults.count)/\(self.observedToolUses.count)")
+            logger.warning("[\(self.messageId)] Incomplete tool results: \(self.toolResultContents.count)/\(self.observedToolUses.count)")
         }
         return res
     }

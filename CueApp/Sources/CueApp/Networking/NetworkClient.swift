@@ -140,7 +140,7 @@ actor NetworkClient: NetworkClientProtocol {
 
     private func logRawResponse(_ data: Data) {
         if let raw = String(data: data, encoding: .utf8) {
-            logger.debug("Raw response: \(raw)")
+//            logger.debug("Raw response: \(raw)")
         }
     }
 

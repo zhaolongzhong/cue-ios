@@ -2,6 +2,79 @@ import Foundation
 import CueGemini
 
 extension GeminiChatViewModel {
+    public func connect() async throws {
+        do {
+            var tools: [GeminiTool] = []
+            if let tool = self.geminiTool {
+                tools.append(tool)
+            }
+            let generationConfig = GenerationConfig(
+                responseModalities: [Modality.audio],
+                speechConfig: SpeechConfig(voiceName: .aoede)
+            )
+            let setupDetails = BidiGenerateContentSetup.SetupDetails(
+                model: "models/\(Gemini.ChatModel.gemini20FlashExp.id)",
+                generationConfig: generationConfig,
+                systemInstruction: nil,
+                tools: tools
+            )
+            try await liveAPIClient.connect(apiKey: apiKey, setupDetails: setupDetails)
+        } catch {
+            self.error = .sessionError(error.localizedDescription)
+        }
+    }
+
+    func setupLiveAPISubscription() {
+        liveAPIClient.voiceChatStatePublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] state in
+                    self?.state = state
+                }
+                .store(in: &cancellables)
+
+        liveAPIClient.eventsPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] message in
+                guard let self = self else { return }
+                Task {
+                    await self.handleServerMessage(message)
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    public func startSession() async {
+        do {
+            try await connect()
+        } catch {
+            self.error = .sessionError(String(describing: error))
+        }
+    }
+
+    public func endSession() async {
+        liveAPIClient.endSession()
+    }
+
+    public func pauseChat() {
+        liveAPIClient.pauseChat()
+    }
+
+    public func resumeChat() {
+        liveAPIClient.resumeChat()
+    }
+
+    public func sendLiveText(_ text: String) async throws {
+        logger.debug("Sending text message: \(text)")
+        let content = BidiGenerateContentClientContent(clientContent: .init(
+            turnComplete: true,
+            turns: [.init(
+                role: "user",
+                parts: [.init(text: text)]
+            )]
+        ))
+        try await liveAPIClient.send(content)
+    }
+
     func handleServerMessage(_ message: ServerMessage) async {
         switch message {
         case .setupComplete:

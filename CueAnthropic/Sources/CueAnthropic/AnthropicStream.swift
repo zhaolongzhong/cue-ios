@@ -62,10 +62,6 @@ extension AnthropicClient {
             errorData.append(byte)
         }
 
-        if let errorString = String(data: errorData, encoding: .utf8) {
-            log.error("DEBUG-STREAM: Error response: \(errorString)")
-        }
-
         if let apiError = try? JSONDecoder().decode(Anthropic.APIError.self, from: errorData) {
             throw Anthropic.Error.apiError(apiError)
         } else {

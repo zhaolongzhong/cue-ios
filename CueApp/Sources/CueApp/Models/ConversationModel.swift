@@ -4,7 +4,7 @@ struct ConversationCreate: Codable {
     let title: String
 }
 
-struct ConversationMetadata: Codable {
+struct ConversationMetadata: Codable, Equatable {
     let isPrimary: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -12,7 +12,7 @@ struct ConversationMetadata: Codable {
     }
 }
 
-struct ConversationModel: Codable, Identifiable {
+struct ConversationModel: Codable, Equatable, Identifiable {
     let id: String
     let title: String
     let createdAt: Date
@@ -53,5 +53,11 @@ struct ConversationModel: Codable, Identifiable {
         }
         assistantId = try container.decode(String.self, forKey: .assistantId)
         metadata = try container.decodeIfPresent(ConversationMetadata.self, forKey: .metadata)
+    }
+}
+
+extension ConversationModel {
+    var isPrimary: Bool {
+        metadata?.isPrimary ?? false
     }
 }
