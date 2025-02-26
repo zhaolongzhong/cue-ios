@@ -6,20 +6,19 @@
 extension Anthropic {
     public enum ChatMessageParam: Codable, Sendable, Identifiable {
         case userMessage(MessageParam)
-        case assistantMessage(MessageParam)
+        case assistantMessage(MessageParam, AnthropicMessage? = nil)
         case toolMessage(ToolResultMessage)
 
         private enum CodingKeys: String, CodingKey {
             case role, content, toolCalls, toolCallId
         }
 
-        // Implement encoding/decoding logic as needed
         public func encode(to encoder: Encoder) throws {
             _ = encoder.container(keyedBy: CodingKeys.self)
             switch self {
             case .userMessage(let message):
                 try message.encode(to: encoder)
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 try message.encode(to: encoder)
             case .toolMessage(let message):
                 try message.encode(to: encoder)
@@ -40,7 +39,7 @@ extension Anthropic {
                     self = .toolMessage(toolResultMessage)
                 }
             case "assistant":
-                self = .assistantMessage(try MessageParam(from: decoder))
+                self = .assistantMessage(try MessageParam(from: decoder), nil)
             default:
                 throw DecodingError.dataCorruptedError(forKey: .role, in: container, debugDescription: "Unknown role type")
             }
@@ -61,11 +60,14 @@ extension Anthropic {
             switch self {
             case .userMessage(let message):
                 return message.content[0].text
-            case .assistantMessage(let message):
-                if message.content.isEmpty {
-                    return ""
+            case .assistantMessage(let message, _):
+                let text = message.content.compactMap { block -> String? in
+                    if case .text(let textBlock) = block {
+                        return textBlock.text
+                    }
+                    return nil
                 }
-                return message.content[0].text
+                return text.joined(separator: "\n")
             case .toolMessage(let message):
                 return message.content[0].content[0].text
             }
@@ -75,7 +77,7 @@ extension Anthropic {
             switch self {
             case .userMessage(let message):
                 return message.content
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 if message.content.isEmpty {
                     return []
                 }
@@ -89,7 +91,7 @@ extension Anthropic {
             switch self {
             case .userMessage(let message):
                 return "user_\(message)"
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 return "assistant_\(message)"
             case .toolMessage(let message):
                 return "tool_\(message)"
@@ -98,7 +100,7 @@ extension Anthropic {
 
         public var toolUses: [ToolUseBlock] {
             switch self {
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 let toolUses = message.content.filter { $0.isToolUse }
                 if  toolUses.count > 0 {
                     return toolUses.compactMap {
@@ -129,13 +131,8 @@ extension Anthropic {
 extension Anthropic.ChatMessageParam {
     public func hasToolUse() -> Bool {
         switch self {
-        case .assistantMessage(let param):
-            return param.content.contains { contentBlock in
-                if case .toolUse = contentBlock {
-                    return true
-                }
-                return false
-            }
+        case .assistantMessage(let param, _):
+            return param.hasToolUse
         default:
             return false
         }
@@ -147,17 +144,6 @@ extension Anthropic.ChatMessageParam {
             return true
         default:
             return false
-        }
-    }
-
-    public func hasContent() -> Bool {
-        switch self {
-        case .userMessage(let param):
-            return !param.content.isEmpty
-        case .assistantMessage(let param):
-            return !param.content.isEmpty
-        case .toolMessage(let param):
-            return !param.content.isEmpty
         }
     }
 }

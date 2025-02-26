@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AssistantChatView: View {
     @EnvironmentObject private var windowManager: CompanionWindowManager
+    @Environment(\.openWindow) private var openWindow
     @StateObject private var viewModel: AssistantChatViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
     @SceneStorage("chatScrollPosition") private var scrollPosition: String?
@@ -162,6 +163,7 @@ struct AssistantChatView: View {
             assistantId: assistantId,
             additionalSettings: ["assistant_id": assistantId]
         )
-        windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
+        let windowId = windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
+        openWindow(id: WindowId.compainionChatWindow.rawValue, value: windowId.id)
     }
 }

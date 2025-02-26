@@ -33,6 +33,7 @@ public struct Anthropic {
         case decodingError(DecodingError)
         case apiError(APIError)
         case unexpectedAPIResponse(String)
+        case toolUseError(String)
     }
 
     // MARK: - Message Types

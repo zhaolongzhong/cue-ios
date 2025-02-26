@@ -2,7 +2,6 @@ import SwiftUI
 import CueAnthropic
 
 struct MessageBubble: View {
-    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
     let message: CueChatMessage
@@ -21,8 +20,7 @@ struct MessageBubble: View {
     init(
         message: CueChatMessage,
         isExpanded: Bool = false,
-        onShowMore: @escaping (CueChatMessage) -> Void = { _ in },
-        onToggleThinking: @escaping (CueChatMessage, String) -> Void = { _, _ in }
+        onShowMore: @escaping (CueChatMessage) -> Void = { _ in }
     ) {
         self.message = message
         self.isExpanded = isExpanded
@@ -117,17 +115,12 @@ struct MessageBubbleContent: View {
             if message.isUser {
                 VStack(alignment: .leading, spacing: 4) {
                     if message.isUser {
-                        switch message.content {
-                        case .string(let text):
-                            Text(text)
-                        case .array(let blocks):
-                            ForEach(blocks.indices, id: \.self) { index in
-                                if let blockText = blocks[index].text,
-                                   let fileName = extractFileName(from: blockText) {
-                                    Text(fileName)
-                                } else {
-                                    Text(blocks[index].text ?? "")
-                                }
+                        ForEach(segments.indices, id: \.self) { index in
+                            switch segments[index] {
+                            case .text(let content):
+                                Text(content)
+                            default:
+                                EmptyView()
                             }
                         }
                     }
@@ -151,7 +144,6 @@ struct MessageBubbleContent: View {
                     case .text(let content):
                         StyledTextView(
                             content: content,
-                            colorScheme: colorScheme,
                             maxCharacters: maxCharacters,
                             isExpanded: isExpanded,
                             onShowMore: { onShowMore(message) }
@@ -176,18 +168,54 @@ struct MessageBubbleContent: View {
 }
 
 func extractFileName(from text: String) -> String? {
-    let marker = "<file_name>"
-    guard let startRange = text.range(of: marker),
-          let endRange = text.range(of: marker, range: startRange.upperBound..<text.endIndex) else {
+    let startMarker = "<file_name>"
+    let endMarker = "</file_name>"
+
+    guard let startRange = text.range(of: startMarker),
+          let endRange = text.range(of: endMarker, range: startRange.upperBound..<text.endIndex) else {
         return nil
     }
+
     return String(text[startRange.upperBound..<endRange.lowerBound])
 }
 
 extension CueChatMessage {
     var segments: [MessageSegment] {
         var finalSegments: [MessageSegment] = []
-        if case .anthropic(let msg, _, let streamingState) = self {
+        if isUser {
+            if case .anthropic(let msg, _, _) = self {
+                for block in msg.contentBlocks {
+                    if block.isText, let fileName = extractFileName(from: block.text) {
+                        finalSegments.append(.text(fileName))
+                    } else {
+                        finalSegments.append(.text(block.text))
+                    }
+                }
+            } else if case .gemini(let msg, _, _) = self {
+                for block in msg.modelContent.parts {
+                    if let text = block.text, let fileName = extractFileName(from: text) {
+                        finalSegments.append(.text(fileName))
+                    } else {
+                        finalSegments.append(.text(block.text ?? ""))
+                    }
+                }
+            }
+            else {
+                switch self.content {
+                case .string(let text):
+                    finalSegments.append(.text(text))
+                case .array(let blocks):
+                    for block in blocks {
+                        if let blockText = block.text,
+                           let fileName = extractFileName(from: blockText) {
+                            finalSegments.append(.text(fileName))
+                        } else {
+                            finalSegments.append(.text(block.text ?? ""))
+                        }
+                    }
+                }
+            }
+        } else if case .anthropic(let msg, _, let streamingState) = self {
             let contentBlocks: [Anthropic.ContentBlock]
             if let blocks = streamingState?.contentBlocks {
                 contentBlocks = blocks

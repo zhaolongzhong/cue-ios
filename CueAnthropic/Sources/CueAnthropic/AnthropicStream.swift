@@ -31,6 +31,15 @@ extension AnthropicClient {
 
         log.debug("DEBUG-STREAM: Request URL: \(url)")
         log.debug("DEBUG-STREAM: Request Headers: \(request.allHTTPHeaderFields ?? [:])")
+        // Pretty print the request body for debugging
+        if let prettyPrintedBody = try? JSONSerialization.data(
+            withJSONObject: bodyDict,
+            options: [.prettyPrinted]
+        ) {
+            if let prettyString = String(data: prettyPrintedBody, encoding: .utf8) {
+                log.debug("DEBUG-STREAM: Request Body:\n\(prettyString)")
+            }
+        }
 
         let task = Task {
             log.debug("DEBUG-STREAM: Starting stream request...")
@@ -60,10 +69,6 @@ extension AnthropicClient {
         var errorData = Data()
         for try await byte in bytes {
             errorData.append(byte)
-        }
-
-        if let errorString = String(data: errorData, encoding: .utf8) {
-            log.error("DEBUG-STREAM: Error response: \(errorString)")
         }
 
         if let apiError = try? JSONDecoder().decode(Anthropic.APIError.self, from: errorData) {

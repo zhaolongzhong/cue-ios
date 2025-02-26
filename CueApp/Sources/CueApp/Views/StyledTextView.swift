@@ -1,11 +1,18 @@
 import SwiftUI
 
 struct StyledTextView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let content: String
-    let colorScheme: ColorScheme
     let maxCharacters: Int
     let isExpanded: Bool
-    let onShowMore: () -> Void
+    let onShowMore: (() -> Void)?
+
+    init(content: String, maxCharacters: Int = 500, isExpanded: Bool = true, onShowMore: (() -> Void)? = nil) {
+        self.content = content
+        self.maxCharacters = maxCharacters
+        self.isExpanded = isExpanded
+        self.onShowMore = onShowMore
+    }
 
     var codeBackgroundColor: Color {
         colorScheme == .light ?
@@ -16,7 +23,7 @@ struct StyledTextView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             styledText(truncatedContent)
-            if isTruncated {
+            if isTruncated, let onShowMore = onShowMore {
                 Button(action: onShowMore) {
                     Text("Show More")
                         .font(.system(.callout))

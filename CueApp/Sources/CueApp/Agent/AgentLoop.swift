@@ -57,13 +57,16 @@ public final class AgentLoop<Client: ChatClientProtocol> {
             return false
         }
         let nativeAssistantMsg = OpenAI.ChatMessageParam.assistantMessage(msg)
-        appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: CueChatMessage.openAI, conversation: &conversation)
+        let wrapLocal: (OpenAI.ChatMessageParam) -> CueChatMessage = { message in
+                .openAI(message, stableId: UUID().uuidString)
+        }
+        appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: wrapLocal, conversation: &conversation)
 
         if let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
             let toolMessages = await toolManager.handleToolCall(toolCalls)
             for tm in toolMessages {
                 let nativeToolMsg = OpenAI.ChatMessageParam.toolMessage(tm)
-                appendWrappedMessage(nativeMsg: nativeToolMsg, wrap: CueChatMessage.openAI, conversation: &conversation)
+                appendWrappedMessage(nativeMsg: nativeToolMsg, wrap: wrapLocal, conversation: &conversation)
             }
             return true
         } else {
@@ -108,7 +111,7 @@ public final class AgentLoop<Client: ChatClientProtocol> {
                     toolResultMessage
                 )
                 appendWrappedMessage(nativeMsg: toolResultMessageParam, wrap: wrapLocal, conversation: &conversation)
-            case .thinking:
+            default:
                 break
             }
         }
