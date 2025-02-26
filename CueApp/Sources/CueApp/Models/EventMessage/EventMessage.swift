@@ -20,11 +20,6 @@ enum EventMessageType: String, Codable {
 public struct Metadata: Codable, Sendable {
     var author: Author?
     var model: String?
-
-    struct Author: Codable {
-        var role: String
-        var name: String?
-    }
 }
 
 // MARK: - MessagePayloadBase

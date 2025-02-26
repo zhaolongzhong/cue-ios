@@ -63,9 +63,11 @@ public struct Function: Codable, Sendable, Equatable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
+
+        // Always encode arguments as a string
         if let data = arguments.data(using: .utf8),
-           let decodedDict = try? JSONDecoder().decode([String: JSONValue].self, from: data) {
-            try container.encode(decodedDict, forKey: .arguments)
+           let _ = try? JSONDecoder().decode([String: JSONValue].self, from: data) {
+            try container.encode(arguments, forKey: .arguments)
         } else {
             try container.encode(arguments, forKey: .arguments)
         }

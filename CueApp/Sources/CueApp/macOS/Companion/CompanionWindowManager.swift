@@ -11,7 +11,6 @@ public struct CompanionWindowIdentifier: Identifiable, Hashable {
 
 @MainActor
 public class CompanionWindowManager: ObservableObject {
-    @Environment(\.openWindow) private var openWindow
     @Published public var activeWindows: [CompanionWindowIdentifier] = []
     private let configStore: WindowConfigurationStore
 
@@ -19,7 +18,7 @@ public class CompanionWindowManager: ObservableObject {
         self.configStore = configStore
     }
 
-    public func openCompanionWindow(id: String, config: CompanionWindowConfig) {
+    public func openCompanionWindow(id: String, config: CompanionWindowConfig) -> CompanionWindowIdentifier {
         let windowId = CompanionWindowIdentifier(id)
         configStore.setConfig(config, for: windowId.id)
 
@@ -27,15 +26,7 @@ public class CompanionWindowManager: ObservableObject {
         if !activeWindows.contains(where: { $0.id == windowId.id }) {
             activeWindows.append(windowId)
         }
-        openWindow(id: WindowId.compainionChatWindow.rawValue, value: windowId.id)
-    }
-
-    public func openOpenAILiveChatWindow(id: String) {
-        openWindow(id: WindowId.openaiLiveChatWindow.rawValue, value: id)
-    }
-
-    public func openGeminiLiveChatWindow(id: String) {
-        openWindow(id: WindowId.geminiLiveChatWindow.rawValue, value: id)
+        return windowId
     }
 
     public func closeCompanionWindow(id: String) {

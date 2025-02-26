@@ -61,54 +61,13 @@ extension CueChatMessage {
         return blockIds
     }
 
-    /// Toggles the expanded state of a thinking block
-    func toggleThinkingBlock(id: String) -> CueChatMessage {
-        // If we have a streamingState, use it
-        if let state = streamingState {
-            let updatedState = state.toggledThinkingBlock(id: id)
-            return updateStreamingState(updatedState)
-        }
-        // For non-streaming messages with thinking blocks, create a new StreamingState
-        else if hasThinkingBlocks {
-            // Extract thinking block IDs from content
-            let thinkingBlockIds = extractThinkingBlockIds(from: content.contentAsString)
-
-            // Create initial StreamingState
-            var newState = StreamingState(
-                content: content.contentAsString,
-                isComplete: true, // It's not streaming
-                startTime: nil,   // No streaming timestamps
-                thinkingEndTime: nil,
-                endTime: nil
-            )
-
-            // Initialize expandedThinkingBlocks with default values (expanded)
-            for blockId in thinkingBlockIds {
-                newState.expandedThinkingBlocks[blockId] = true
-            }
-
-            // Toggle the specific block
-            newState = newState.toggledThinkingBlock(id: id)
-            return updateStreamingState(newState)
-        }
-
-        // If no thinking blocks, return unchanged
-        return self
-    }
-
-    /// Checks if a thinking block is expanded
-    func isThinkingBlockExpanded(id: String) -> Bool {
-        return streamingState?.isThinkingBlockExpanded(id: id) ?? true
-    }
-
     /// Updates the streaming state of a message
     func updateStreamingState(_ newState: StreamingState) -> CueChatMessage {
         switch self {
         case .local(let msg, let stableId, _):
             return .local(msg, stableId: stableId, streamingState: newState)
-        case .openAI(let msg):
-            // Convert openAI messages to local messages with the streaming state
-            return .local(msg, stableId: id, streamingState: newState)
+        case .openAI(let msg, let stableId, _):
+            return .local(msg, stableId: stableId, streamingState: newState)
         default:
             return self
         }

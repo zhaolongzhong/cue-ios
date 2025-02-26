@@ -1,6 +1,7 @@
+import os
 import Foundation
 import Dependencies
-import os.log
+import CueCommon
 
 enum AssistantError: LocalizedError {
     case networkError

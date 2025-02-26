@@ -1,17 +1,16 @@
 //
-//  GeminiChatView.swift
+//  CueChatView.swift
 //  CueApp
 //
 
 import SwiftUI
-import CueGemini
 
-public struct GeminiChatView: View {
-    @StateObject private var viewModel: GeminiChatViewModel
+public struct CueChatView: View {
+    @StateObject private var viewModel: CueChatViewModel
     @FocusState private var isFocused: Bool
     @State private var scrollThrottleWorkItem: DispatchWorkItem?
-    @AppStorage(ProviderSettingsKeys.SelectedModel.gemini) private var storedModel: ChatModel = .gemini20FlashExp
-    @AppStorage(ProviderSettingsKeys.SelectedConversation.gemini) private var storedConversationId: String?
+    @AppStorage(ProviderSettingsKeys.SelectedModel.openai) private var storedModel: ChatModel = .gpt4oMini
+    @AppStorage(ProviderSettingsKeys.SelectedConversation.openai) private var storedConversationId: String?
 
     @State private var showingToolsList = false
     @State private var showingSidebar = false
@@ -20,7 +19,7 @@ public struct GeminiChatView: View {
 
     private let isCompanion: Bool
 
-    public init(_ viewModelFactory: @escaping () -> GeminiChatViewModel, isCompanion: Bool = false) {
+    public init(_ viewModelFactory: @escaping () -> CueChatViewModel, isCompanion: Bool = false) {
         _viewModel = StateObject(wrappedValue: viewModelFactory())
         self.isCompanion = isCompanion
     }
@@ -28,11 +27,11 @@ public struct GeminiChatView: View {
     public var body: some View {
         BaseChatView(
             viewModel: viewModel,
-            provider: .gemini,
-            availableModels: ChatModel.models(for: .gemini),
+            provider: .cue,
+            availableModels: ChatModel.models(for: .cue),
             storedModel: $storedModel,
             isCompanion: isCompanion,
-            showVoiceChat: true,
+            showVoiceChat: false,
             showingSidebar: $showingSidebar,
             isHovering: $isHovering,
             scrollThrottleWorkItem: $scrollThrottleWorkItem,
@@ -51,7 +50,11 @@ public struct GeminiChatView: View {
     private func handleOnAppear() {
         viewModel.model = storedModel
         viewModel.setStoredConversationId(storedConversationId)
+
         Task {
+            if storedConversationId == nil {
+                await viewModel.loadConversations()
+            }
             await viewModel.startServer()
         }
     }

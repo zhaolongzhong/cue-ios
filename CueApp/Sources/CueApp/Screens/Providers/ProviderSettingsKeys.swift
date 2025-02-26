@@ -121,6 +121,26 @@ public enum ProviderSettingsKeys {
         }
     }
 
+    /// Keys for selected conversationId
+    public enum SelectedConversation {
+        public static let local = "selectedLocalConversation"
+        public static let openai = "selectedOpenAIConversation"
+        public static let anthropic = "selectedAnthropicConversation"
+        public static let gemini = "selectedGeminiConversation"
+        public static let cue = "selectedCueConversation"
+
+        /// Gets the appropriate selected model key for a provider
+        public static func key(for provider: Provider) -> String {
+            switch provider {
+            case .local: return local
+            case .openai: return openai
+            case .anthropic: return anthropic
+            case .gemini: return gemini
+            case .cue: return cue
+            }
+        }
+    }
+
     public enum BaseURL {
         public static let local = "local_base_url"
         public static let openai = "openai_base_url"

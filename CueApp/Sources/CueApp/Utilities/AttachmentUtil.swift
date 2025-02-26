@@ -118,3 +118,33 @@ extension NSImage {
     }
 }
 #endif
+
+
+func convertToContents(attachments: [Attachment]) async -> [OpenAI.ContentBlock] {
+    var contentBlocks: [OpenAI.ContentBlock] = []
+    // Process attachments
+    for attachment in attachments {
+        switch attachment.type {
+        case .document:
+            do {
+                let fullText = try await AttachmentUtil.extractText(from: attachment)
+                let maxCharacters = 20000
+                let truncatedText = fullText.count > maxCharacters
+                ? String(fullText.prefix(maxCharacters)) + " [truncated]"
+                : fullText
+                let prefixedText = "<file_name>\(attachment.name)<file_name>" + truncatedText
+                let documentBlock = OpenAI.ContentBlock(
+                    type: .text,
+                    text: prefixedText
+                )
+                contentBlocks.append(documentBlock)
+            } catch {
+                AppLog.log.error("Error when processing attachment: \(error)")
+            }
+        case .image:
+            break
+        }
+    }
+
+    return contentBlocks
+}

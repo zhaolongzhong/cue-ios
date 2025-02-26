@@ -3,7 +3,7 @@ import Foundation
 extension Gemini {
     public enum ChatMessageParam: Codable, Sendable, Identifiable {
         case userMessage(ModelContent)
-        case assistantMessage(ModelContent)
+        case assistantMessage(ModelContent, GenerateContentResponse? = nil)
         case toolMessage(ModelContent)
 
         private enum CodingKeys: String, CodingKey {
@@ -14,7 +14,7 @@ extension Gemini {
             var container = encoder.container(keyedBy: CodingKeys.self)
             switch self {
             case .userMessage(let message),
-                 .assistantMessage(let message),
+                 .assistantMessage(let message, _),
                  .toolMessage(let message):
                 try container.encode(message, forKey: .parts)
             }
@@ -43,7 +43,7 @@ extension Gemini {
             switch self {
             case .userMessage(let message):
                 return "user_\(message)"
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 return "assistant_\(message)"
             case .toolMessage(let message):
                 return "tool_\(message)"
@@ -64,7 +64,7 @@ extension Gemini {
         public var content: String {
             switch self {
             case .userMessage(let message),
-                 .assistantMessage(let message),
+                 .assistantMessage(let message, _),
                  .toolMessage(let message):
                 return message.parts.first?.text ?? ""
             }
@@ -72,7 +72,7 @@ extension Gemini {
 
         public var functionCalls: [FunctionCall] {
             switch self {
-            case .assistantMessage(let message):
+            case .assistantMessage(let message, _):
                 return message.parts.compactMap { part in
                     if case .functionCall(let functionCall) = part {
                         return functionCall
@@ -94,6 +94,17 @@ extension Gemini {
 
         public var toolArgs: String? {
             functionCalls.map { $0.prettyArgs }.joined(separator: ", ")
+        }
+
+        public var modelContent: ModelContent {
+            switch self {
+            case .assistantMessage(let modelContent, _):
+                return modelContent
+            case .userMessage(let modelContent):
+                return modelContent
+            case .toolMessage(let modelContent):
+                return modelContent
+            }
         }
     }
 }

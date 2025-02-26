@@ -57,7 +57,7 @@ final class EnvironmentConfig: URLConfiguration, Sendable {
 
     static func createProductionConfig() -> EnvironmentConfig {
         do {
-            let domain: String = try Configuration.value(for: "BASE_URL")
+            let domain: String = try AppConfiguration.value(for: "BASE_URL")
             // BASE_URL in Debug.xcconfig or Release.xcconfig must be url without scheme and double quote
             return EnvironmentConfig(domain: domain)
         } catch {

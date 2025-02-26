@@ -2,7 +2,6 @@ import SwiftUI
 import CueAnthropic
 
 struct MessageBubble: View {
-    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
     let message: CueChatMessage
@@ -21,8 +20,7 @@ struct MessageBubble: View {
     init(
         message: CueChatMessage,
         isExpanded: Bool = false,
-        onShowMore: @escaping (CueChatMessage) -> Void = { _ in },
-        onToggleThinking: @escaping (CueChatMessage, String) -> Void = { _, _ in }
+        onShowMore: @escaping (CueChatMessage) -> Void = { _ in }
     ) {
         self.message = message
         self.isExpanded = isExpanded
@@ -151,7 +149,6 @@ struct MessageBubbleContent: View {
                     case .text(let content):
                         StyledTextView(
                             content: content,
-                            colorScheme: colorScheme,
                             maxCharacters: maxCharacters,
                             isExpanded: isExpanded,
                             onShowMore: { onShowMore(message) }
