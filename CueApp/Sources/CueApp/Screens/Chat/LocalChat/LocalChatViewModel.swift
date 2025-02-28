@@ -74,13 +74,7 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
         for updatedMessage in updatedMessages {
             let cueChatMessage = CueChatMessage.openAI(updatedMessage)
-            addOrUpdateMessage(cueChatMessage)
-        }
-
-        // Save each response message to the repository
-        for message in updatedMessages {
-            let cueChatMessage = CueChatMessage.openAI(message)
-            await saveMessage(cueChatMessage)
+            addOrUpdateMessage(cueChatMessage, persistInCache: true)
         }
     }
 
@@ -159,18 +153,17 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     override func sendMessage() async {
-        let (userMessage, _, _) = await prepareOpenAIMessage()
+        let (userMessage, _) = await prepareOpenAIMessage()
 
         // Add user message to chat
         let cueChatMessage = CueChatMessage.openAI(userMessage, stableId: UUID().uuidString)
-        addOrUpdateMessage(cueChatMessage)
+        addOrUpdateMessage(cueChatMessage, persistInCache: true)
 
         // Get recent messages
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
         newMessage = ""
-        attachments.removeAll()
         currentTurn = 0
 
         do {
@@ -188,19 +181,6 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         isLoading = false
     }
 
-    private func saveMessage(_ message: CueChatMessage) async {
-        guard let conversationId = selectedConversationId else {
-            AppLog.log.warning("Cannot save message because no conversation is selected")
-            return
-        }
-
-        let messageModel = MessageModel(from: message, conversationId: conversationId)
-        let saveResult = await messageRepository.saveMessage(messageModel: messageModel)
-        if case .failure(let error) = saveResult {
-            self.error = ChatError.unknownError(error.localizedDescription)
-        }
-    }
-
     // MARK: Streaming
     private func updateStreamingMessage(for id: String, content: String, isComplete: Bool = false) {
         var updatedContent = content
@@ -211,22 +191,13 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
             updatedContent += "</think>"
         }
         streamingStates[id]?.isComplete = isComplete
-        let newMessage: CueChatMessage
-        if cueChatMessages.firstIndex(where: { $0.id == id }) != nil {
-            newMessage = CueChatMessage.streamingMessage(
-                id: id,
-                content: updatedContent,
-                toolCalls: streamingStates[id]?.toolCalls ?? [],
-                streamingState: streamingStates[id]
-            )
-        } else {
-            newMessage = CueChatMessage.streamingMessage(
-                id: id,
-                content: updatedContent,
-                toolCalls: streamingStates[id]?.toolCalls ?? [],
-                streamingState: streamingStates[id]
-            )
-        }
+
+        let newMessage = CueChatMessage.streamingMessage(
+            id: id,
+            content: updatedContent,
+            toolCalls: streamingStates[id]?.toolCalls ?? [],
+            streamingState: streamingStates[id]
+        )
         if streamingMessageId == id {
             self.streamingMessageContent = updatedContent
         }

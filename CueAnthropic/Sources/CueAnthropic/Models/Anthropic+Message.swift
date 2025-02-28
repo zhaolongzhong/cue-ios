@@ -5,7 +5,7 @@ extension Anthropic {
     public typealias AnthropicMessage = Message
 
     // MARK: - Anthropic Message Models
-    public struct Message: Codable, Sendable {
+    public struct Message: Codable, Equatable, Sendable {
         public let id: String
         public let content: [ContentBlock]
         public let model: String
@@ -55,7 +55,7 @@ extension Anthropic {
     }
 
     // MARK: - Usage
-    public struct Usage: Codable, Sendable {
+    public struct Usage: Codable, Equatable, Sendable {
         public let cacheCreationInputTokens: Int?
         public let cacheReadInputTokens: Int?
         public let inputTokens: Int?

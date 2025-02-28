@@ -88,10 +88,6 @@ extension AnthropicChatViewModel {
             isStreamingMode: true
         )
         streamingStates[id] = currentStreamState
-
-        // Initialize streaming message content
-        streamedMessages[id] = ""
-        streamedThinkings[id] = ""
     }
 
     private func updateStreamingStateWithText(_ id: String, _ text: String) {
@@ -101,8 +97,6 @@ extension AnthropicChatViewModel {
         }
 
         // Update the streamed content
-        streamedMessages[id] = (streamedMessages[id] ?? "") + text
-        streamedMessage += text
         if var state = streamingStates[id] {
             if let textBlock = state.contentBlocks.filter({ $0.isText }).first {
                 state.contentBlocks[state.contentBlocks.firstIndex(of: textBlock)!] = Anthropic.ContentBlock(content: textBlock.text + text)
@@ -124,8 +118,6 @@ extension AnthropicChatViewModel {
             streamingStates[id] = state
             currentStreamState = state
         }
-        streamedThinkings[id] = (streamedThinkings[id] ?? "") + thinking
-        streamedThinking += thinking
     }
 
     private func updateStreamingStateWithToolUseBlocks(_ id: String, _ toolUseBlocks: [Anthropic.ToolUseBlock]) {

@@ -3,9 +3,9 @@ import Foundation
 
 /// The model's response to a generate content request.
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
-public struct GenerateContentResponse: Sendable {
+public struct GenerateContentResponse: Equatable, Sendable {
   /// Token usage metadata for processing the generate content request.
-    public struct UsageMetadata: Sendable {
+    public struct UsageMetadata: Equatable, Sendable {
     /// The number of tokens in the request prompt.
     public let promptTokenCount: Int
 
@@ -83,7 +83,7 @@ public struct GenerateContentResponse: Sendable {
 /// A struct representing a possible reply to a content generation prompt. Each content generation
 /// prompt may produce multiple candidate responses.
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
-public struct CandidateResponse: Sendable {
+public struct CandidateResponse: Equatable, Sendable {
   /// The response's content.
   public let content: ModelContent
 
@@ -109,14 +109,14 @@ public struct CandidateResponse: Sendable {
 
 /// A collection of source attributions for a piece of content.
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
-public struct CitationMetadata: Sendable {
+public struct CitationMetadata: Equatable, Sendable {
   /// A list of individual cited sources and the parts of the content to which they apply.
   public let citationSources: [Citation]
 }
 
 /// A struct describing a source attribution.
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
-public struct Citation: Sendable {
+public struct Citation: Equatable, Sendable {
   /// The inclusive beginning of a sequence in a model response that derives from a cited source.
   public let startIndex: Int
 
@@ -157,7 +157,7 @@ public enum FinishReason: String, Sendable {
 
 /// A metadata struct containing any feedback the model had on the prompt it was provided.
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
-public struct PromptFeedback: Sendable {
+public struct PromptFeedback: Equatable, Sendable {
   /// A type describing possible reasons to block a prompt.
     public enum BlockReason: String, Sendable {
     /// The block reason is unknown.

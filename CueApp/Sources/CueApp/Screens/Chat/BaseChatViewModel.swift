@@ -189,7 +189,7 @@ public class BaseChatViewModel: ObservableObject {
         }
     }
 
-    func addOrUpdateMessage(_ message: CueChatMessage, persistInCache: Bool = true) {
+    func addOrUpdateMessage(_ message: CueChatMessage, persistInCache: Bool = false) {
         withAnimation {
             if let existingIndex = self.cueChatMessages.firstIndex(where: { $0.id == message.id }) {
                 self.cueChatMessages[existingIndex] = message

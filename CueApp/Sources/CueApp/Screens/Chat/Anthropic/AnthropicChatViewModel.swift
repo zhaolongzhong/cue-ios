@@ -14,34 +14,20 @@ import CueAnthropic
 
 @MainActor
 public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
-    // Streaming state
-    var streamingStates: [String: StreamingState] = [:]
-    @Published var streamedMessages: [String: String] = [:]
-    @Published var streamedMessage: String = ""
-    @Published var streamedThinkings: [String: String] = [:]
-    @Published var streamedThinking: String = ""
-
     @Published var currentStreamState: StreamingState? {
         didSet {
             if let newState = currentStreamState, let id = newState.id {
-                if let index = cueChatMessages.firstIndex(where: { $0.id == newState.id }) {
-                    let newMessage = CueChatMessage.streamingAnthropicMessage(
-                        id: id,
-                        streamingState: newState
-                    )
-                    cueChatMessages[index] = newMessage
-                } else {
-                    let newMessage = CueChatMessage.streamingAnthropicMessage(
-                        id: id,
-                        streamingState: newState
-                    )
-                    cueChatMessages.append(newMessage)
-                }
+                let newMessage = CueChatMessage.streamingAnthropicMessage(
+                    id: id,
+                    streamingState: newState
+                )
+                addOrUpdateMessage(newMessage, persistInCache: false)
             }
         }
     }
 
     private var currentTurn: Int = 0
+    var streamingStates: [String: StreamingState] = [:]
     let logger = Logger(subsystem: "Anthropic", category: "AnthropicChatViewModel")
     let anthropic: Anthropic
     var streamingTask: Task<Void, Error>?
@@ -59,12 +45,6 @@ public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
         updateTools()
     }
 
-    private func resetStreamingState() {
-        streamedMessages.removeAll()
-        streamedThinkings.removeAll()
-        streamedThinking = ""
-    }
-
     func cancelStreaming() {
         streamingTask?.cancel()
         streamingTask = nil
@@ -73,12 +53,6 @@ public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
 
     // Helper method to update messages by replacing existing ones and adding new ones
     func updateChatMessages(with updatedMessages: [CueChatMessage]) {
-        // Create a dictionary of existing messages by ID for fast lookup
-        var existingMessagesById = [String: Int]()
-        for (index, message) in cueChatMessages.enumerated() {
-            existingMessagesById[message.id] = index
-        }
-
         // Process each updated message
         for updatedMessage in updatedMessages {
             let newChatMessage = CueChatMessage.anthropic(
@@ -86,7 +60,7 @@ public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
                 stableId: updatedMessage.id,
                 streamingState: streamingStates[updatedMessage.id]
             )
-            addOrUpdateMessage(newChatMessage)
+            addOrUpdateMessage(newChatMessage, persistInCache: true)
         }
     }
 
@@ -101,7 +75,6 @@ public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
-        resetStreamingState()
         newMessage = ""
 
         await streamWithAgentLoop(messageParams)

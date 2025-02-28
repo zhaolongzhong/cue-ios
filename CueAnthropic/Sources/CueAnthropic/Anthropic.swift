@@ -37,7 +37,7 @@ public struct Anthropic {
     }
 
     // MARK: - Message Types
-    public struct MessageParam: Codable, Sendable {
+    public struct MessageParam: Codable, Equatable, Sendable {
         public let role: String
         public let content: [ContentBlock]
 
@@ -51,7 +51,7 @@ public struct Anthropic {
         }
     }
 
-    public struct ToolResultMessage: Codable, Sendable {
+    public struct ToolResultMessage: Codable, Equatable, Sendable {
         public let role: String
         public let content: [ToolResultContent]
 
