@@ -19,31 +19,38 @@ struct AssistantDetailView: View {
     }
 
     var body: some View {
-        VStack {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                assistantDetailsHeader
+                Divider()
+                assistantSettingsSection
+            }
+            .padding()
             #if os(macOS)
-            MacHeader(
-                title: "Details",
-                onDismiss: { dismiss() }
-            )
+            .frame(maxWidth: 600)
             #endif
-
-            AssistantDetailContent(viewModel: viewModel)
         }
-        .defaultNavigationBar(title: "Details")
-        .inputAlert(
-            title: "Update Name",
-            message: "Enter a new name for this assistant",
-            text: $viewModel.newName,
-            isPresented: $viewModel.showingNameEdit,
-            onSave: { _ in
+        .navigationTitle("\(viewModel.assistant.name) Details")
+        .defaultNavigationBar(title: "\(viewModel.assistant.name) Details")
+        .alert("Update Name", isPresented: $viewModel.showingNameEdit) {
+            TextField("Enter name", text: $viewModel.newName)
+                .autocorrectionDisabled()
+
+            Button("Cancel", role: .cancel) {
+                viewModel.newName = viewModel.assistant.name
+            }
+
+            Button("Save") {
                 Task {
                     await viewModel.updateName()
                 }
             }
-        )
+        } message: {
+            Text("Enter a new name for this assistant")
+        }
         .numberInputAlert(
             title: "Set Max Turns",
-            message: "Enter the maximum number of turns for agent automaticaly run.",
+            message: "Enter the maximum number of turns for agent automatically run.",
             isPresented: $viewModel.showingMaxTurnsEdit,
             inputValue: $viewModel.tempMaxTurns,
             onSave: { newValue in
@@ -70,132 +77,191 @@ struct AssistantDetailView: View {
                 }
             }
         }
-}
-}
+    }
 
-// MARK: - Content View
-struct AssistantDetailContent: View {
-    @ObservedObject var viewModel: AssistantDetailViewModel
+    private var assistantDetailsHeader: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "person.circle")
+                .font(.system(size: 24))
+                .foregroundColor(.blue)
+                .frame(width: 40, height: 40)
 
-    var body: some View {
-        List {
-            AssistantNameRow(
-                name: viewModel.assistant.name,
-                onTap: viewModel.prepareNameEdit
-            )
+            VStack(alignment: .leading) {
+                Text(viewModel.assistant.name)
+                    .font(.headline)
 
-            AssistantIDView(id: viewModel.assistant.id)
+                Text(viewModel.description.isEmpty ? "No description" : viewModel.description)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
 
-            AssistantModelRow(
-                selectedModel: $viewModel.selectedModel,
-                availableModels: viewModel.availableModels
-            ) { newValue in
-                Task {
-                    await viewModel.updateMetadata(model: newValue)
+    private var assistantSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Basic Settings Section
+            Section {
+                GroupBox {
+                    settingRow(
+                        title: "Name",
+                        value: viewModel.assistant.name
+                    ) {
+                        viewModel.prepareNameEdit()
+                    }
+                    .padding(.all, 4)
+
+                    Divider()
+                        .padding(.all, 4)
+
+                    settingRow(
+                        title: "ID",
+                        value: viewModel.assistant.id,
+                        isCopiable: true
+                    ) {
+                        // No action for ID, just for display
+                    }
+                    .padding(.all, 4)
                 }
+            } header: {
+                AssistantDetailSectionHeader(title: "Basic")
             }
 
-            AssistantSettingsRow(
-                title: "Instruction",
-                systemName: "text.bubble",
-                onTap: { viewModel.showingInstructionEdit = true }
-            )
-
-            AssistantSettingsRow(
-                title: "Description",
-                systemName: "doc.text",
-                onTap: { viewModel.showingDescriptionEdit = true }
-            )
-
-            AssistantMaxTurnsRow(
-                maxTurns: viewModel.maxTurns,
-                onTap: viewModel.prepareMaxTurnsEdit
-            )
-        }
-        #if !os(iOS)
-        .listStyle(.automatic)
-        #endif
-    }
-}
-
-// MARK: - Row Components
-struct AssistantNameRow: View {
-    let name: String
-    let onTap: () -> Void
-
-    var body: some View {
-        SettingsRow(
-            systemIcon: "person.circle",
-            title: "Name",
-            value: name,
-            onTap: onTap
-        )
-    }
-}
-
-struct AssistantModelRow: View {
-    @Binding var selectedModel: String
-    let availableModels: [String]
-    let onChange: (String) -> Void
-
-    var body: some View {
-        SettingsRow(
-            systemIcon: "gearshape",
-            title: "Model",
-            trailing: AnyView(
-                HStack {
-                    Spacer()
-                    Picker("", selection: $selectedModel) {
-                        ForEach(availableModels, id: \.self) { model in
-                            Text(model)
-                                .lineLimit(1)
-                                .tag(model)
+            // Model Settings Section
+            Section {
+                GroupBox {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Model")
+                                .font(.body)
+                        }
+                        Spacer()
+                        Picker("", selection: $viewModel.selectedModel) {
+                            ForEach(viewModel.availableModels, id: \.self) { model in
+                                Text(model)
+                                    .lineLimit(1)
+                                    .tag(model)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(minWidth: 120)
+                        .onChange(of: viewModel.selectedModel) { _, newValue in
+                            Task {
+                                await viewModel.updateMetadata(model: newValue)
+                            }
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .font(.system(size: 12))
-                    #if os(macOS)
-                    .frame(width: 120)
-                    #else
-                    .frame(minWidth: 120)
-                    #endif
-                    .tint(Color.secondary)
-                    .onChange(of: selectedModel) { _, newValue in
-                        onChange(newValue)
+                    .padding(.all, 4)
+
+                    Divider()
+                        .padding(.all, 4)
+
+                    settingRow(
+                        title: "Max Turns",
+                        description: "Maximum number of turns to run automatically",
+                        value: "\(viewModel.maxTurns)"
+                    ) {
+                        viewModel.prepareMaxTurnsEdit()
+                    }
+                    .padding(.all, 4)
+                }
+            } header: {
+                AssistantDetailSectionHeader(title: "Model Settings")
+            }
+
+            // Content Settings Section
+            Section {
+                GroupBox {
+                    settingRow(
+                        title: "Instruction",
+                        description: "System prompt for the assistant",
+                        value: viewModel.instruction.isEmpty ? "Not set" : "Edit"
+                    ) {
+                        viewModel.showingInstructionEdit = true
+                    }
+                    .padding(.all, 4)
+
+                    Divider()
+                        .padding(.all, 4)
+
+                    settingRow(
+                        title: "Description",
+                        description: "Brief description of this assistant",
+                        value: viewModel.description.isEmpty ? "Not set" : "Edit"
+                    ) {
+                        viewModel.showingDescriptionEdit = true
+                    }
+                    .padding(.all, 4)
+                }
+            } header: {
+                AssistantDetailSectionHeader(title: "Content")
+            }
+        }
+    }
+
+    private func settingRow(
+        title: String,
+        description: String? = nil,
+        value: String,
+        isCopiable: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(title)
+                        .font(.body)
+                    if let description = description {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
-            )
-        )
+                Spacer()
+
+                if isCopiable {
+                    HStack(spacing: 4) {
+                        Text(value)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        Button {
+                            #if os(macOS)
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(value, forType: .string)
+                            #else
+                            UIPasteboard.general.string = value
+                            #endif
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.caption)
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
+                } else {
+                    Text(value)
+                        .foregroundColor(.secondary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
-struct AssistantSettingsRow: View {
+struct AssistantDetailSectionHeader: View {
     let title: String
-    let systemName: String
-    let onTap: () -> Void
 
     var body: some View {
-        SettingsRow(
-            systemIcon: systemName,
-            title: title,
-            showChevron: true,
-            onTap: onTap
-        )
-    }
-}
-
-struct AssistantMaxTurnsRow: View {
-    let maxTurns: Int
-    let onTap: () -> Void
-
-    var body: some View {
-        SettingsRow(
-            systemIcon: "number",
-            title: "Max Turns",
-            value: String(maxTurns),
-            showChevron: true,
-            onTap: onTap
-        )
+        Text(title)
+            .font(.headline)
+            .fontWeight(.medium)
+            .foregroundColor(.almostPrimary)
     }
 }

@@ -75,7 +75,7 @@ extension HomeViewModel {
 
     private func parseQuotesFromMessage(_ message: CueChatMessage?) -> [QuoteContent] {
         guard let jsonString = extractJSONFromResponse(message) else {
-            AppLog.log.error("Failed to extract JSON from message")
+            AppLog.log.error("Failed to extract JSON from message: \(String(describing: message))")
             return []
         }
 

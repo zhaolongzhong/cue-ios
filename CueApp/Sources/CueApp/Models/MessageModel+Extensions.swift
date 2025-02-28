@@ -138,11 +138,95 @@ extension MessageContent {
     }
 
     public var toolArgs: String? {
-        if let toolCalls = toolCalls {
-            return toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
-        } else if let toolUses = toolUses {
-            return toolUses.map { $0.prettyInput }.joined(separator: ", ")
+        // For toolCalls
+        if let toolCalls = self.toolCalls {
+            return toolCalls.map { toolCall -> String in
+                // Using prettyArguments for better formatting
+                return "\(toolCall.function.name): \(toolCall.function.prettyArguments)"
+            }.joined(separator: "; ")
         }
+
+        // For toolUses
+        if let toolUses = self.toolUses {
+            return toolUses.map { toolUse -> String in
+                let inputStr = toolUse.input.map { key, value in
+                    "\(key): \(value.asString ?? String(describing: value))"
+                }.joined(separator: ", ")
+                return "\(toolUse.name): \(inputStr)"
+            }.joined(separator: "; ")
+        }
+
+        // Manual parsing of content array if needed
+        if case .array(let array) = self.content {
+            var results: [String] = []
+
+            // Check for tool_use blocks
+            let toolUseItems = array.filter { item in
+                if case .object(let dict) = item, dict["type"]?.asString == "tool_use" {
+                    return true
+                }
+                return false
+            }
+
+            if !toolUseItems.isEmpty {
+                for item in toolUseItems {
+                    if case .object(let dict) = item,
+                       let name = dict["name"]?.asString,
+                       case .object(let inputDict) = dict["input"] {
+                        let inputStr = inputDict.map { key, value in
+                            "\(key): \(value.asString ?? String(describing: value))"
+                        }.joined(separator: ", ")
+                        results.append("\(name): \(inputStr)")
+                    }
+                }
+            }
+
+            // Check for function_call blocks
+            let toolCallItems = array.filter { item in
+                if case .object(let dict) = item,
+                   (dict["type"]?.asString == "function" || dict["type"]?.asString == "tool_call") {
+                    return true
+                }
+                return false
+            }
+
+            if !toolCallItems.isEmpty {
+                for item in toolCallItems {
+                    if case .object(let dict) = item,
+                       let function = dict["function"],
+                       case .object(let functionDict) = function,
+                       let name = functionDict["name"]?.asString,
+                       let args = functionDict["arguments"]?.asString {
+                        // Try to format arguments as pretty JSON
+                        let prettyArgs = JSONFormatter.prettyString(from: args) ?? args
+                        results.append("\(name): \(prettyArgs)")
+                    }
+                }
+            }
+
+            // Check for tool_result blocks
+            let toolResultItems = array.filter { item in
+                if case .object(let dict) = item, dict["type"]?.asString == "tool_result" {
+                    return true
+                }
+                return false
+            }
+
+            if !toolResultItems.isEmpty {
+                for item in toolResultItems {
+                    if case .object(let dict) = item,
+                       let name = dict["name"]?.asString,
+                       let content = dict["content"]?.asString {
+                        results.append("\(name): \(content)")
+                    }
+                }
+            }
+
+            if !results.isEmpty {
+                return results.joined(separator: "; ")
+            }
+        }
+
         return nil
     }
 }

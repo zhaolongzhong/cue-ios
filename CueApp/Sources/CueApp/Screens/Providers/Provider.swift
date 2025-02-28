@@ -41,7 +41,7 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
 
     var iconName: String {
         switch self {
-        case .openai: return "openai"
+        case .openai: return "openai-icon"
         case .anthropic: return "anthropic"
         case .gemini: return "sparkle"
         case .cue: return ""

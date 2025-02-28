@@ -87,6 +87,7 @@ public class BaseChatViewModel: ObservableObject {
     // Tools management
     func updateTools() {
         tools = self.toolManager.getToolsJSONValue(model: self.model.id)
+        print("inx tools: \(tools.count)")
     }
 
     private func setupToolsSubscription() {
@@ -95,6 +96,7 @@ public class BaseChatViewModel: ObservableObject {
             .sink { [weak self] _ in
                 guard let self = self else { return }
                 self.availableTools = self.toolManager.getTools()
+                updateTools()
             }
             .store(in: &cancellables)
         #endif

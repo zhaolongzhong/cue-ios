@@ -42,7 +42,7 @@ struct ToolMessageView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 4) {
             assistantMessageView
             viewToolDetailButton
             if expansionState != .collapsed {
@@ -58,7 +58,7 @@ struct ToolMessageView: View {
                     }
                 }
                 .frame(maxHeight: expansionState == .fullyExpanded ? .infinity : 150)
-                .background(Color.secondary.opacity(0.1))
+                .background(Color.clear)
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(
@@ -74,12 +74,12 @@ struct ToolMessageView: View {
                 #endif
             }
         }
-        .padding(.bottom, message.isToolMessage ? 8 : 0)
+        .padding(.vertical, 4)
     }
 
     private var assistantMessageView: some View {
         Group {
-            if message.isTool, let text = assistantMessage {
+            if message.isTool, let text = assistantMessage?.trimmingCharacters(in: .whitespacesAndNewlines) {
                 StyledTextView(content: text)
             }
         }
@@ -98,18 +98,26 @@ struct ToolMessageView: View {
                         Text(headerText)
                             .font(.callout)
                             .foregroundColor(.primary.opacity(0.8))
+                        Spacer()
                         Image(systemName: "chevron.right")
                             .foregroundColor(.secondary)
                             .font(.system(size: 12))
                             .rotationEffect(.degrees(isExpanded ? 90 : 0))
                             .animation(.easeInOut(duration: 0.2), value: isExpanded)
+
                     }
+                    .padding(8)
+                    .frame(maxWidth: 250)
+                    .contentShape(Rectangle())
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.gray.opacity(isExpanded ? 0 : 0.5), lineWidth: 0.5)
+                    )
                 }
             )
             .buttonStyle(.plain)
             Spacer()
         }
-        .padding(.vertical, 8)
     }
 
     private var controlButtons: some View {

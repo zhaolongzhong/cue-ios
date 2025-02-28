@@ -50,7 +50,11 @@ struct CodeBlockView: View {
                         : Color(red: 0.12, green: 0.12, blue: 0.12)
                 )
         }
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(lineWidth: 0.5).opacity(0.5))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(lineWidth: 0.5)
+                .opacity(isBorderVisible ? 0.5 : 0)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 

@@ -53,15 +53,15 @@ public final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Handles an OpenAI message by appending the assistant's response and processing any tool calls.
     private func handleOpenAIMessage(_ msg: OpenAI.AssistantMessage, conversation: inout [Client.MessageParamType]) async -> Bool {
-        guard let toolManager = self.toolManager else {
-            return false
-        }
         let nativeAssistantMsg = OpenAI.ChatMessageParam.assistantMessage(msg)
         let wrapLocal: (OpenAI.ChatMessageParam) -> CueChatMessage = { message in
                 .openAI(message, stableId: UUID().uuidString)
         }
         appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: wrapLocal, conversation: &conversation)
 
+        guard let toolManager = self.toolManager else {
+            return false
+        }
         if let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
             let toolMessages = await toolManager.handleToolCall(toolCalls)
             for tm in toolMessages {
@@ -77,10 +77,6 @@ public final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Handles an Anthropic message by processing its content blocks.
     private func handleAnthropicMessage(_ msg: Anthropic.Message, conversation: inout [Client.MessageParamType]) async -> Bool {
-        guard let toolManager else {
-            AppLog.log.warning("Tool manager not set, ignoring tool use.")
-            return false
-        }
         var processedToolUse = false
         AppLog.log.debug("Usage: \(String(describing: msg))")
         let wrapLocal: (Anthropic.ChatMessageParam) -> CueChatMessage = { message in
@@ -106,6 +102,10 @@ public final class AgentLoop<Client: ChatClientProtocol> {
                 )
                 appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: wrapLocal, conversation: &conversation)
 
+                guard let toolManager else {
+                    AppLog.log.warning("Tool manager not set, ignoring tool use.")
+                    return false
+                }
                 let toolResultMessage = await toolManager.callToolUse(toolBlock)
                 let toolResultMessageParam = Anthropic.ChatMessageParam.toolMessage(
                     toolResultMessage
@@ -120,10 +120,6 @@ public final class AgentLoop<Client: ChatClientProtocol> {
 
     /// Handles an OpenAI message by appending the assistant's response and processing any tool calls.
     private func handleLocalMessage(_ msg: OpenAI.AssistantMessage, conversation: inout [Client.MessageParamType]) async -> Bool {
-        guard let toolManager else {
-            AppLog.log.warning("Tool manager not set, ignoring tool use.")
-            return false
-        }
         let nativeAssistantMsg = OpenAI.ChatMessageParam.assistantMessage(msg)
 
         // Use a wrapper function to handle the local message case
@@ -132,7 +128,10 @@ public final class AgentLoop<Client: ChatClientProtocol> {
         }
 
         appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: wrapLocal, conversation: &conversation)
-
+        guard let toolManager else {
+            AppLog.log.warning("Tool manager not set, ignoring tool use.")
+            return false
+        }
         if let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
             let toolMessages = await toolManager.handleToolCall(toolCalls)
             for tm in toolMessages {

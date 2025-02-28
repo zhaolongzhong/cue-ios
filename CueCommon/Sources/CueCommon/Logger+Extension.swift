@@ -7,7 +7,7 @@ import Foundation
 
 // Extension to pretty print Encodable objects
 extension Encodable {
-    func prettyPrinted() -> String? {
+    public func prettyPrinted() -> String? {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(self)

@@ -115,7 +115,8 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
         .slidingSidebar(
             isShowing: showingSidebar,
             width: 280,
-            edge: .trailing
+            edge: .trailing,
+            sidebarOpacity: 0.95
         ) {
             ConversationsView(
                 isShowing: showingSidebar,
@@ -199,6 +200,24 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
     private var macToolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Spacer()
+            Button {
+                createNewConversation()
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .modifier(ToolbarIconStyle())
+                    .foregroundStyle(.primary)
+            }
+            .help("Create New Session")
+            Button {
+                withAnimation(.easeInOut) {
+                    showingSidebar.wrappedValue.toggle()
+                }
+            } label: {
+                Image(systemName: "list.bullet")
+                    .modifier(ToolbarIconStyle())
+                    .foregroundStyle(.primary)
+            }
+            .help("Open Sessions")
             Menu {
                 Button("Open companion chat") {
                     openCompanionChat(viewModel.model)
@@ -218,34 +237,6 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
             }
             .help("More Options")
             .menuIndicator(.hidden)
-            Button {
-                withAnimation(.easeInOut) {
-                    openCompanionChat(viewModel.model)
-                }
-            } label: {
-                Image(systemName: "rectangle.on.rectangle")
-                    .modifier(ToolbarIconStyle())
-                    .foregroundStyle(.primary)
-            }
-            .help("Open Companion Chat")
-            Button {
-                createNewConversation()
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .modifier(ToolbarIconStyle())
-                    .foregroundStyle(.primary)
-            }
-            .help("Create New Session")
-            Button {
-                withAnimation(.easeInOut) {
-                    showingSidebar.wrappedValue.toggle()
-                }
-            } label: {
-                Image(systemName: "bubble.left.and.text.bubble.right")
-                    .modifier(ToolbarIconStyle())
-                    .foregroundStyle(.primary)
-            }
-            .help("Open Sessions")
         }
     }
     #endif
@@ -378,9 +369,10 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
     }
 
     func openLiveChat() {
+        print("inx provider: \(provider)")
         switch provider {
         case .openai:
-            openWindow(id: WindowId.openaiLiveChatWindow.rawValue, value: WindowId.geminiLiveChatWindow.rawValue)
+            openWindow(id: WindowId.openaiLiveChatWindow.rawValue, value: WindowId.openaiLiveChatWindow.rawValue)
         case .gemini:
             openWindow(id: WindowId.geminiLiveChatWindow.rawValue, value: WindowId.geminiLiveChatWindow.rawValue)
         default:

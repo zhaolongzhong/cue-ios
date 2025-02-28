@@ -43,7 +43,7 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     override func updateTools() {
-        super.updateTools()
+//        super.updateTools()
         self.geminiTool = toolManager.getGeminiTool()
     }
 

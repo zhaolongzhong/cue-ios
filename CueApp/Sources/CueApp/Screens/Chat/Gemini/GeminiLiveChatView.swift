@@ -42,9 +42,10 @@ public struct GeminiLiveChatView: View {
         }
         .onAppear {
             Task {
-                await viewModel.startServer()
+//                await viewModel.startServer()
             }
         }
+        .withCoordinatorAlert(isCompanion: true)
         .onChange(of: viewModel.error) { _, error in
             if let error = error {
                 coordinator.showError(error.message)

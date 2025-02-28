@@ -15,6 +15,8 @@ struct SlidingSidebar<Content: View>: View {
     let showOverlay: Bool
     let overlayOpacity: Double
     let animationDuration: Double
+    let sidebarOpacity: Double
+    let blurIntensity: CGFloat
 
     init(
         isShowing: Binding<Bool>,
@@ -22,6 +24,8 @@ struct SlidingSidebar<Content: View>: View {
         edge: Edge = .trailing,
         showOverlay: Bool = true,
         overlayOpacity: Double = 0.2,
+        sidebarOpacity: Double = 0.7,
+        blurIntensity: CGFloat = 5,
         animationDuration: Double = 0.3,
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
@@ -31,6 +35,8 @@ struct SlidingSidebar<Content: View>: View {
         self.edge = edge
         self.showOverlay = showOverlay
         self.overlayOpacity = overlayOpacity
+        self.sidebarOpacity = sidebarOpacity
+        self.blurIntensity = blurIntensity
         self.animationDuration = animationDuration
         self.onDismiss = onDismiss
         self.content = content()
@@ -50,10 +56,40 @@ struct SlidingSidebar<Content: View>: View {
                     }
             }
 
-            // The actual sidebar content
-            content
-                .frame(width: width)
-                .offset(x: offsetValue)
+            ZStack {
+                #if os(macOS)
+                VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+                #else
+                // Fallback for non-macOS platforms
+                Rectangle()
+                    .fill(Color.white.opacity(0.8))
+                    .blur(radius: 3)
+                #endif
+
+                // Vertical line on the left/right edge (depending on sidebar position)
+                HStack(spacing: 0) {
+                    if edge == .trailing {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 0.5)
+                            .frame(maxHeight: .infinity)
+                        Spacer()
+                    } else {
+                        Spacer()
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 1)
+                            .frame(maxHeight: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                }
+
+                // Content on top
+                content
+            }
+            .frame(width: width)
+            .clipShape(Rectangle())
+            .offset(x: offsetValue)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: edge == .trailing ? .trailing : .leading)
         .animation(.easeInOut(duration: animationDuration), value: isShowing)
@@ -80,6 +116,8 @@ extension View {
     ///   - edge: Edge from which the sidebar appears (.leading or .trailing)
     ///   - showOverlay: Whether to show an overlay behind the sidebar
     ///   - overlayOpacity: Opacity of the overlay (0-1)
+    ///   - sidebarOpacity: Opacity of the sidebar background (0-1)
+    ///   - blurIntensity: Intensity of the blur effect
     ///   - animationDuration: Duration of the slide animation
     ///   - onDismiss: Optional closure to run when sidebar is dismissed
     ///   - content: The content view of the sidebar
@@ -88,9 +126,11 @@ extension View {
         isShowing: Binding<Bool>,
         width: CGFloat = 280,
         edge: Edge = .trailing,
-        showOverlay: Bool = true,
+        showOverlay: Bool = false,
         overlayOpacity: Double = 0.2,
-        animationDuration: Double = 0.3,
+        sidebarOpacity: Double = 0.7,
+        blurIntensity: CGFloat = 5,
+        animationDuration: Double = 0.2,
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
@@ -104,6 +144,8 @@ extension View {
                 edge: edge,
                 showOverlay: showOverlay,
                 overlayOpacity: overlayOpacity,
+                sidebarOpacity: sidebarOpacity,
+                blurIntensity: blurIntensity,
                 animationDuration: animationDuration,
                 onDismiss: onDismiss,
                 content: content
