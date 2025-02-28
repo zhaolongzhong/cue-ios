@@ -4,7 +4,7 @@ import CueOpenAI
 import CueAnthropic
 
 public enum CueAssistantMessage {
-    case local(OpenAI.AssistantMessage)
+    case local(LocalAssistantMessage)
     case openAI(OpenAI.AssistantMessage)
     case anthropic(Anthropic.AnthropicMessage)
 }
@@ -25,12 +25,12 @@ public protocol ChatClientProtocol {
 }
 
 extension LocalClient: ChatClientProtocol {
-    public typealias MessageParamType = OpenAI.ChatMessageParam
+    public typealias MessageParamType = LocalChatMessageParam
     public typealias ChatCompletionType = LocalResponse
 
     public func createChatCompletion(
         model: String,
-        messages: [OpenAI.ChatMessageParam],
+        messages: [LocalChatMessageParam],
         tools: [JSONValue]? = nil,
         toolChoice: String? = nil
     ) async throws -> LocalResponse {

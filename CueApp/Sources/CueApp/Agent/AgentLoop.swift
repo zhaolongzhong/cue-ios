@@ -119,24 +119,24 @@ public final class AgentLoop<Client: ChatClientProtocol> {
     }
 
     /// Handles an OpenAI message by appending the assistant's response and processing any tool calls.
-    private func handleLocalMessage(_ msg: OpenAI.AssistantMessage, conversation: inout [Client.MessageParamType]) async -> Bool {
+    private func handleLocalMessage(_ msg: LocalAssistantMessage, conversation: inout [Client.MessageParamType]) async -> Bool {
         guard let toolManager else {
             AppLog.log.warning("Tool manager not set, ignoring tool use.")
             return false
         }
-        let nativeAssistantMsg = OpenAI.ChatMessageParam.assistantMessage(msg)
+        let nativeAssistantMsg = LocalChatMessageParam.assistantMessage(msg)
 
         // Use a wrapper function to handle the local message case
-        let wrapLocal: (OpenAI.ChatMessageParam) -> CueChatMessage = { message in
+        let wrapLocal: (LocalChatMessageParam) -> CueChatMessage = { message in
                 .local(message, stableId: UUID().uuidString)
         }
 
         appendWrappedMessage(nativeMsg: nativeAssistantMsg, wrap: wrapLocal, conversation: &conversation)
 
         if let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
-            let toolMessages = await toolManager.handleToolCall(toolCalls)
+            let toolMessages = await toolManager.callToolsLocal(toolCalls)
             for tm in toolMessages {
-                let nativeToolMsg = OpenAI.ChatMessageParam.toolMessage(tm)
+                let nativeToolMsg = LocalChatMessageParam.toolMessage(tm)
                 appendWrappedMessage(nativeMsg: nativeToolMsg, wrap: wrapLocal, conversation: &conversation)
             }
             return true

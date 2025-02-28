@@ -9,6 +9,7 @@ public struct StreamingState: Codable, Equatable, Sendable {
     var contentBlocks: [Anthropic.ContentBlock] = []
     var chunks: [LocalStreamChunk] = []
     var toolCalls: [ToolCall] = []
+    var toolCallsLocal: [LocalToolCall] = []
     var isComplete: Bool = false
     var startTime: Date?
     var thinkingEndTime: Date?

@@ -28,12 +28,12 @@ extension CueChatMessage {
     static func streamingMessage(
         id: String,
         content: String,
-        toolCalls: [ToolCall] = [],
+        toolCalls: [LocalToolCall] = [],
         streamingState: StreamingState? = nil
     ) -> Self {
         .local(
             .assistantMessage(
-                OpenAI.AssistantMessage(
+                LocalAssistantMessage(
                     role: Role.assistant.rawValue,
                     content: content,
                     toolCalls: toolCalls
@@ -294,10 +294,17 @@ extension CueChatMessage {
         }
     }
 
-    var openAIChatParam: OpenAI.ChatMessageParam? {
+    var localChatParam: LocalChatMessageParam? {
         switch self {
         case .local(let msg, _, _):
             return msg
+        default:
+            return nil
+        }
+    }
+
+    var openAIChatParam: OpenAI.ChatMessageParam? {
+        switch self {
         case .openAI(let msg, _, _):
             return msg
         default:

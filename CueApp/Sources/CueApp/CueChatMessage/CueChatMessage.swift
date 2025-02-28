@@ -5,7 +5,7 @@ import CueAnthropic
 import CueGemini
 
 public enum CueChatMessage: Encodable, Sendable, Identifiable {
-    case local(OpenAI.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
+    case local(LocalChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
     case openAI(OpenAI.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
     case anthropic(Anthropic.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
     case gemini(Gemini.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)

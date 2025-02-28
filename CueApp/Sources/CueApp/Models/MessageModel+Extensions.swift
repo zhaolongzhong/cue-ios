@@ -295,7 +295,7 @@ extension MessageModel {
             switch type {
             case "local":
                 if let messageValue = jsonObject["message"],
-                   let message = decodeFromJSONValue(messageValue, type: OpenAI.ChatMessageParam.self) {
+                   let message = decodeFromJSONValue(messageValue, type: LocalChatMessageParam.self) {
                     var stableId: String? = nil
                     if case .string(let id) = jsonObject["stableId"] {
                         stableId = id

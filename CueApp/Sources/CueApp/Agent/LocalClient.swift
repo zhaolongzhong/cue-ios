@@ -1,8 +1,5 @@
 import Foundation
 import CueCommon
-import CueOpenAI
-import CueAnthropic
-import CueGemini
 
 // MARK: - Endpoint
 enum LocalEndpoint: Endpoint {
@@ -45,7 +42,7 @@ public final class LocalClient {
     public func send(
         model: String,
         stream: Bool = false,
-        messages: [OpenAI.ChatMessageParam],
+        messages: [LocalChatMessageParam],
         tools: [JSONValue]? = nil,
         toolChoice: String? = nil
     ) async throws -> LocalResponse {
@@ -65,7 +62,7 @@ public final class LocalClient {
 public struct LocalRequest: Encodable {
     let model: String
     let stream: Bool
-    let messages: [OpenAI.ChatMessageParam]
+    let messages: [LocalChatMessageParam]
     let tools: [JSONValue]?
     let toolChoice: String?
 
@@ -80,7 +77,7 @@ public struct LocalRequest: Encodable {
     init(
         model: String,
         stream: Bool = false,
-        messages: [OpenAI.ChatMessageParam] = [],
+        messages: [LocalChatMessageParam] = [],
         tools: [JSONValue]? = nil,
         toolChoice: String? = nil
     ) {
@@ -95,7 +92,7 @@ public struct LocalRequest: Encodable {
 public struct LocalResponse: Decodable, Sendable, DebugPrintable {
     public let model: String
     public let createdAt: Date
-    public let message: OpenAI.AssistantMessage
+    public let message: LocalAssistantMessage
     public let doneReason: String?
     public let done: Bool
     public let totalDuration: Int64
@@ -138,7 +135,7 @@ public struct LocalResponse: Decodable, Sendable, DebugPrintable {
             )
         }
 
-        self.message = try container.decode(OpenAI.AssistantMessage.self, forKey: .message)
+        self.message = try container.decode(LocalAssistantMessage.self, forKey: .message)
         self.doneReason = try container.decodeIfPresent(String.self, forKey: .doneReason)
         self.done = try container.decode(Bool.self, forKey: .done)
         self.totalDuration = try container.decode(Int64.self, forKey: .totalDuration)
@@ -176,7 +173,7 @@ public struct LocalMessage: Codable, Sendable, DebugPrintable {
 public struct LocalStreamChunk: Codable, Equatable, Sendable {
     public let model: String
     public let createdAt: Date
-    public let message: OpenAI.AssistantMessage
+    public let message: LocalAssistantMessage
     public let done: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -205,7 +202,7 @@ public struct LocalStreamChunk: Codable, Equatable, Sendable {
             )
         }
 
-        self.message = try container.decode(OpenAI.AssistantMessage.self, forKey: .message)
+        self.message = try container.decode(LocalAssistantMessage.self, forKey: .message)
         self.done = try container.decode(Bool.self, forKey: .done)
     }
 }
@@ -213,7 +210,7 @@ public struct LocalStreamChunk: Codable, Equatable, Sendable {
 extension LocalClient {
     public func sendStream(
         model: String,
-        messages: [OpenAI.ChatMessageParam],
+        messages: [LocalChatMessageParam],
         tools: [JSONValue]? = nil,
         toolChoice: String? = nil,
         onChunk: @escaping @MainActor (LocalStreamChunk) -> Void

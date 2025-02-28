@@ -67,7 +67,7 @@ extension CueChatMessage {
         case .local(let msg, let stableId, _):
             return .local(msg, stableId: stableId, streamingState: newState)
         case .openAI(let msg, let stableId, _):
-            return .local(msg, stableId: stableId, streamingState: newState)
+            return .openAI(msg, stableId: stableId, streamingState: newState)
         default:
             return self
         }

@@ -44,13 +44,13 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         }
     }
 
-    func prepareForMessageParams(_ messageParams: [CueChatMessage]) -> [OpenAI.ChatMessageParam] {
-        let openAIChatMessageParams = messageParams.compactMap { message -> OpenAI.ChatMessageParam? in
+    func prepareForMessageParams(_ messageParams: [CueChatMessage]) -> [LocalChatMessageParam] {
+        let openAIChatMessageParams = messageParams.compactMap { message -> LocalChatMessageParam? in
             switch message {
-            case .local(let msg, _, _), .openAI(let msg, _, _):
+            case .local(let msg, _, _):
                 switch msg {
                 case .userMessage(let userMessage):
-                    return OpenAI.ChatMessageParam.userMessage(.init(role: "user", contentString: userMessage.contentAsString))
+                    return LocalChatMessageParam.userMessage(.init(role: "user", contentString: userMessage.contentAsString))
                 default:
                     return msg
                 }
@@ -73,13 +73,13 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         let agent = AgentLoop(chatClient: localClient, toolManager: toolManager, model: model.id)
         let updatedMessages = try await agent.run(with: messageParams, request: completionRequest)
         for updatedMessage in updatedMessages {
-            let cueChatMessage = CueChatMessage.openAI(updatedMessage)
+            let cueChatMessage = CueChatMessage.local(updatedMessage)
             addOrUpdateMessage(cueChatMessage)
         }
 
         // Save each response message to the repository
         for message in updatedMessages {
-            let cueChatMessage = CueChatMessage.openAI(message)
+            let cueChatMessage = CueChatMessage.local(message)
             await saveMessage(cueChatMessage)
         }
     }
@@ -110,7 +110,7 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
                 }
                 if let toolCalls = chunk.message.toolCalls {
                     logger.debug("Tool calls: \(toolCalls)")
-                    self.streamingStates[id]?.toolCalls.append(contentsOf: toolCalls)
+                    self.streamingStates[id]?.toolCallsLocal.append(contentsOf: toolCalls)
                     self.updateStreamingMessage(for: id, content: self.streamingStates[id]?.content ?? "", isComplete: chunk.done)
                 }
 
@@ -121,7 +121,7 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
                     // Clear the current streaming id once finished.
                     self.streamingMessageId = nil
                     self.updateStreamingMessage(for: id, content: self.streamingStates[id]?.content ?? "", isComplete: chunk.done)
-                    if let toolCalls = self.streamingStates[id]?.toolCalls, !toolCalls.isEmpty {
+                    if let toolCalls = self.streamingStates[id]?.toolCallsLocal, !toolCalls.isEmpty {
                         Task {
                             await self.handleStreamingToolCalls(toolCalls)
                         }
@@ -137,12 +137,12 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         isLoading = false
     }
 
-    func handleStreamingToolCalls(_ toolCalls: [ToolCall]) async {
+    func handleStreamingToolCalls(_ toolCalls: [LocalToolCall]) async {
         logger.debug("Handle streaming tool calls: \(toolCalls)")
         guard toolCalls.isEmpty == false else {
             return
         }
-        let toolMessages = await toolManager.callTools(toolCalls)
+        let toolMessages = await toolManager.callToolsLocal(toolCalls)
         for tm in toolMessages {
             let nativeToolMsg = OpenAI.ChatMessageParam.toolMessage(tm)
             addOrUpdateMessage(.openAI(nativeToolMsg))
@@ -163,8 +163,8 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         #if os(macOS)
         if let textAreaContent = self.axManager.textAreaContentList.first {
             let context = textAreaContent.getTextAreaContext()
-            let contextMessage = OpenAI.ChatMessageParam.assistantMessage(
-                OpenAI.AssistantMessage(role: Role.assistant.rawValue, content: context)
+            let contextMessage = LocalChatMessageParam.assistantMessage(
+                LocalAssistantMessage(role: Role.assistant.rawValue, content: context)
             )
             messageParams.append(.local(contextMessage))
         }
@@ -182,7 +182,7 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         if !attachmentContentBlocks.isEmpty {
             contentBlocks.append(contentsOf: attachmentContentBlocks)
         }
-        let userMessage: OpenAI.ChatMessageParam = .userMessage(
+        let userMessage: LocalChatMessageParam = .userMessage(
             OpenAI.MessageParam(
                 role: "user",
                 contentBlocks: contentBlocks
@@ -190,14 +190,14 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
         )
 
         // Create CueChatMessage and save to repository
-        let cueChatMessage = CueChatMessage.openAI(userMessage, stableId: UUID().uuidString)
+        let cueChatMessage = CueChatMessage.local(userMessage, stableId: UUID().uuidString)
         addOrUpdateMessage(cueChatMessage)
 
         // Use string content type for request
-        let simpleMessage = OpenAI.ChatMessageParam.userMessage(
+        let simpleMessage = LocalChatMessageParam.userMessage(
             OpenAI.MessageParam(role: Role.user.rawValue, content: .string(userMessage.content.contentAsString))
         )
-        messageParams.append(CueChatMessage.openAI(simpleMessage))
+        messageParams.append(CueChatMessage.local(simpleMessage))
 
         isLoading = true
         newMessage = ""
@@ -242,19 +242,20 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
             updatedContent += "</think>"
         }
         streamingStates[id]?.isComplete = isComplete
+        let toolCalls = streamingStates[id]?.toolCallsLocal ?? []
         let newMessage: CueChatMessage
         if cueChatMessages.firstIndex(where: { $0.id == id }) != nil {
             newMessage = CueChatMessage.streamingMessage(
                 id: id,
                 content: updatedContent,
-                toolCalls: streamingStates[id]?.toolCalls ?? [],
+                toolCalls: toolCalls,
                 streamingState: streamingStates[id]
             )
         } else {
             newMessage = CueChatMessage.streamingMessage(
                 id: id,
                 content: updatedContent,
-                toolCalls: streamingStates[id]?.toolCalls ?? [],
+                toolCalls: toolCalls,
                 streamingState: streamingStates[id]
             )
         }
