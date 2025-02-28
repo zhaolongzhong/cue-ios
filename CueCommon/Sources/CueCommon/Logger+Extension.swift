@@ -16,7 +16,7 @@ extension Encodable {
                 return nil
             }
 
-            dictionary.removeValue(forKey: "tools")
+//            dictionary.removeValue(forKey: "tools") // inx
 
             let prettyData = try JSONSerialization.data(withJSONObject: dictionary, options: [.prettyPrinted])
             return String(data: prettyData, encoding: .utf8)

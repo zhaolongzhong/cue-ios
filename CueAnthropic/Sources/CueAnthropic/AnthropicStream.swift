@@ -29,21 +29,13 @@ extension AnthropicClient {
         let finalBodyData = try JSONSerialization.data(withJSONObject: bodyDict)
         request.httpBody = finalBodyData
 
-        log.debug("DEBUG-STREAM: Request URL: \(url)")
-        log.debug("DEBUG-STREAM: Request Headers: \(request.allHTTPHeaderFields ?? [:])")
-
         let task = Task {
-            log.debug("DEBUG-STREAM: Starting stream request...")
-
             let (bytes, response) = try await session.bytes(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 log.error("DEBUG-STREAM: Invalid response - not HTTPURLResponse")
                 throw Anthropic.Error.invalidResponse
             }
-
-            log.debug("DEBUG-STREAM: Response Status: \(httpResponse.statusCode)")
-            log.debug("DEBUG-STREAM: Response Headers: \(httpResponse.allHeaderFields)")
 
             if !(200...299).contains(httpResponse.statusCode) {
                 try await handleHttpError(bytes: bytes, httpResponse: httpResponse)

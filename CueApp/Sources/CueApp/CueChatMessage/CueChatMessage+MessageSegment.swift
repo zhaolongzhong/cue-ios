@@ -253,6 +253,15 @@ extension CueChatMessage {
                 let newSegments = extractSegments(from: contentBlock.text, isThinking: contentBlock.isThinking)
                 finalSegments.append(contentsOf: newSegments)
             }
+        } else if case .openAI(let msg, _, let streamingState) = self {
+            let content: String
+            if let currentContent = streamingState?.content {
+                content = currentContent
+            } else {
+                content = msg.content.contentAsString
+            }
+            let newSegments = extractSegments(from: content, isThinking: false)
+            finalSegments.append(contentsOf: newSegments)
         } else {
             let newSegments = extractSegments(from: self.content.contentAsString)
             finalSegments.append(contentsOf: newSegments)

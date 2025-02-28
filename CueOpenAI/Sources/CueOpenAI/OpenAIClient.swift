@@ -2,8 +2,8 @@ import Foundation
 
 @MainActor
 final class OpenAIClient {
-    private let configuration: OpenAI.Configuration
-    private let session: URLSession
+    let configuration: OpenAI.Configuration
+    let session: URLSession
     
     init(configuration: OpenAI.Configuration, session: URLSession = .shared) {
         self.configuration = configuration

@@ -1,7 +1,7 @@
 import Foundation
 
 extension Gemini {
-    public enum ChatMessageParam: Codable, Sendable, Identifiable {
+    public enum ChatMessageParam: Codable, Equatable, Sendable, Identifiable {
         case userMessage(ModelContent)
         case assistantMessage(ModelContent, GenerateContentResponse? = nil)
         case toolMessage(ModelContent)

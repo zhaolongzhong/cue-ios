@@ -4,7 +4,7 @@ struct ToolMessageView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var expansionState: ExpansionState = .collapsed
     @State private var isHovering = false
-    var message: CueChatMessage
+    let message: CueChatMessage
 
     enum ExpansionState {
         case collapsed
@@ -79,7 +79,7 @@ struct ToolMessageView: View {
 
     private var assistantMessageView: some View {
         Group {
-            if let text = assistantMessage {
+            if message.isTool, let text = assistantMessage {
                 StyledTextView(content: text)
             }
         }

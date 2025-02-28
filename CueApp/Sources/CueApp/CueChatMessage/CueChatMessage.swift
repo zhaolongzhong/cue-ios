@@ -4,7 +4,7 @@ import CueOpenAI
 import CueAnthropic
 import CueGemini
 
-public enum CueChatMessage: Encodable, Sendable, Identifiable {
+public enum CueChatMessage: Encodable, Sendable, Identifiable, Equatable {
     case local(OpenAI.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
     case openAI(OpenAI.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
     case anthropic(Anthropic.ChatMessageParam, stableId: String? = nil, streamingState: StreamingState? = nil)
@@ -25,34 +25,5 @@ public enum CueChatMessage: Encodable, Sendable, Identifiable {
         case .cue(let msg, _, _):
             try container.encode(msg)
         }
-    }
-}
-
-extension CueChatMessage: Equatable {
-    public static func == (lhs: CueChatMessage, rhs: CueChatMessage) -> Bool {
-        // Basic identity check
-        guard lhs.id == rhs.id, lhs.content == rhs.content else {
-            return false
-        }
-
-        // If both are .local, compare the streamingState in detail
-        if case .local(_, _, let lhsStreaming) = lhs,
-           case .local(_, _, let rhsStreaming) = rhs {
-            if let lhsStreamingState = lhsStreaming,
-               let rhsStreamingState = rhsStreaming {
-                return lhsStreamingState.isComplete == rhsStreamingState.isComplete
-            }
-        }
-        if case .anthropic(_, _, let lhsStreaming) = lhs,
-           case .anthropic(_, _, let rhsStreaming) = rhs {
-            if let lhsStreamingState = lhsStreaming,
-               let rhsStreamingState = rhsStreaming {
-                let res = lhsStreamingState.isComplete == rhsStreamingState.isComplete &&
-                       lhsStreamingState.contentBlocks == rhsStreamingState.contentBlocks
-
-                return res
-            }
-        }
-        return true
     }
 }

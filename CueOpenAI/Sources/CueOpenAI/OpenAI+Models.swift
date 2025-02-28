@@ -2,7 +2,7 @@ import Foundation
 import CueCommon
 
 extension OpenAI {
-    public struct Usage: Codable, Sendable {
+    public struct Usage: Codable, Equatable, Sendable {
         public let totalTokens: Int
         public let completionTokens: Int
         public let completionTokensDetails: TokenDetails
@@ -26,7 +26,7 @@ extension OpenAI {
         }
     }
 
-    public struct TokenDetails: Codable, Sendable {
+    public struct TokenDetails: Codable, Equatable, Sendable {
         public let rejectedPredictionTokens: Int
         public let audioTokens: Int
         public let acceptedPredictionTokens: Int
@@ -62,7 +62,7 @@ extension OpenAI {
     }
 
 
-    public struct PromptTokenDetails: Codable, Sendable {
+    public struct PromptTokenDetails: Codable, Equatable, Sendable {
         public let cachedTokens: Int
         enum CodingKeys: String, CodingKey {
             case cachedTokens = "cached_tokens"
@@ -81,7 +81,7 @@ extension OpenAI {
     }
     
     // MARK: - Choice and Message
-    public struct Choice: Codable, Sendable {
+    public struct Choice: Codable, Equatable, Sendable {
         public let finishReason: String
         public let message: AssistantMessage
         public let index: Int
@@ -121,7 +121,7 @@ extension OpenAI {
     }
 
     // MARK: - ChatCompletion
-    public struct ChatCompletion: Codable, Sendable {
+    public struct ChatCompletion: Codable, Equatable, Sendable {
         public let systemFingerprint: String
         public let usage: Usage
         public let choices: [Choice]
@@ -152,7 +152,7 @@ extension OpenAI {
     }
 
     // MARK: - Tool message
-    public struct ToolMessage: Codable, Sendable {
+    public struct ToolMessage: Codable, Equatable, Sendable {
         public let role: String
         public let content: String
         public let toolCallId: String
@@ -170,112 +170,6 @@ extension OpenAI {
             case role
         }
     }
-    
-    public enum ChatMessageParam: Codable, Sendable, Identifiable {
-        case userMessage(MessageParam)
-        case assistantMessage(AssistantMessage, ChatCompletion? = nil)
-        case toolMessage(ToolMessage)
-        
-        // Add coding keys if needed
-        private enum CodingKeys: String, CodingKey {
-            case role, content, toolCalls, toolCallId
-        }
-        
-        // Implement encoding/decoding logic as needed
-        public func encode(to encoder: Encoder) throws {
-            _ = encoder.container(keyedBy: CodingKeys.self)
-            switch self {
-            case .userMessage(let message):
-                try message.encode(to: encoder)
-            case .assistantMessage(let message, _):
-                try message.encode(to: encoder)
-            case .toolMessage(let message):
-                try message.encode(to: encoder)
-            }
-        }
-        
-        public init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            let role = try container.decode(String.self, forKey: .role)
-            
-            switch role {
-            case "user":
-                self = .userMessage(try MessageParam(from: decoder))
-            case "assistant":
-                self = .assistantMessage(try AssistantMessage(from: decoder), nil)
-            case "tool":
-                self = .toolMessage(try ToolMessage(from: decoder))
-            default:
-                throw DecodingError.dataCorruptedError(forKey: .role, in: container, debugDescription: "Unknown role type")
-            }
-        }
-        
-        public var id: String {
-            switch self {
-            case .userMessage(let message):
-                return "user_\(message)"
-            case .assistantMessage(let message, _):
-                return "assistant_\(message)"
-            case .toolMessage(let message):
-                return "tool_\(message)"
-            }
-        }
-        
-        public var role: String {
-            switch self {
-            case .userMessage:
-                return "user"
-            case .assistantMessage:
-                return "assistant"
-            case .toolMessage:
-                return "tool"
-            }
-        }
-        
-        public var content: ContentValue {
-            switch self {
-            case .userMessage(let message):
-                return message.content
-            case .assistantMessage(let message, _):
-                return .string(message.content ?? "")
-            case .toolMessage(let message):
-                return .string(message.content)
-            }
-        }
-
-        public var contentBlocks: [ContentBlock] {
-            switch self {
-            case .userMessage(let message):
-                if case .string(let text) = content {
-                    return [.text(text)]
-                } else if case .array(let array) = content {
-                    return array
-                }
-                return []
-            case .assistantMessage(let message, _):
-                return [.text(message.content ?? "")]
-            case .toolMessage(let message):
-                return [.text(message.content)]
-            }
-        }
-
-        public var toolCalls: [ToolCall] {
-            switch self {
-            case .assistantMessage(let message, _):
-                return message.toolCalls ?? []
-            default:
-                return []
-            }
-        }
-
-        public var toolName: String? {
-            toolCalls.map{ $0.function.name }.joined(separator: ", ")
-        }
-
-        public var toolArgs: String? {
-            toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
-        }
-    }
 
     public struct ChatCompletionRequest: Codable, Sendable {
         public let model: String
@@ -284,11 +178,13 @@ extension OpenAI {
         public let temperature: Double
         public let tools: [JSONValue]?
         public let toolChoice: String?
-        
+        public let stream: Bool
+
         private enum CodingKeys: String, CodingKey {
             case model, messages, temperature, tools
             case maxTokens = "max_completion_tokens"
             case toolChoice = "tool_choice"
+            case stream = "stream"
         }
         
         public init(
@@ -297,7 +193,8 @@ extension OpenAI {
             maxTokens: Int = 1000,
             temperature: Double = 1.0,
             tools: [JSONValue]? = nil,
-            toolChoice: String? = nil
+            toolChoice: String? = nil,
+            stream: Bool = false
         ) {
             self.model = model
             self.messages = messages
@@ -305,6 +202,7 @@ extension OpenAI {
             self.temperature = temperature
             self.tools = tools
             self.toolChoice = toolChoice
+            self.stream = stream
         }
     }
     

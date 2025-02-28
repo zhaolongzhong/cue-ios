@@ -5,8 +5,6 @@
 
 import os
 import Foundation
-import Combine
-import Dependencies
 import CueCommon
 import CueGemini
 import CueOpenAI
@@ -54,7 +52,7 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
         let (userMessage, _) = await prepareGeminiMessage()
 
         // Add user message to chat
-        addOrUpdateMessage(.gemini(userMessage))
+        addOrUpdateMessage(.gemini(userMessage), persistInCache: true)
         newMessage = ""
         try await generateContent()
     }
@@ -99,7 +97,7 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
             ))]
         )
         let newMessage = CueChatMessage.gemini(Gemini.ChatMessageParam.toolMessage(functionResponse), stableId: UUID().uuidString)
-        addOrUpdateMessage(newMessage)
+        addOrUpdateMessage(newMessage, persistInCache: true)
         try await generateContent()
     }
 

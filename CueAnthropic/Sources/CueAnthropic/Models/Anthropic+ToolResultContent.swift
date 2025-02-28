@@ -5,7 +5,7 @@
 
 extension Anthropic {
     // MARK: - ToolResultContent
-    public struct ToolResultContent: Codable, Sendable {
+    public struct ToolResultContent: Codable, Equatable, Sendable {
         public let isError: Bool
         public let toolUseId: String
         public let type: String  // This should be "tool_result"

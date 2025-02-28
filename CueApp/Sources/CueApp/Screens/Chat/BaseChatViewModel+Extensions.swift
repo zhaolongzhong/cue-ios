@@ -131,14 +131,14 @@ extension BaseChatViewModel {
     /// Prepares an OpenAI user message with all content sources
     /// - Returns: OpenAI ChatMessageParam, text area context (if any), and user message text
     @MainActor
-    func prepareOpenAIMessage() async -> (OpenAI.ChatMessageParam, String?, String) {
+    func prepareOpenAIMessage() async -> (OpenAI.ChatMessageParam, String) {
         // Collect content blocks
         var contentBlocks = await collectContentBlocks()
 
         // Get text area context
-        let textAreaContext = getTextAreaContext()
-
-        contentBlocks.append(OpenAI.ContentBlock.text(textAreaContext ?? ""))
+        if let textAreaContext = getTextAreaContext() {
+            contentBlocks.append(OpenAI.ContentBlock.text(textAreaContext))
+        }
 
         // Create user message
         let userMessage: OpenAI.ChatMessageParam = .userMessage(
@@ -148,7 +148,7 @@ extension BaseChatViewModel {
             )
         )
 
-        return (userMessage, textAreaContext, newMessage)
+        return (userMessage, newMessage)
     }
 }
 
@@ -157,14 +157,14 @@ extension BaseChatViewModel {
     /// Prepares an OpenAI-format message for local processing
     /// - Returns: OpenAI ChatMessageParam, text area context (if any), and user message text
     @MainActor
-    func prepareLocalMessage() async -> (OpenAI.ChatMessageParam, String?, String) {
+    func prepareLocalMessage() async -> (OpenAI.ChatMessageParam, String) {
         // Collect content blocks
         var contentBlocks = await collectContentBlocks()
 
         // Get text area context
-        let textAreaContext = getTextAreaContext()
-
-        contentBlocks.append(OpenAI.ContentBlock.text(textAreaContext ?? ""))
+        if let textAreaContext = getTextAreaContext() {
+            contentBlocks.append(OpenAI.ContentBlock.text(textAreaContext))
+        }
 
         // Create user message with contentBlocks
         let userMessageWithBlocks: OpenAI.ChatMessageParam = .userMessage(
@@ -180,6 +180,6 @@ extension BaseChatViewModel {
             OpenAI.MessageParam(role: "user", content: .string(userMessageString))
         )
 
-        return (simpleUserMessage, textAreaContext, newMessage)
+        return (simpleUserMessage, newMessage)
     }
 }

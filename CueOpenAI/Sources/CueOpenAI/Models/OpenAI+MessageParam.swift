@@ -1,5 +1,5 @@
 extension OpenAI {
-    public struct MessageParam: Codable, Sendable {
+    public struct MessageParam: Codable, Equatable, Sendable {
         public let role: String
         public let content: ContentValue
 

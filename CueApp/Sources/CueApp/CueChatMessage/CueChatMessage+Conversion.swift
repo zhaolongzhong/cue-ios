@@ -60,6 +60,23 @@ extension CueChatMessage {
         )
     }
 
+    static func streamingOpenAIMessage(
+        id: String,
+        streamingState: StreamingState
+    ) -> Self {
+        .openAI(
+            .assistantMessage(
+                .init(
+                    role: Role.assistant.rawValue,
+                    content: streamingState.content,
+                    toolCalls: streamingState.toolCalls.count > 0 ? streamingState.toolCalls : nil
+                )
+            ),
+            stableId: id,
+            streamingState: streamingState
+        )
+    }
+
     var role: String {
         switch self {
         case .local(let msg, _, _): return msg.role
@@ -147,8 +164,10 @@ extension CueChatMessage {
             if case .assistantMessage(let message, _) = msg {
                 return message.hasToolCall
             }
-        case .openAI(let msg, _, _):
-            if case .assistantMessage(let message, _) = msg {
+        case .openAI(let msg, _, let streamingState):
+            if streamingState != nil && streamingState!.toolCalls.count > 0 {
+                return true
+            } else if case .assistantMessage(let message, _) = msg {
                 return message.hasToolCall
             }
         case .anthropic(let msg, _, _):

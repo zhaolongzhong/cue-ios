@@ -61,7 +61,7 @@ public struct ChatAPI {
 
 @MainActor
 public struct CompletionsAPI {
-    private let client: OpenAIClient
+    let client: OpenAIClient
     
     init(client: OpenAIClient) {
         self.client = client

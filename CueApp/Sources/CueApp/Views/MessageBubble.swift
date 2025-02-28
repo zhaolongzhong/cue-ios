@@ -164,7 +164,7 @@ struct MessageBubbleContent: View {
                         Text(fileData.fileName)
                     }
                 }
-            }
+           }
         }
     }
 }

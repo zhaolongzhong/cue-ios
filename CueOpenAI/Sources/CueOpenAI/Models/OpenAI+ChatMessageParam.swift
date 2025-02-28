@@ -1,18 +1,20 @@
 //
-//  MessageParam.swift
-//  CueAnthropic
+//  OpenAI+ChatMessageParam.swift
+//  CueOpenAI
 //
 
-extension Anthropic {
-    public enum ChatMessageParam: Codable, Equatable, Sendable, Identifiable {
+extension OpenAI {
+    public enum ChatMessageParam: Codable, Sendable, Identifiable, Equatable {
         case userMessage(MessageParam)
-        case assistantMessage(MessageParam, AnthropicMessage? = nil)
-        case toolMessage(ToolResultMessage)
+        case assistantMessage(AssistantMessage, ChatCompletion? = nil)
+        case toolMessage(ToolMessage)
 
+        // Add coding keys if needed
         private enum CodingKeys: String, CodingKey {
             case role, content, toolCalls, toolCallId
         }
 
+        // Implement encoding/decoding logic as needed
         public func encode(to encoder: Encoder) throws {
             _ = encoder.container(keyedBy: CodingKeys.self)
             switch self {
@@ -31,23 +33,18 @@ extension Anthropic {
 
             switch role {
             case "user":
-                do {
-                    let messageParam = try MessageParam(from: decoder)
-                    self = .userMessage(messageParam)
-                } catch {
-                    let toolResultMessage = try ToolResultMessage(from: decoder)
-                    self = .toolMessage(toolResultMessage)
-                }
+                self = .userMessage(try MessageParam(from: decoder))
             case "assistant":
-                self = .assistantMessage(try MessageParam(from: decoder), nil)
+                self = .assistantMessage(try AssistantMessage(from: decoder), nil)
+            case "tool":
+                self = .toolMessage(try ToolMessage(from: decoder))
             default:
                 throw DecodingError.dataCorruptedError(forKey: .role, in: container, debugDescription: "Unknown role type")
             }
         }
     }
 }
-
-extension Anthropic.ChatMessageParam {
+extension OpenAI.ChatMessageParam {
     public var id: String {
         switch self {
         case .userMessage(let message):
@@ -58,7 +55,7 @@ extension Anthropic.ChatMessageParam {
             return "tool_\(message)"
         }
     }
-    
+
     public var role: String {
         switch self {
         case .userMessage:
@@ -66,73 +63,58 @@ extension Anthropic.ChatMessageParam {
         case .assistantMessage:
             return "assistant"
         case .toolMessage:
-            return "user"
+            return "tool"
         }
     }
 
-    public var content: String {
-        switch self {
-        case .userMessage(let message):
-            return message.content[0].text
-        case .assistantMessage(let message, _):
-            let text = message.content.compactMap { block -> String? in
-                if case .text(let textBlock) = block {
-                    return textBlock.text
-                }
-                return nil
-            }
-            return text.joined(separator: "\n")
-        case .toolMessage(let message):
-            return message.content[0].content[0].text
-        }
-    }
-
-    public var contentBlocks: [Anthropic.ContentBlock] {
+    public var content: OpenAI.ContentValue {
         switch self {
         case .userMessage(let message):
             return message.content
         case .assistantMessage(let message, _):
-            if message.content.isEmpty {
-                return []
-            }
-            return message.content
+            return .string(message.content ?? "")
         case .toolMessage(let message):
-            return message.content[0].content
+            return .string(message.content)
         }
     }
 
-    public var toolUses: [Anthropic.ToolUseBlock] {
+    public var contentBlocks: [OpenAI.ContentBlock] {
         switch self {
-        case .assistantMessage(let message, _):
-            let toolUses = message.content.filter { $0.isToolUse }
-            if  toolUses.count > 0 {
-                return toolUses.compactMap {
-                    if case .toolUse(let toolUse) = $0 {
-                        return toolUse
-                    }
-                    return nil
-                }
+        case .userMessage(_):
+            if case .string(let text) = content {
+                return [.text(text)]
+            } else if case .array(let array) = content {
+                return array
             }
             return []
+        case .assistantMessage(let message, _):
+            return [.text(message.content ?? "")]
+        case .toolMessage(let message):
+            return [.text(message.content)]
+        }
+    }
+
+    public var toolCalls: [ToolCall] {
+        switch self {
+        case .assistantMessage(let message, _):
+            return message.toolCalls ?? []
         default:
             return []
         }
     }
 
     public var toolName: String? {
-        return toolUses.map {
-            $0.name
-        }.joined(separator: ", ")
+        toolCalls.map{ $0.function.name }.joined(separator: ", ")
     }
 
     public var toolArgs: String? {
-        return toolUses.map { $0.prettyInput }.joined(separator: ", ")
+        toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
     }
 
-    public func hasToolUse() -> Bool {
+    public func hasToolCall() -> Bool {
         switch self {
         case .assistantMessage(let param, _):
-            return param.hasToolUse
+            return param.hasToolCall
         default:
             return false
         }

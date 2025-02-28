@@ -82,7 +82,7 @@ struct StyledTextView: View {
             case .header3(let text):
                 return result + Text(text).font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black)
             case .bulletPoint(let text):
-                return result + Text(text).font(.body).foregroundColor(colorScheme == .dark ? .white : .black)
+                return result + Text("• ").font(.body).foregroundColor(colorScheme == .dark ? .white : .black)
             }
         }
         .textSelection(.enabled)
@@ -133,7 +133,15 @@ struct StyledTextView: View {
             }
             // Check for bullet points
             else if trimmedLine.starts(with: "• ") {
-                segments.append(.bulletPoint(String(line)))
+                // Extract the content after the bullet point
+                let bulletContent = String(line.dropFirst(line.firstIndex(of: "•")!.utf16Offset(in: String(line)) + 2))
+
+                // Add the bullet point marker
+                segments.append(.bulletPoint(""))
+
+                // Process inline styles within the bullet point content
+                let inlineSegments = parseInlineStyles(text: bulletContent)
+                segments.append(contentsOf: inlineSegments)
             }
             // Process inline styles
             else {
