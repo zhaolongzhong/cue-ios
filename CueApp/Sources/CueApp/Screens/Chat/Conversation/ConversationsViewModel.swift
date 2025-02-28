@@ -18,6 +18,10 @@ public class ConversationsViewModel: ObservableObject {
     @Published var currentProvider: Provider?
     @Published var sortOrder: SortOrder = .dateModifiedDesc
 
+    // Multi-select state
+    @Published var isSelectMode: Bool = false
+    @Published var selectedConversationIds: Set<String> = []
+
     private let minimumSearchLength = 3
     private let searchDebounceTime: TimeInterval = 0.3
     private var searchTask: Task<Void, Never>?
@@ -231,11 +235,66 @@ public class ConversationsViewModel: ObservableObject {
         }
     }
 
+    /// Delete multiple selected conversations
+    public func deleteSelectedConversations() async -> Bool {
+        isLoading = true
+        defer {
+            isLoading = false
+            // Exit select mode after deletion
+            isSelectMode = false
+            selectedConversationIds.removeAll()
+        }
+
+        var success = true
+        for conversationId in selectedConversationIds {
+            let result = await deleteConversation(conversationId)
+            if !result {
+                success = false
+            }
+        }
+
+        return success
+    }
+
     // MARK: - Selection Handling
 
     /// Selects a conversation by ID
     public func selectConversation(_ conversationId: String?) {
         selectedConversationId = conversationId
+    }
+
+    // MARK: - Multi-select Handling
+
+    /// Toggle select mode
+    public func toggleSelectMode() {
+        isSelectMode.toggle()
+        if !isSelectMode {
+            selectedConversationIds.removeAll()
+        }
+    }
+
+    /// Toggle selection of a conversation
+    public func toggleConversationSelection(_ conversationId: String) {
+        if selectedConversationIds.contains(conversationId) {
+            selectedConversationIds.remove(conversationId)
+        } else {
+            selectedConversationIds.insert(conversationId)
+        }
+    }
+
+    /// Select all conversations
+    public func selectAllConversations() {
+        selectedConversationIds = Set(conversations.map { $0.id })
+    }
+
+    /// Deselect all conversations
+    public func deselectAllConversations() {
+        selectedConversationIds.removeAll()
+    }
+
+    /// Check if a conversation is selected
+    public func isConversationSelected(_ conversationId: String) -> Bool {
+        return selectedConversationIds.contains(conversationId)
     }
 
     // MARK: - Error Handling

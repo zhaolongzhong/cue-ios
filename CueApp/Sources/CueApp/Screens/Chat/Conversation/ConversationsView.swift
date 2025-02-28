@@ -10,9 +10,10 @@ struct ConversationsView: View {
     @StateObject var viewModel: ConversationsViewModel
     @State private var editingConversationId: String?
     @State private var editedTitle: String = ""
-    @State private var showDeleteAlert: Bool = false
     @State private var conversationToDelete: String?
     @State private var isRenaming: Bool = false
+    @State private var showDeleteAlert: Bool = false
+    @State private var showMultiDeleteAlert: Bool = false
 
     private let animationDuration: Double = 0.25
 
@@ -42,6 +43,10 @@ struct ConversationsView: View {
             #endif
             VStack(alignment: .leading, spacing: 0) {
                 headerView
+                if viewModel.isSelectMode {
+                    selectModeToolbar
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 searchView
                 Divider()
                     .padding(.vertical, 8)
@@ -64,22 +69,32 @@ struct ConversationsView: View {
         } message: {
             Text("This conversation will be permanently deleted.")
         }
+        .alert("Delete Selected Conversations?", isPresented: $showMultiDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await viewModel.deleteSelectedConversations()
+                }
+            }
+        } message: {
+            Text("The selected conversations will be permanently deleted.")
+        }
         .overlay {
             if viewModel.isLoading {
                 ProgressView()
                     .background(
-                        RoundedRectangle(cornerRadius:
-                                            8)
+                        RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.3))
                         .frame(width: 50, height: 50)
                     )
             }
         }
         .onChange(of: viewModel.selectedConversationId) { _, newValue in
-            if let id = newValue {
+            if let id = newValue, !viewModel.isSelectMode {
                 onSelectConversation(id)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isSelectMode)
     }
 
     // MARK: - Subviews
@@ -92,8 +107,55 @@ struct ConversationsView: View {
                 .padding(.all)
 
             Spacer()
+
+            Button {
+                viewModel.toggleSelectMode()
+            } label: {
+                Text(viewModel.isSelectMode ? "Done" : "Select")
+                    .font(.subheadline)
+                    .foregroundColor(.accentColor)
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing)
         }
         .padding(.top)
+    }
+
+    private var selectModeToolbar: some View {
+        HStack(spacing: 12) {
+            Button {
+                viewModel.selectAllConversations()
+            } label: {
+                Text("Select All")
+                    .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Button {
+                viewModel.deselectAllConversations()
+            } label: {
+                Text("Cancel")
+                    .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                if !viewModel.selectedConversationIds.isEmpty {
+                    showMultiDeleteAlert = true
+                }
+            } label: {
+                Text("Delete")
+                    .font(.subheadline)
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.selectedConversationIds.isEmpty)
+            .opacity(viewModel.selectedConversationIds.isEmpty ? 0.5 : 1)
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
     }
 
     private var searchView: some View {
@@ -137,7 +199,31 @@ struct ConversationsView: View {
                             if editingConversationId == conversation.id {
                                 editConversationRow(for: conversation)
                             } else {
-                                conversationRow(for: conversation)
+                                ConversationRow(
+                                    conversation: conversation,
+                                    isSelected: viewModel.selectedConversationId == conversation.id,
+                                    isSelectMode: viewModel.isSelectMode,
+                                    isSelected_MultiSelect: viewModel.isConversationSelected(conversation.id),
+                                    onSelect: {
+                                        viewModel.selectConversation(conversation.id)
+                                        onSelectConversation(conversation.id)
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            isShowing = false
+                                        }
+                                    },
+                                    onToggleSelection: {
+                                        viewModel.toggleConversationSelection(conversation.id)
+                                    },
+                                    onDelete: {
+                                        conversationToDelete = conversation.id
+                                        showDeleteAlert = true
+                                    },
+                                    onRename: {
+                                        editingConversationId = conversation.id
+                                        editedTitle = conversation.title
+                                        isRenaming = true
+                                    }
+                                )
                             }
                         }
                         .transition(.asymmetric(
@@ -179,59 +265,6 @@ struct ConversationsView: View {
         .frame(maxWidth: .infinity, minHeight: 200)
         .padding()
         .animation(.default, value: viewModel.searchText.count >= 3)
-    }
-
-    private func conversationRow(for conversation: ConversationModel) -> some View {
-        HStack {
-            Button {
-                viewModel.selectConversation(conversation.id)
-                onSelectConversation(conversation.id)
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    isShowing = false
-                }
-            } label: {
-                HStack {
-
-                    Text(conversation.title)
-                        .lineLimit(1)
-                        .foregroundColor(.primary)
-
-                    Spacer()
-                }
-            }
-            .buttonStyle(.plain)
-            Menu {
-                Button {
-                    editingConversationId = conversation.id
-                    editedTitle = conversation.title
-                    isRenaming = true
-                } label: {
-                    Label("Rename", systemImage: "pencil")
-                }
-
-                Button(role: .destructive, action: {
-                    conversationToDelete = conversation.id
-                    showDeleteAlert = true
-                }, label: {
-                    Label("Delete", systemImage: "trash")
-                })
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .frame(width: 32)
-            .buttonStyle(.plain)
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(viewModel.selectedConversationId == conversation.id  ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
-        )
-        .contentShape(Rectangle())
     }
 
     private func editConversationRow(for conversation: ConversationModel) -> some View {
