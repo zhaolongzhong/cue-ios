@@ -160,76 +160,11 @@ struct MessageBubbleContent: View {
                                 message: message
                             )
                         }
+                    case .file(let fileData):
+                        Text(fileData.fileName)
                     }
                 }
             }
         }
-    }
-}
-
-func extractFileName(from text: String) -> String? {
-    let startMarker = "<file_name>"
-    let endMarker = "</file_name>"
-
-    guard let startRange = text.range(of: startMarker),
-          let endRange = text.range(of: endMarker, range: startRange.upperBound..<text.endIndex) else {
-        return nil
-    }
-
-    return String(text[startRange.upperBound..<endRange.lowerBound])
-}
-
-extension CueChatMessage {
-    var segments: [MessageSegment] {
-        var finalSegments: [MessageSegment] = []
-        if isUser {
-            if case .anthropic(let msg, _, _) = self {
-                for block in msg.contentBlocks {
-                    if block.isText, let fileName = extractFileName(from: block.text) {
-                        finalSegments.append(.text(fileName))
-                    } else {
-                        finalSegments.append(.text(block.text))
-                    }
-                }
-            } else if case .gemini(let msg, _, _) = self {
-                for block in msg.modelContent.parts {
-                    if let text = block.text, let fileName = extractFileName(from: text) {
-                        finalSegments.append(.text(fileName))
-                    } else {
-                        finalSegments.append(.text(block.text ?? ""))
-                    }
-                }
-            }
-            else {
-                switch self.content {
-                case .string(let text):
-                    finalSegments.append(.text(text))
-                case .array(let blocks):
-                    for block in blocks {
-                        if let blockText = block.text,
-                           let fileName = extractFileName(from: blockText) {
-                            finalSegments.append(.text(fileName))
-                        } else {
-                            finalSegments.append(.text(block.text ?? ""))
-                        }
-                    }
-                }
-            }
-        } else if case .anthropic(let msg, _, let streamingState) = self {
-            let contentBlocks: [Anthropic.ContentBlock]
-            if let blocks = streamingState?.contentBlocks {
-                contentBlocks = blocks
-            } else {
-                contentBlocks = msg.contentBlocks
-            }
-            for contentBlock in contentBlocks {
-                let newSegments = extractSegments(from: contentBlock.text, isThinking: contentBlock.isThinking)
-                finalSegments.append(contentsOf: newSegments)
-            }
-        } else {
-            let newSegments = extractSegments(from: self.content.contentAsString)
-            finalSegments.append(contentsOf: newSegments)
-        }
-        return finalSegments
     }
 }

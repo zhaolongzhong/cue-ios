@@ -8,10 +8,10 @@ import SwiftUI
 struct RightSidebarView: View {
     @Binding var isShowing: Bool
     @StateObject var viewModel: ConversationsViewModel
-    @State private var editingConversationId: String? = nil
+    @State private var editingConversationId: String?
     @State private var editedTitle: String = ""
     @State private var showDeleteAlert: Bool = false
-    @State private var conversationToDelete: String? = nil
+    @State private var conversationToDelete: String?
     @State private var isRenaming: Bool = false
 
     private let animationDuration: Double = 0.25
@@ -78,7 +78,7 @@ struct RightSidebarView: View {
                     )
             }
         }
-        .onChange(of: viewModel.selectedConversationId) { oldValue, newValue in
+        .onChange(of: viewModel.selectedConversationId) { _, newValue in
             if let id = newValue {
                 onSelectConversation(id)
             }
@@ -110,9 +110,9 @@ struct RightSidebarView: View {
                 .padding(.vertical, 8)
 
             if !viewModel.searchText.isEmpty {
-                Button(action: {
+                Button {
                     viewModel.searchText = ""
-                }) {
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.gray)
                 }
@@ -186,14 +186,13 @@ struct RightSidebarView: View {
 
     private func conversationRow(for conversation: ConversationModel) -> some View {
         HStack {
-            // Main button area
-            Button(action: {
+            Button {
                 viewModel.selectConversation(conversation.id)
                 onSelectConversation(conversation.id)
                 withAnimation(.easeInOut(duration: 0.3)) {
                     isShowing = false
                 }
-            }) {
+            } label: {
                 HStack {
 
                     Text(conversation.title)
@@ -205,20 +204,20 @@ struct RightSidebarView: View {
             }
             .buttonStyle(.plain)
             Menu {
-                Button(action: {
+                Button {
                     editingConversationId = conversation.id
                     editedTitle = conversation.title
                     isRenaming = true
-                }) {
+                } label: {
                     Label("Rename", systemImage: "pencil")
                 }
 
                 Button(role: .destructive, action: {
                     conversationToDelete = conversation.id
                     showDeleteAlert = true
-                }) {
+                }, label: {
                     Label("Delete", systemImage: "trash")
-                }
+                })
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 12))
@@ -255,22 +254,22 @@ struct RightSidebarView: View {
                     .fill(AppTheme.Colors.separator.opacity(0.5))
             )
 
-            Button(action: {
+            Button {
                 if !editedTitle.isEmpty {
                     Task {
                         await viewModel.updateTitle(for: conversation.id, newTitle: editedTitle)
                     }
                 }
                 editingConversationId = nil
-            }) {
+            } label: {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
             }
             .buttonStyle(.plain)
 
-            Button(action: {
+            Button {
                 editingConversationId = nil
-            }) {
+            } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.gray)
             }
@@ -285,7 +284,7 @@ struct RightSidebarView: View {
     }
 
     private var footerView: some View {
-        Button(action: {
+        Button {
             guard let provider = viewModel.currentProvider else { return }
 
             Task {
@@ -297,7 +296,7 @@ struct RightSidebarView: View {
                     }
                 }
             }
-        }) {
+        } label: {
             HStack {
                 Image(systemName: "plus.circle.fill")
                 Text("New Conversation")

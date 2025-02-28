@@ -23,7 +23,7 @@ extension GeminiChatViewModel {
             self.error = .sessionError(error.localizedDescription)
         }
     }
-    
+
     func setupLiveAPISubscription() {
         liveAPIClient.voiceChatStatePublisher
                 .receive(on: DispatchQueue.main)
@@ -42,7 +42,6 @@ extension GeminiChatViewModel {
             }
             .store(in: &cancellables)
     }
-
 
     public func startSession() async {
         do {

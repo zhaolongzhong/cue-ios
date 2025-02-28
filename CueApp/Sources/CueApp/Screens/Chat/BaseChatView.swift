@@ -153,11 +153,11 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
         #if os(macOS)
         ToolbarItemGroup(placement: .primaryAction) {
             Spacer()
-            Button(action: {
+            Button {
                 withAnimation(.easeInOut) {
                     showingSidebar.wrappedValue.toggle()
                 }
-            }) {
+            } label: {
                 Image(systemName: "bubble")
                     .foregroundStyle(.primary)
             }
@@ -305,7 +305,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
         case .gemini:
             openWindow(id: WindowId.geminiLiveChatWindow.rawValue, value: WindowId.geminiLiveChatWindow.rawValue)
         default:
-            break;
+            break
         }
     }
 }

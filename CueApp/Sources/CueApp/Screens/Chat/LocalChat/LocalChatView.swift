@@ -51,7 +51,7 @@ public struct LocalChatView: View {
                 reloadProviderSettings()
             }
         )
-        .onChange(of: viewModel.selectedConversationId) { old, newId in
+        .onChange(of: viewModel.selectedConversationId) { _, newId in
             if let newId = newId {
                 storedConversationId = newId
             }

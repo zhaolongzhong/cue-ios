@@ -23,49 +23,15 @@ public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
         )
     }
 
-    override func updateTools() {
-        super.updateTools()
-        // Any OpenAI-specific tool configuration can go here
-    }
-
     override func sendMessage() async {
-        var messageParams = Array(self.cueChatMessages.suffix(maxMessages))
+        let (userMessage, _, _) = await prepareOpenAIMessage()
 
-        #if os(macOS)
-        if let textAreaContent = self.axManager.textAreaContentList.first {
-            let context = textAreaContent.getTextAreaContext()
-            let contextMessage = OpenAI.ChatMessageParam.assistantMessage(
-                OpenAI.AssistantMessage(role: Role.assistant.rawValue, content: context)
-            )
-            messageParams.append(.openAI(contextMessage))
-        }
-        #endif
-
-        var contentBlocks: [OpenAI.ContentBlock] = []
-        if !newMessage.isEmpty {
-            let textBlock = OpenAI.ContentBlock(
-                type: .text,
-                text: newMessage
-            )
-            contentBlocks.append(textBlock)
-        }
-
-        let attachmentContentBlocks = await convertToContents(attachments: attachments)
-        if !attachmentContentBlocks.isEmpty {
-            contentBlocks.append(contentsOf: attachmentContentBlocks)
-        }
-
-        let userMessage: OpenAI.ChatMessageParam = .userMessage(
-            OpenAI.MessageParam(
-                role: "user",
-                contentBlocks: contentBlocks
-            )
-        )
-
-        // Create CueChatMessage and save to repository
+        // Add user message to chat
         let cueChatMessage = CueChatMessage.openAI(userMessage, stableId: UUID().uuidString)
         addOrUpdateMessage(cueChatMessage)
-        messageParams.append(cueChatMessage)
+
+        // Get recent messages
+        let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
         newMessage = ""

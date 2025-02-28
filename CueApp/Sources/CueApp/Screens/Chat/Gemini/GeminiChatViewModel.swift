@@ -51,18 +51,10 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
 
     public func sendMessageUseClient() async throws {
         guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        var parts =  [ModelContent.Part.text(newMessage)]
-        let attachmentContentBlocks: [OpenAI.ContentBlock] = await convertToContents(attachments: attachments)
-        let attachmentParts = attachmentContentBlocks.compactMap { contentBlock -> ModelContent.Part? in
-            if contentBlock.type == .text, let text = contentBlock.text {
-                return ModelContent.Part.text(text)
-            }
-            return nil
-        }
-        parts.append(contentsOf: attachmentParts)
-        let newContent = ModelContent(role: "user", parts: parts)
-        let userMessage = Gemini.ChatMessageParam.userMessage(newContent)
-        cueChatMessages.append(.gemini(userMessage))
+        let (userMessage, _) = await prepareGeminiMessage()
+
+        // Add user message to chat
+        addOrUpdateMessage(.gemini(userMessage))
         newMessage = ""
         try await generateContent()
     }
@@ -86,7 +78,7 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
                 try await handleFunctionCallAndRecursivelyGenerate(functionCall)
             }
         } catch let error as Gemini.Error {
-            handleGeminiError(error)
+            handleError(error)
         } catch {
             self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
             AppLog.log.error("Generate content error: \(error)")
@@ -111,28 +103,46 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
         try await generateContent()
     }
 
-    private func handleGeminiError(_ error: Gemini.Error) {
-        switch error {
-        case .apiError(let apiError):
-            if apiError.error.status == "INVALID_ARGUMENT" {
-                if apiError.error.message.contains("API key expired") {
-                    self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
-                } else if apiError.error.message.contains("API key not valid") {
-                    self.error = .sessionError("Your API key is invalid. Please renew your API key to continue.")
-                }
-            } else {
-                let detailMessage = apiError.error.details.first { $0.message != nil }?.message ?? apiError.error.message
-                self.error = .sessionError("Error: \(detailMessage)")
-            }
-        case .unexpectedAPIResponse(let message):
-            if message.contains("API key expired") {
-                self.error = .sessionError("Your API key has expired. Please renew your API key to continue.")
-            } else {
-                self.error = .sessionError("An error occurred while generating content: \(message)")
-            }
-        default:
-            self.error = .sessionError("An unexpected error occurred: \(error.localizedDescription)")
+    private func handleError(_ error: Error) {
+        // Default error message
+        var errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
+
+        // Check for Gemini-specific errors
+        guard let geminiError = error as? Gemini.Error else {
+            self.error = .sessionError(errorMessage)
+            AppLog.log.error("Generate content error: \(error)")
+            return
         }
+
+        // Handle specific Gemini errors
+        switch geminiError {
+        case .apiError(let apiError):
+            let message = apiError.error.message
+
+            // API key issues
+            if message.contains("API key expired") || message.contains("API key not valid") {
+                errorMessage = "Your API key is invalid or has expired. Please renew your API key to continue."
+                break
+            }
+
+            // Other API errors
+            let detailMessage = apiError.error.details.first { $0.message != nil }?.message ?? message
+            errorMessage = "Error: \(detailMessage)"
+
+        case .unexpectedAPIResponse(let message):
+            // API key issues in unexpected responses
+            if message.contains("API key expired") {
+                errorMessage = "Your API key has expired. Please renew your API key to continue."
+                break
+            }
+
+            errorMessage = "An error occurred while generating content: \(message)"
+        default:
+            // Already using the default message
+            break
+        }
+
+        self.error = .sessionError(errorMessage)
         AppLog.log.error("Generate content error: \(error)")
     }
 

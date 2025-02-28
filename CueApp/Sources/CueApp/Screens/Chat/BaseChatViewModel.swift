@@ -110,6 +110,7 @@ public class BaseChatViewModel: ObservableObject {
     func updateObservedApplication(to app: AccessibleApplication?) {
         guard let app = app else { return }
         #if os(macOS)
+        print("inx updateObservedApplication: \(app)")
         self.axManager.updateObservedApplication(to: app)
         #endif
         self.observedApp = app
@@ -125,6 +126,7 @@ public class BaseChatViewModel: ObservableObject {
 
     private func setupTextAreaContentSubscription() {
         #if os(macOS)
+        print("inx setupTextAreaContentSubscription")
         axManager.$textAreaContentList
             .sink { [weak self] newValue in
                 guard let self = self else { return }

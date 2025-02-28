@@ -8,7 +8,6 @@ import AppKit
 import CueOpenAI
 
 struct AttachmentUtil {
-    // Existing text extraction function
     static func extractText(from attachment: Attachment) async throws -> String {
         let data = try Data(contentsOf: attachment.url)
         let ext = attachment.url.pathExtension.lowercased()
@@ -60,10 +59,7 @@ struct AttachmentUtil {
         let base64Url = "data:image/jpeg;base64,\(base64String)"
 
         // Create image content block
-        return OpenAI.ContentBlock(
-            type: .imageUrl,
-            imageUrl: OpenAI.ImageURL(url: base64Url)
-        )
+        return OpenAI.ContentBlock.imageUrl(OpenAI.ImageURL(url: base64Url))
         #else
         // For non-macOS platforms
         throw NSError(domain: "AttachmentUtil", code: 5, userInfo: [NSLocalizedDescriptionKey: "Image processing not supported on this platform"])
@@ -119,7 +115,6 @@ extension NSImage {
 }
 #endif
 
-
 func convertToContents(attachments: [Attachment]) async -> [OpenAI.ContentBlock] {
     var contentBlocks: [OpenAI.ContentBlock] = []
     // Process attachments
@@ -133,10 +128,7 @@ func convertToContents(attachments: [Attachment]) async -> [OpenAI.ContentBlock]
                 ? String(fullText.prefix(maxCharacters)) + " [truncated]"
                 : fullText
                 let prefixedText = "<file_name>\(attachment.name)</file_name>\n" + truncatedText
-                let documentBlock = OpenAI.ContentBlock(
-                    type: .text,
-                    text: prefixedText
-                )
+                let documentBlock = OpenAI.ContentBlock.text(prefixedText)
                 contentBlocks.append(documentBlock)
             } catch {
                 AppLog.log.error("Error when processing attachment: \(error)")
@@ -147,4 +139,22 @@ func convertToContents(attachments: [Attachment]) async -> [OpenAI.ContentBlock]
     }
 
     return contentBlocks
+}
+
+func extractFileData(from text: String) -> FileData? {
+    let startMarker = "<file_name>"
+    let endMarker = "</file_name>"
+
+    guard let startRange = text.range(of: startMarker),
+          let endRange = text.range(of: endMarker, range: startRange.upperBound..<text.endIndex) else {
+        return nil
+    }
+
+    let fileName = String(text[startRange.upperBound..<endRange.lowerBound])
+
+    // Get the content after the file name tag
+    let contentStartIndex = endRange.upperBound
+    let content = String(text[contentStartIndex...])
+
+    return FileData(fileName: fileName, content: content)
 }

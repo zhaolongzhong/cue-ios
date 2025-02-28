@@ -159,45 +159,14 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     override func sendMessage() async {
-        var messageParams = Array(self.cueChatMessages.suffix(maxMessages))
-        #if os(macOS)
-        if let textAreaContent = self.axManager.textAreaContentList.first {
-            let context = textAreaContent.getTextAreaContext()
-            let contextMessage = OpenAI.ChatMessageParam.assistantMessage(
-                OpenAI.AssistantMessage(role: Role.assistant.rawValue, content: context)
-            )
-            messageParams.append(.local(contextMessage))
-        }
-        #endif
+        let (userMessage, _, _) = await prepareOpenAIMessage()
 
-        var contentBlocks: [OpenAI.ContentBlock] = []
-        if !newMessage.isEmpty {
-            let textBlock = OpenAI.ContentBlock(
-                type: .text,
-                text: newMessage
-            )
-            contentBlocks.append(textBlock)
-        }
-        let attachmentContentBlocks = await convertToContents(attachments: attachments)
-        if !attachmentContentBlocks.isEmpty {
-            contentBlocks.append(contentsOf: attachmentContentBlocks)
-        }
-        let userMessage: OpenAI.ChatMessageParam = .userMessage(
-            OpenAI.MessageParam(
-                role: "user",
-                contentBlocks: contentBlocks
-            )
-        )
-
-        // Create CueChatMessage and save to repository
+        // Add user message to chat
         let cueChatMessage = CueChatMessage.openAI(userMessage, stableId: UUID().uuidString)
         addOrUpdateMessage(cueChatMessage)
 
-        // Use string content type for request
-        let simpleMessage = OpenAI.ChatMessageParam.userMessage(
-            OpenAI.MessageParam(role: Role.user.rawValue, content: .string(userMessage.content.contentAsString))
-        )
-        messageParams.append(CueChatMessage.openAI(simpleMessage))
+        // Get recent messages
+        let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
         newMessage = ""

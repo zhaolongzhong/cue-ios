@@ -147,7 +147,6 @@ extension MessageContent {
     }
 }
 
-
 extension ContentDetail {
     init(string: String) {
         // Try to decode as JSON first
@@ -216,11 +215,11 @@ extension Array where Element == OpenAI.ContentBlock {
         return self.map { contentBlock in
             var jsonObject: [String: JSONValue] = [:]
             jsonObject["type"] = .string(contentBlock.type.rawValue)
-            if let text = contentBlock.text {
+            switch contentBlock {
+            case .text(let text):
                 jsonObject["text"] = .string(text)
-            }
-            if let imageUrl = contentBlock.imageUrl {
-                jsonObject["image_url"] = .object(["url": .string(imageUrl.url)])
+            case .imageUrl(let image):
+                jsonObject["image_url"] = .object(["url": .string(image.url)])
             }
             return .object(jsonObject)
         }
@@ -274,7 +273,7 @@ extension CueChatMessage {
         do {
             let data = try JSONEncoder().encode(value)
             let jsonObject = try JSONSerialization.jsonObject(with: data)
-            return JSONValue(any:jsonObject)
+            return JSONValue(any: jsonObject)
         } catch {
             print("Error encoding to JSONValue: \(error)")
             return .null
@@ -289,67 +288,86 @@ extension MessageModel {
             return .cue(self)
         }
 
-        if case .object(let jsonObject) = payload {
-            let type = jsonObject["type"]?.asString
-
-            switch type {
-            case "local":
-                if let messageValue = jsonObject["message"],
-                   let message = decodeFromJSONValue(messageValue, type: OpenAI.ChatMessageParam.self) {
-                    var stableId: String? = nil
-                    if case .string(let id) = jsonObject["stableId"] {
-                        stableId = id
-                    } else {
-                        stableId = self.id
-                    }
-
-                    var streamingState: StreamingState? = nil
-                    if let stateValue = jsonObject["streamingState"] {
-                        streamingState = decodeFromJSONValue(stateValue, type: StreamingState.self)
-                    }
-                    return .local(message, stableId: stableId, streamingState: streamingState)
-                }
-
-            case "openai":
-                if let messageValue = jsonObject["message"],
-                   let message = decodeFromJSONValue(messageValue, type: OpenAI.ChatMessageParam.self) {
-                    return .openAI(message, stableId: self.id)
-                }
-
-            case "anthropic":
-                if let messageValue = jsonObject["message"],
-                   let message = decodeFromJSONValue(messageValue, type: Anthropic.ChatMessageParam.self) {
-                    var stableId: String? = nil
-                    if case .string(let id) = jsonObject["stableId"] {
-                        stableId = id
-                    } else {
-                        stableId = self.id
-                    }
-
-                    var streamingState: StreamingState? = nil
-                    if let stateValue = jsonObject["streamingState"] {
-                        streamingState = decodeFromJSONValue(stateValue, type: StreamingState.self)
-                    }
-                    return .anthropic(message, stableId: stableId, streamingState: streamingState)
-                }
-            case "gemini":
-                if let messageValue = jsonObject["message"],
-                   let message = decodeFromJSONValue(messageValue, type: Gemini.ChatMessageParam.self) {
-                    return .gemini(message, stableId: self.id)
-                }
-
-            case "cue":
-                // For cue type, we can just return this message model
-                return .cue(self, stableId: self.id)
-
-            default:
-                // If the type is unknown, use this message model as cue type
-                return .cue(self, stableId: self.id)
-            }
+        guard case .object(let jsonObject) = payload,
+              let type = jsonObject["type"]?.asString else {
+            // Default to cue type if we couldn't extract type from payload
+            return .cue(self)
         }
 
-        // Default to cue type if we couldn't extract from payload
-        return .cue(self)
+        switch type {
+        case "local":
+            return createLocalMessage(from: jsonObject)
+        case "openai":
+            return createOpenAIMessage(from: jsonObject)
+        case "anthropic":
+            return createAnthropicMessage(from: jsonObject)
+        case "gemini":
+            return createGeminiMessage(from: jsonObject)
+        case "cue", _:
+            // For cue type or unknown type, we can just return this message model
+            return .cue(self, stableId: self.id)
+        }
+    }
+
+    // Helper function to create local message
+    private func createLocalMessage(from jsonObject: [String: JSONValue]) -> CueChatMessage? {
+        guard let messageValue = jsonObject["message"],
+              let message = decodeFromJSONValue(messageValue, type: OpenAI.ChatMessageParam.self) else {
+            return nil
+        }
+
+        let stableId = extractStableId(from: jsonObject)
+        let streamingState = extractStreamingState(from: jsonObject)
+        return .local(message, stableId: stableId, streamingState: streamingState)
+    }
+
+    // Helper function to create OpenAI message
+    private func createOpenAIMessage(from jsonObject: [String: JSONValue]) -> CueChatMessage? {
+        guard let messageValue = jsonObject["message"],
+              let message = decodeFromJSONValue(messageValue, type: OpenAI.ChatMessageParam.self) else {
+            return nil
+        }
+
+        return .openAI(message, stableId: self.id)
+    }
+
+    // Helper function to create Anthropic message
+    private func createAnthropicMessage(from jsonObject: [String: JSONValue]) -> CueChatMessage? {
+        guard let messageValue = jsonObject["message"],
+              let message = decodeFromJSONValue(messageValue, type: Anthropic.ChatMessageParam.self) else {
+            return nil
+        }
+
+        let stableId = extractStableId(from: jsonObject)
+        let streamingState = extractStreamingState(from: jsonObject)
+        return .anthropic(message, stableId: stableId, streamingState: streamingState)
+    }
+
+    // Helper function to create Gemini message
+    private func createGeminiMessage(from jsonObject: [String: JSONValue]) -> CueChatMessage? {
+        guard let messageValue = jsonObject["message"],
+              let message = decodeFromJSONValue(messageValue, type: Gemini.ChatMessageParam.self) else {
+            return nil
+        }
+
+        return .gemini(message, stableId: self.id)
+    }
+
+    // Helper function to extract stableId
+    private func extractStableId(from jsonObject: [String: JSONValue]) -> String? {
+        if case .string(let id) = jsonObject["stableId"] {
+            return id
+        } else {
+            return self.id
+        }
+    }
+
+    // Helper function to extract streamingState
+    private func extractStreamingState(from jsonObject: [String: JSONValue]) -> StreamingState? {
+        if let stateValue = jsonObject["streamingState"] {
+            return decodeFromJSONValue(stateValue, type: StreamingState.self)
+        }
+        return nil
     }
 
     // Helper function to decode JSONValue back to the original type

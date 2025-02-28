@@ -91,28 +91,20 @@ public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     override func sendMessage() async {
-        var messageParams = Array(self.cueChatMessages.suffix(maxMessages))
-        let attachmentContentBlocks: [OpenAI.ContentBlock] = await convertToContents(attachments: attachments)
-        var contentBlocks = [Anthropic.ContentBlock(content: newMessage)]
-        let textContentBlocks = attachmentContentBlocks.compactMap { contentBlock -> Anthropic.ContentBlock? in
-            if contentBlock.type == .text, let text = contentBlock.text {
-                return Anthropic.ContentBlock.text(Anthropic.TextBlock(text: text, type: "text"))
-            }
-            return nil
-        }
-        contentBlocks.append(contentsOf: textContentBlocks)
-        let userMessage = Anthropic.ChatMessageParam.userMessage(
-            Anthropic.MessageParam(role: "user", content: contentBlocks)
-        )
+        let (userMessage, _) = await prepareAnthropicMessage()
+
+        // Add user message to chat
         let cueChatMessage = CueChatMessage.anthropic(userMessage, stableId: UUID().uuidString)
         addOrUpdateMessage(cueChatMessage)
-        messageParams.append(.anthropic(userMessage))
+
+        // Get updated message list including the newly added message
+        let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
         resetStreamingState()
         newMessage = ""
 
-        await streamWithAgentLoop()
+        await streamWithAgentLoop(messageParams)
         isLoading = false
     }
 }

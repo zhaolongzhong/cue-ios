@@ -243,6 +243,22 @@ extension OpenAI {
             }
         }
 
+        public var contentBlocks: [ContentBlock] {
+            switch self {
+            case .userMessage(let message):
+                if case .string(let text) = content {
+                    return [.text(text)]
+                } else if case .array(let array) = content {
+                    return array
+                }
+                return []
+            case .assistantMessage(let message, _):
+                return [.text(message.content ?? "")]
+            case .toolMessage(let message):
+                return [.text(message.content)]
+            }
+        }
+
         public var toolCalls: [ToolCall] {
             switch self {
             case .assistantMessage(let message, _):

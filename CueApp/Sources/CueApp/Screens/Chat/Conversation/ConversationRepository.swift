@@ -49,7 +49,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         self.database = database
     }
 
-    func createConversation(title: String, assistantId: String?, isPrimary: Bool = false, provider: Provider?) async throws -> ConversationModel{
+    func createConversation(title: String, assistantId: String?, isPrimary: Bool = false, provider: Provider?) async throws -> ConversationModel {
         let conversationId = "\(ConversationModel.getConversationIdPrefix(for: provider))_\(UUID().uuidString.lowercased().prefix(8))"
         let newConversation = ConversationModel(
             id: conversationId,

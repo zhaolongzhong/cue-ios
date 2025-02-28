@@ -73,11 +73,11 @@ extension AppDatabase {
 
         #if DEBUG
         // Enable SQL logging in debug builds
-        config.prepareDatabase { db in
-            db.trace { event in
-//                sqlLogger.debug("\(db.description): \(event)")
-            }
-        }
+        // config.prepareDatabase { db in
+        //     db.trace { event in
+        //        sqlLogger.debug("\(db.description): \(event)")
+        //     }
+        // }
 
         // Protect sensitive information by enabling verbose debugging in
         // DEBUG builds only.

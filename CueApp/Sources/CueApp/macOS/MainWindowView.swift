@@ -111,7 +111,6 @@ public struct MainWindowView: View {
         } else {
             mainNavigationContent
                 .background(colorScheme == .dark ? Color(.lightGray).opacity(0.1) : AppTheme.Colors.background)
-                
         }
     }
 

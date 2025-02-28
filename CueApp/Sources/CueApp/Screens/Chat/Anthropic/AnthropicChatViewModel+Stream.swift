@@ -3,7 +3,7 @@ import CueAnthropic
 
 // MARK: Stream With Agent Loop
 extension AnthropicChatViewModel {
-    func streamWithAgentLoop() async {
+    func streamWithAgentLoop(_ messageParams: [CueChatMessage]) async {
         AppLog.log.debug("Starting agent loop for streaming conversation: \(String(describing: self.selectedConversationId))")
 
         do {
@@ -20,7 +20,7 @@ extension AnthropicChatViewModel {
             // Store the streaming task so it can be cancelled if needed
             streamingTask = Task {
                 let updatedMessages = try await agent.runWithStreaming(
-                    with: cueChatMessages,
+                    with: messageParams,
                     request: completionRequest,
                     onStreamEvent: { [weak self] event in
                         Task { @MainActor [weak self] in
@@ -199,7 +199,6 @@ extension AnthropicChatViewModel {
     }
 }
 
-
 // MARK: Run With Streaming
 extension AgentLoop where Client == Anthropic {
     func runWithStreaming(
@@ -293,7 +292,7 @@ extension AgentLoop where Client == Anthropic {
                     await onStreamEvent(.streamTaskCompleted(id))
                 }
             },
-            onToolCall: { id, toolUseBlock in
+            onToolCall: { _, toolUseBlock in
                 if let toolManager = self.toolManager {
                     let result = await toolManager.handleToolUse(toolUseBlock)
                     return result

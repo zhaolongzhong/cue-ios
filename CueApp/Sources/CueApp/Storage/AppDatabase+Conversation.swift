@@ -3,12 +3,11 @@
 //  CueApp
 //
 
+import os.log
 import Foundation
 import GRDB
-import os.log
 import Dependencies
 import CueCommon
-
 
 // MARK: - Database Access: Conversation Operations
 

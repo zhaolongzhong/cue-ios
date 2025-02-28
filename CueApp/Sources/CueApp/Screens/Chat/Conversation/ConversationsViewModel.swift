@@ -20,7 +20,7 @@ public class ConversationsViewModel: ObservableObject {
 
     private let minimumSearchLength = 3
     private let searchDebounceTime: TimeInterval = 0.3
-    private var searchTask: Task<Void, Never>? = nil
+    private var searchTask: Task<Void, Never>?
     private var allConversations: [ConversationModel] = []
 
     private var cancellables = Set<AnyCancellable>()
