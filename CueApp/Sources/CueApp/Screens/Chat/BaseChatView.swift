@@ -25,6 +25,7 @@ protocol ChatViewModel: ObservableObject {
     func stopObserveApp()
     func addAttachment(_ attachment: Attachment)
     func sendMessage() async
+    func deleteMessage(_ message: CueChatMessage) async
     func clearError()
 }
 
@@ -247,7 +248,15 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     ForEach(viewModel.cueChatMessages) { message in
-                        MessageBubble(message: message)
+                        MessageBubble(message: message).contextMenu {
+                            Button {
+                                Task {
+                                    await viewModel.deleteMessage(message)
+                                }
+                            } label: {
+                                Text("Delete")
+                            }
+                        }
                     }
                     // Invisible marker view at bottom
                     Color.clear
@@ -369,7 +378,6 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
     }
 
     func openLiveChat() {
-        print("inx provider: \(provider)")
         switch provider {
         case .openai:
             openWindow(id: WindowId.openaiLiveChatWindow.rawValue, value: WindowId.openaiLiveChatWindow.rawValue)

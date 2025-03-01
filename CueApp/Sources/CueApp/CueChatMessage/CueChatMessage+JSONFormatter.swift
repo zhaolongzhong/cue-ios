@@ -124,3 +124,39 @@ extension JSONFormatter {
         return processor.finalize()
     }
 }
+
+extension Encodable {
+    /// Convert any Encodable object to a pretty-printed JSON string
+    func prettyPrintedJSON() -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        do {
+            let jsonData = try encoder.encode(self)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                return jsonString
+            }
+        } catch {
+            return "Error encoding to JSON: \(error.localizedDescription)"
+        }
+
+        return "Unable to convert to JSON"
+    }
+}
+
+extension CueChatMessage {
+    func prettyPrintJSON() -> String {
+        return self.prettyPrintedJSON()
+    }
+
+    func toDictionary() -> [String: Any]? {
+        let encoder = JSONEncoder()
+        do {
+            let jsonData = try encoder.encode(self)
+            return try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any]
+        } catch {
+            print("Error converting to dictionary: \(error.localizedDescription)")
+            return nil
+        }
+    }
+}

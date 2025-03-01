@@ -9,8 +9,8 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
-    private let openAI: OpenAI
+public final class OpenAIChatViewModel: BaseChatViewModel {
+    let openai: OpenAI
 
     private var streamingTask: Task<Void, Error>?
     private var streamingStates: [String: StreamingState] = [:]
@@ -29,7 +29,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
     private var enableStreaming: Bool = true
 
     public init(apiKey: String, conversationId: String? = nil) {
-        self.openAI = OpenAI(apiKey: apiKey)
+        self.openai = OpenAI(apiKey: apiKey)
         super.init(
             apiKey: apiKey,
             provider: .openai,
@@ -56,14 +56,14 @@ public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
         let cueChatMessage = CueChatMessage.openAI(userMessage, stableId: UUID().uuidString)
         addOrUpdateMessage(cueChatMessage, persistInCache: true)
 
-        // Get recent messages
+        // Get updated message list including the newly added message
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
         newMessage = ""
 
         if isStreamingEnabled {
-            await streamWithAgentLoop(messageParams)
+            await startStreamingTask(messageParams)
         } else {
             await sendMessageWithoutStreaming(messageParams)
         }
@@ -71,7 +71,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
 
     private func sendMessageWithoutStreaming(_ messageParams: [CueChatMessage]) async {
         do {
-            let agent = AgentLoop(chatClient: openAI, toolManager: toolManager, model: model.id)
+            let agent = AgentLoop(chatClient: openai, toolManager: toolManager, model: model.id)
             let completionRequest = CompletionRequest(model: model.id, tools: tools, toolChoice: "auto")
             let openAIParams = messageParams.compactMap { $0.openAIChatParam }
             let updatedMessages = try await agent.run(with: openAIParams, request: completionRequest)
@@ -88,17 +88,17 @@ public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 }
 
-// MARK: Stream With Agent Loop
+// MARK: Start Streaming Task
 
 extension OpenAIChatViewModel {
 
-    func streamWithAgentLoop(_ messageParams: [CueChatMessage]) async {
+    func startStreamingTask(_ messageParams: [CueChatMessage]) async {
         AppLog.log.debug("Starting agent loop for streaming conversation: \(String(describing: self.selectedConversationId))")
 
         do {
-            let agent = AgentLoop(chatClient: openAI, toolManager: toolManager, model: model.id)
             let completionRequest = CompletionRequest(
                 model: model.id,
+                messages: messageParams,
                 maxTokens: 5000,
                 tools: tools,
                 toolChoice: "auto",
@@ -106,10 +106,8 @@ extension OpenAIChatViewModel {
                 stream: true
             )
 
-            // Store the streaming task so it can be cancelled if needed
             streamingTask = Task {
-                let updatedMessages = try await agent.runWithStreamingOpenAI(
-                    with: messageParams,
+                let updatedMessages = try await runLoop(
                     request: completionRequest,
                     onStreamEvent: { [weak self] event in
                         Task { @MainActor [weak self] in
@@ -138,11 +136,9 @@ extension OpenAIChatViewModel {
     private func handleStreamEvent(_ event: OpenAIStreamEvent) {
         switch event {
         case .streamTaskStarted(let id):
-            logger.debug("Stream task started: \(id)")
             initializeStreamingStates(id)
 
         case .streamTaskCompleted(let id):
-            logger.debug("Stream task completed: \(id)")
             if var state = streamingStates[id] {
                 state.isComplete = true
                 state.endTime = Date()
@@ -158,8 +154,12 @@ extension OpenAIChatViewModel {
         case .toolResult(_, let msg):
             addOrUpdateMessage(msg, persistInCache: false)
 
-        case .completed:
-            logger.debug("Streaming completed")
+        case .completed(let id):
+            if var state = streamingStates[id] {
+                state.isComplete = true
+                state.endTime = Date()
+                streamingStates[id] = state
+            }
         }
     }
 

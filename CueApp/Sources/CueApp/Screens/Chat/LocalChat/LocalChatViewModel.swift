@@ -12,7 +12,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
+public final class LocalChatViewModel: BaseChatViewModel {
     @AppStorage(ProviderSettingsKeys.SelectedConversation.local) private var storedConversationId: String?
 
     // Streaming state
@@ -47,7 +47,7 @@ public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
     func prepareForMessageParams(_ messageParams: [CueChatMessage]) -> [OpenAI.ChatMessageParam] {
         let openAIChatMessageParams = messageParams.compactMap { message -> OpenAI.ChatMessageParam? in
             switch message {
-            case .local(let msg, _, _), .openAI(let msg, _, _):
+            case .local(let msg, _, _, _), .openAI(let msg, _, _, _):
                 switch msg {
                 case .userMessage(let userMessage):
                     return OpenAI.ChatMessageParam.userMessage(.init(role: "user", contentString: userMessage.contentAsString))

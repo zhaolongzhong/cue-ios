@@ -10,7 +10,7 @@ import CueGemini
 import CueOpenAI
 
 @MainActor
-public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
+public class GeminiChatViewModel: BaseChatViewModel {
     @Published var state: VoiceState = .idle {
         didSet {
             logger.debug("Voice state change to \(self.state.description)")
@@ -43,16 +43,14 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     override func updateTools() {
-//        super.updateTools()
+        super.updateTools()
         self.geminiTool = toolManager.getGeminiTool()
     }
 
     public func sendMessageUseClient() async throws {
         guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let (userMessage, _) = await prepareGeminiMessage()
-
-        // Add user message to chat
-        addOrUpdateMessage(.gemini(userMessage), persistInCache: true)
+        addOrUpdateMessage(.gemini(userMessage, stableId: UUID().uuidString), persistInCache: true)
         newMessage = ""
         try await generateContent()
     }
@@ -61,19 +59,23 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
         do {
             let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
             let geminiChatParams = messageParams.compactMap { $0.geminiChatParam?.modelContent }
+
             let tools = geminiTool.map { [$0] } ?? []
             let response = try await gemini.chat.generateContent(
                 model: model.id,
                 messages: geminiChatParams,
                 tools: tools
             )
-            AppLog.log.debug("Response: \(String(describing: response))")
+            AppLog.log.debug("Generate content response: \(String(describing: response.candidates[0]))")
             let candidateContent = response.candidates[0].content
             let newMessage = CueChatMessage.gemini(Gemini.ChatMessageParam.assistantMessage(candidateContent), stableId: UUID().uuidString)
-            addOrUpdateMessage(newMessage)
+            addOrUpdateMessage(newMessage, persistInCache: true)
 
-            if case .functionCall(let functionCall) = candidateContent.parts[0] {
-                try await handleFunctionCallAndRecursivelyGenerate(functionCall)
+            for part in candidateContent.parts {
+                if case .functionCall(let functionCall) = part {
+                    try await handleFunctionCallAndRecursivelyGenerate(functionCall)
+                }
+                // The text parts are already included in the message we added
             }
         } catch let error as Gemini.Error {
             handleError(error)
@@ -84,6 +86,7 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     private func handleFunctionCallAndRecursivelyGenerate(_ functionCall: GeminiFunctionCall) async throws {
+        AppLog.log.debug("Handling function call: \(String(describing: functionCall))")
         let result = await handleFunctionCall(functionCall)
         let functionResponse = ModelContent(
             role: "user",
@@ -102,41 +105,32 @@ public class GeminiChatViewModel: BaseChatViewModel, ChatViewModel {
     }
 
     private func handleError(_ error: Error) {
-        // Default error message
         var errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
-
-        // Check for Gemini-specific errors
         guard let geminiError = error as? Gemini.Error else {
             self.error = .sessionError(errorMessage)
             AppLog.log.error("Generate content error: \(error)")
             return
         }
 
-        // Handle specific Gemini errors
         switch geminiError {
         case .apiError(let apiError):
             let message = apiError.error.message
 
-            // API key issues
-            if message.contains("API key expired") || message.contains("API key not valid") {
+            if message.contains("key expired") || message.contains("key not valid") {
                 errorMessage = "Your API key is invalid or has expired. Please renew your API key to continue."
                 break
             }
-
-            // Other API errors
             let detailMessage = apiError.error.details.first { $0.message != nil }?.message ?? message
             errorMessage = "Error: \(detailMessage)"
 
         case .unexpectedAPIResponse(let message):
-            // API key issues in unexpected responses
-            if message.contains("API key expired") {
+            if message.contains("key expired") {
                 errorMessage = "Your API key has expired. Please renew your API key to continue."
                 break
             }
 
             errorMessage = "An error occurred while generating content: \(message)"
         default:
-            // Already using the default message
             break
         }
 

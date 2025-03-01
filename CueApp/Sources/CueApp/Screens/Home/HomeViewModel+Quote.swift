@@ -58,7 +58,7 @@ extension HomeViewModel {
     }
 
     private func extractJSONFromResponse(_ message: CueChatMessage?) -> String? {
-        guard case .openAI(let param, _, _) = message,
+        guard case .openAI(let param, _, _, _) = message,
               case .assistantMessage(let msg, _) = param,
               let content = msg.content else {
             return nil

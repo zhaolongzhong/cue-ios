@@ -103,6 +103,15 @@ extension OpenAI.ChatMessageParam {
         }
     }
 
+    public var toolMessage: OpenAI.ToolMessage? {
+        switch self {
+        case .toolMessage(let message):
+            return message
+        default:
+            return nil
+        }
+    }
+
     public var toolName: String? {
         toolCalls.map{ $0.function.name }.joined(separator: ", ")
     }
@@ -111,7 +120,8 @@ extension OpenAI.ChatMessageParam {
         toolCalls.map { $0.function.prettyArguments }.joined(separator: ", ")
     }
 
-    public func hasToolCall() -> Bool {
+
+    public var hasToolCall: Bool {
         switch self {
         case .assistantMessage(let param, _):
             return param.hasToolCall
@@ -120,7 +130,7 @@ extension OpenAI.ChatMessageParam {
         }
     }
 
-    public func isToolResult() -> Bool {
+    public var isToolMessage: Bool {
         switch self {
         case .toolMessage:
             return true

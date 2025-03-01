@@ -12,16 +12,27 @@ import CueGemini
 extension CueChatMessage {
     public var id: String {
         switch self {
-        case .local(let msg, let stableId, _):
+        case .local(let msg, let stableId, _, _):
             return stableId ?? msg.id
-        case .openAI(let msg, let stableId, _):
+        case .openAI(let msg, let stableId, _, _):
             return stableId ?? msg.id
-        case .anthropic(let msg, let stableId, _):
+        case .anthropic(let msg, let stableId, _, _):
             return stableId ?? msg.id
-        case .gemini(let msg, let stableId, _):
+        case .gemini(let msg, let stableId, _, _):
             return stableId ?? msg.id
-        case .cue(let msg, let stableId, _):
+        case .cue(let msg, let stableId, _, _):
             return stableId ?? msg.id
+        }
+    }
+
+    var stableId: String? {
+        switch self {
+        case .local(_, let stableId, _, _),
+                .openAI(_, let stableId, _, _),
+                .anthropic(_, let stableId, _, _),
+                .gemini(_, let stableId, _, _),
+                .cue(_, let stableId, _, _):
+            return stableId
         }
     }
 
@@ -79,149 +90,91 @@ extension CueChatMessage {
 
     var role: String {
         switch self {
-        case .local(let msg, _, _): return msg.role
-        case .openAI(let msg, _, _): return msg.role
-        case .anthropic(let msg, _, _): return msg.role
-        case .gemini(let msg, _, _): return msg.role
-        case .cue(let msg, _, _): return msg.author.role
+        case .local(let msg, _, _, _): return msg.role
+        case .openAI(let msg, _, _, _): return msg.role
+        case .anthropic(let msg, _, _, _): return msg.role
+        case .gemini(let msg, _, _, _): return msg.role
+        case .cue(let msg, _, _, _): return msg.author.role
         }
     }
 
     var content: OpenAI.ContentValue {
         switch self {
-        case .local(let msg, _, _): return msg.content
-        case .openAI(let msg, _, _): return msg.content
-        case .anthropic(let msg, _, _): return .string(msg.content)
-        case .gemini(let msg, _, _): return .string(msg.content)
-        case .cue(let msg, _, _): return .string(msg.content.text)
+        case .local(let msg, _, _, _): return msg.content
+        case .openAI(let msg, _, _, _): return msg.content
+        case .anthropic(let msg, _, _, _): return .string(msg.content)
+        case .gemini(let msg, _, _, _): return .string(msg.content)
+        case .cue(let msg, _, _, _): return .string(msg.content.text)
         }
     }
 
     var contentType: MessageContentType {
-        switch self {
-        case .local(let msg, _, _):
-            if case .assistantMessage(let message, _) = msg {
-                if message.hasToolCall {
-                    return .toolCall
-                }
-            } else if case .toolMessage = msg {
-                return .toolMessage
-            }
-        case .openAI(let msg, _, _):
-            if case .assistantMessage(let message, _) = msg {
-                if message.hasToolCall {
-                    return .toolCall
-                }
-            } else if case .toolMessage = msg {
-                return .toolMessage
-            }
-        case .anthropic(let msg, _, _):
-            if case .assistantMessage(let message, _) = msg {
-                if message.hasToolUse {
-                    return .toolUse
-                }
-            } else if case .toolMessage = msg {
-                return .toolMessage
-            }
-        case .gemini(let msg, _, _):
-            if case .assistantMessage = msg {
-                if msg.hasFunctionCalls {
-                    return .toolCall
-                }
-            } else if case .toolMessage = msg {
-                return .toolMessage
-            }
-        case .cue(let msg, _, _):
-            return msg.content.type ?? .text
+        if isTool {
+            return .toolCall
+        } else if isToolMessage {
+            return .toolMessage
         }
         return .text
     }
 
     var isUser: Bool {
         switch self {
-        case .local(let msg, _, _):
+        case .local(let msg, _, _, _):
             return msg.role == "user"
-        case .openAI(let msg, _, _):
+        case .openAI(let msg, _, _, _):
             return msg.role == "user"
-        case .anthropic(let msg, _, _):
-            if case .userMessage = msg {
-                return true
-            }
-            return false
-        case .gemini(let msg, _, _):
-            if case .userMessage = msg {
-                return true
-            }
-            return false
-        case .cue(let msg, _, _):
+        case .anthropic(let msg, _, _, _):
+            return msg.isUserMessage
+        case .gemini(let msg, _, _, _):
+            return msg.isUserMessage
+        case .cue(let msg, _, _, _):
             return msg.isUser
         }
     }
 
     var isTool: Bool {
         switch self {
-        case .local(let msg, _, _):
-            if case .assistantMessage(let message, _) = msg {
-                return message.hasToolCall
-            }
-        case .openAI(let msg, _, let streamingState):
-            if streamingState != nil && streamingState!.toolCalls.count > 0 {
-                return true
-            } else if case .assistantMessage(let message, _) = msg {
-                return message.hasToolCall
-            }
-        case .anthropic(let msg, _, _):
-            if case .assistantMessage(let message, _) = msg {
-                return message.hasToolUse
-            }
-        case .gemini(let msg, _, _):
-            if case .assistantMessage = msg {
-                return msg.hasFunctionCalls
-            }
-        case .cue(let msg, _, _):
+        case .local(let msg, _, _, _):
+            return msg.hasToolCall
+        case .openAI(let msg, _, let streamingState, _):
+            return msg.hasToolCall || streamingState?.hasToolcall == true
+        case .anthropic(let msg, _, _, _):
+            return msg.hasToolUse || streamingState?.hasToolcall == true
+        case .gemini(let msg, _, _, _):
+            return msg.hasFunctionCall
+        case .cue(let msg, _, _, _):
             return msg.isTool
         }
-        return false
     }
 
     var isToolMessage: Bool {
         switch self {
-        case .local(let msg, _, _):
-            if case .toolMessage = msg {
-                return true
-            }
-        case .openAI(let msg, _, _):
-            if case .toolMessage = msg {
-                return true
-            }
-        case .anthropic(let msg, _, _):
-            if case .toolMessage = msg {
-                return true
-            }
-        case .gemini(let msg, _, _):
-            if case .toolMessage = msg {
-                return true
-            }
-        case .cue(let msg, _, _):
+        case .local(let msg, _, _, _),
+                .openAI(let msg, _, _, _):
+            return msg.isToolMessage
+        case .anthropic(let msg, _, _, _):
+            return msg.isToolMessage
+        case .gemini(let msg, _, _, _):
+            return msg.isToolMessage
+        case .cue(let msg, _, _, _):
             return msg.isToolMessage
         }
-        return false
     }
 
     var toolResultContent: String {
         let content: String = {
             switch self {
-            case .local(let msg, _, _):
+            case .local(let msg, _, _, _):
                 if case .toolMessage(let toolMessage) = msg {
                     return toolMessage.content
                 }
                 return msg.content.contentAsString
-            case .openAI(let msg, _, _):
+            case .openAI(let msg, _, _, _):
                 if case .toolMessage(let toolMessage) = msg {
                     return toolMessage.content
                 }
                 return msg.content.contentAsString
-            case .anthropic(let msg, _, _):
+            case .anthropic(let msg, _, _, _):
                 if case .toolMessage(let toolMessage) = msg {
                     if let content = toolMessage.content.first?.content.first {
                         switch content {
@@ -233,7 +186,7 @@ extension CueChatMessage {
                     }
                 }
                 return msg.content
-            case .gemini(let msg, _, _):
+            case .gemini(let msg, _, _, _):
                 if case .toolMessage(let toolMessage) = msg {
                     if case .functionResponse(let response) = toolMessage.parts.first {
                         if case .string(let content) = response.response["content"] {
@@ -242,7 +195,7 @@ extension CueChatMessage {
                     }
                 }
                 return msg.content
-            case .cue(let msg, _, _):
+            case .cue(let msg, _, _, _):
                 return msg.content.text
             }
         }()
@@ -252,40 +205,31 @@ extension CueChatMessage {
 
     var toolName: String? {
         switch self {
-        case .local(let msg, _, _):
+        case .local(let msg, _, _, _):
             return msg.toolName
-        case .openAI(let msg, _, _):
+        case .openAI(let msg, _, _, _):
             return msg.toolName
-        case .anthropic(let msg, _, _):
+        case .anthropic(let msg, _, _, _):
             return msg.toolName
-        case .gemini(let msg, _, _):
+        case .gemini(let msg, _, _, _):
             return msg.toolName
-        case .cue(let msg, _, _):
+        case .cue(let msg, _, _, _):
             return msg.content.toolName
         }
     }
 
     var toolArgs: String? {
         switch self {
-        case .local(let msg, _, _):
+        case .local(let msg, _, _, _):
             return msg.toolArgs
-        case .openAI(let msg, _, _):
+        case .openAI(let msg, _, _, _):
             return msg.toolArgs
-        case .anthropic(let msg, _, _):
+        case .anthropic(let msg, _, _, _):
             return msg.toolArgs
-        case .gemini(let msg, _, _):
+        case .gemini(let msg, _, _, _):
             return msg.toolArgs
-        case .cue(let msg, _, _):
+        case .cue(let msg, _, _, _):
             return msg.content.toolArgs
-        }
-    }
-
-    var anthropic: Anthropic.ChatMessageParam {
-        switch self {
-        case .anthropic(let param, _, _):
-            return param
-        default:
-            fatalError("Not implemented: Conversion to Anthropic.ChatMessageParam")
         }
     }
 
@@ -298,26 +242,30 @@ extension CueChatMessage {
         }
     }
 
-    var stableId: String? {
+    var createdAt: Date? {
         switch self {
-        case .local(_, let stableId, _):
-            return stableId
-        case .openAI(_, let stableId, _):
-            return stableId
-        case .anthropic(_, let stableId, _):
-            return stableId
-        case .gemini(_, let stableId, _):
-            return stableId
-        case .cue(_, let stableId, _):
-            return stableId
+        case .local(_, _, _, let createdAt),
+                .openAI(_, _, _, let createdAt),
+                .anthropic(_, _, _, let createdAt),
+                .gemini(_, _, _, let createdAt),
+                .cue(_, _, _, let createdAt):
+            return createdAt
         }
     }
 
     var openAIChatParam: OpenAI.ChatMessageParam? {
         switch self {
-        case .local(let msg, _, _):
+        case .local(let msg, _, _, _),
+                .openAI(let msg, _, _, _):
             return msg
-        case .openAI(let msg, _, _):
+        default:
+            return nil
+        }
+    }
+
+    var anthropicChatParam: Anthropic.ChatMessageParam? {
+        switch self {
+        case .anthropic(let msg, _, _, _):
             return msg
         default:
             return nil
@@ -326,7 +274,7 @@ extension CueChatMessage {
 
     var geminiChatParam: Gemini.ChatMessageParam? {
         switch self {
-        case .gemini(let msg, _, _):
+        case .gemini(let msg, _, _, _):
             return msg
         default:
             return nil

@@ -1,15 +1,15 @@
 import Foundation
 
 @MainActor
-public final class AnthropicClient {
-    public let configuration: Anthropic.Configuration
-    public let session: URLSession
-
-    public init(configuration: Anthropic.Configuration, session: URLSession = .shared) {
+final class OpenAIHTTPClient {
+    let configuration: OpenAI.Configuration
+    let session: URLSession
+    
+    init(configuration: OpenAI.Configuration, session: URLSession = .shared) {
         self.configuration = configuration
         self.session = session
     }
-
+    
     func send<T: Decodable>(
         endpoint: String,
         method: String,
@@ -19,39 +19,38 @@ public final class AnthropicClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(configuration.apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-
+        request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
+        
         if let body = body {
             let encoder = JSONEncoder()
-            encoder.keyEncodingStrategy = .convertToSnakeCase
             request.httpBody = try encoder.encode(body)
         }
 
         do {
             let (data, response) = try await session.data(for: request)
-
+            
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw Anthropic.Error.invalidResponse
+                throw OpenAI.Error.invalidResponse
             }
-
+            
             if !(200...299).contains(httpResponse.statusCode) {
-                if let apiError = try? JSONDecoder().decode(Anthropic.APIError.self, from: data) {
-                    throw Anthropic.Error.apiError(apiError)
+                if let apiError = try? JSONDecoder().decode(OpenAI.APIError.self, from: data) {
+                    throw OpenAI.Error.apiError(apiError)
                 } else {
                     let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-                    throw Anthropic.Error.unexpectedAPIResponse(errorMessage)
+                    throw OpenAI.Error.unexpectedAPIResponse(errorMessage)
                 }
             }
-
+            
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: data)
-        } catch let error as Anthropic.Error {
+            
+        } catch let error as OpenAI.Error {
             throw error
         } catch let error as DecodingError {
-            throw Anthropic.Error.decodingError(error)
+            throw OpenAI.Error.decodingError(error)
         } catch {
-            throw Anthropic.Error.networkError(error)
+            throw OpenAI.Error.networkError(error)
         }
     }
 }

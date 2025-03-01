@@ -49,22 +49,21 @@ public struct MessageModel: Codable, Equatable, Identifiable, Sendable {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let createdAtString = try container.decode(String.self, forKey: .createdAt)
-        if let date = dateFormatter.date(from: createdAtString) {
+        let createdAtString = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        if let createdAtString, let date = dateFormatter.date(from: createdAtString) {
             createdAt = date
         } else {
-            throw DecodingError.dataCorruptedError(forKey: .createdAt, in: container, debugDescription: "Date string does not match format")
+            createdAt = Date()
         }
 
-        let updatedAtString = try container.decode(String.self, forKey: .updatedAt)
-        if let date = dateFormatter.date(from: updatedAtString) {
+        let updatedAtString = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+        if let updatedAtString, let date = dateFormatter.date(from: updatedAtString) {
             updatedAt = date
         } else {
-            throw DecodingError.dataCorruptedError(forKey: .updatedAt, in: container, debugDescription: "Date string does not match format")
+            updatedAt = Date()
         }
     }
 }
-
 
 public struct Author: Codable, Equatable, Sendable {
     public let role: String
@@ -103,16 +102,43 @@ public struct MessageContent: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
+        // Try to decode type from multiple possible locations
         if let contentType = try container.decodeIfPresent(MessageContentType.self, forKey: .type) {
             type = contentType
+        } else if let fallbackType = try container.decodeIfPresent(MessageContentType.self, forKey: .fallbackType) {
+            type = fallbackType
         } else {
-            type = try container.decodeIfPresent(MessageContentType.self, forKey: .fallbackType)
+            // If we can't find a type, default to unknown
+            type = .unknown
         }
 
+        // Try to decode content from multiple possible locations
         if container.contains(.content) {
-            content = try container.decode(ContentDetail.self, forKey: .content)
+            do {
+                content = try container.decode(ContentDetail.self, forKey: .content)
+            } catch {
+                // If content can't be decoded directly, try to create a default ContentDetail
+                if let stringContent = try? container.decodeIfPresent(String.self, forKey: .content) {
+                    content = .string(stringContent)
+                } else {
+                    // If all else fails, provide an empty string
+                    content = .string("")
+                }
+            }
+        } else if container.contains(.fallbackContent) {
+            do {
+                content = try container.decode(ContentDetail.self, forKey: .fallbackContent)
+            } catch {
+                if let stringContent = try? container.decodeIfPresent(String.self, forKey: .fallbackContent) {
+                    content = .string(stringContent)
+                } else {
+                    // If all else fails, provide an empty string
+                    content = .string("")
+                }
+            }
         } else {
-            content = try container.decode(ContentDetail.self, forKey: .fallbackContent)
+            // Default empty content if none found
+            content = .string("")
         }
     }
 
@@ -127,11 +153,32 @@ public struct MessageContent: Codable, Equatable, Sendable {
 
 public enum MessageContentType: String, Codable, Sendable {
     case text
-    case toolCall = "tool_call"
+    case image
+    case toolCall = "tool_calls"
     case toolMessage = "tool_message"
     case toolUse = "tool_use"
     case toolResult = "tool_result"
-    case image
+    case unknown
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if let stringValue = try? container.decode(String.self) {
+            switch stringValue {
+            case "text": self = .text
+            case "image": self = .image
+            case "tool_calls": self = .toolCall
+            case "tool_message": self = .toolMessage
+            case "tool_use": self = .toolUse
+            case "tool_result": self = .toolResult
+            default:
+                print("Warning: Unknown MessageContentType value: \(stringValue)")
+                self = .unknown
+            }
+        } else {
+            self = .unknown
+        }
+    }
 }
 
 public enum ContentDetail: Codable, Equatable, Sendable {

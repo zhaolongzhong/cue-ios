@@ -173,15 +173,17 @@ extension OpenAI {
 
     public struct ChatCompletionRequest: Codable, Sendable {
         public let model: String
+        public let reasoningEffort: String?
         public let messages: [ChatMessageParam]
         public let maxTokens: Int
-        public let temperature: Double
+        public let temperature: Double?
         public let tools: [JSONValue]?
         public let toolChoice: String?
         public let stream: Bool
 
         private enum CodingKeys: String, CodingKey {
             case model, messages, temperature, tools
+            case reasoningEffort = "reasoning_effort"
             case maxTokens = "max_completion_tokens"
             case toolChoice = "tool_choice"
             case stream = "stream"
@@ -189,6 +191,7 @@ extension OpenAI {
         
         public init(
             model: String,
+            reasoningEffort: String = "medium",
             messages: [OpenAI.ChatMessageParam],
             maxTokens: Int = 1000,
             temperature: Double = 1.0,
@@ -199,10 +202,11 @@ extension OpenAI {
             self.model = model
             self.messages = messages
             self.maxTokens = maxTokens
-            self.temperature = temperature
+            self.temperature = model.contains("o3-mini") ? nil : temperature
             self.tools = tools
             self.toolChoice = toolChoice
             self.stream = stream
+            self.reasoningEffort = model.contains("o3-mini") ? reasoningEffort : nil
         }
     }
     

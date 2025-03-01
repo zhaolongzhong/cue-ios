@@ -119,6 +119,15 @@ extension Anthropic.ChatMessageParam {
         }
     }
 
+    public var toolMessage: Anthropic.ToolResultMessage? {
+        switch self {
+        case .toolMessage(let msg):
+            return msg
+        default:
+            return nil
+        }
+    }
+
     public var toolName: String? {
         return toolUses.map {
             $0.name
@@ -129,7 +138,7 @@ extension Anthropic.ChatMessageParam {
         return toolUses.map { $0.prettyInput }.joined(separator: ", ")
     }
 
-    public func hasToolUse() -> Bool {
+    public var hasToolUse: Bool {
         switch self {
         case .assistantMessage(let param, _):
             return param.hasToolUse
@@ -138,9 +147,18 @@ extension Anthropic.ChatMessageParam {
         }
     }
 
-    public func isToolResult() -> Bool {
+    public var isToolMessage: Bool {
         switch self {
         case .toolMessage:
+            return true
+        default:
+            return false
+        }
+    }
+
+    public var isUserMessage: Bool {
+        switch self {
+        case .userMessage:
             return true
         default:
             return false

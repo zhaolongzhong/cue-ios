@@ -192,7 +192,7 @@ extension CueChatMessage {
     var segments: [MessageSegment] {
         var finalSegments: [MessageSegment] = []
         if isUser {
-            if case .anthropic(let msg, _, _) = self {
+            if case .anthropic(let msg, _, _, _) = self {
                 // Check if we have any content blocks
                 if msg.contentBlocks.count > 0 {
                     // Handle the first block
@@ -209,7 +209,7 @@ extension CueChatMessage {
                         }
                     }
                 }
-            } else if case .gemini(let msg, _, _) = self {
+            } else if case .gemini(let msg, _, _, _) = self {
                 if msg.modelContent.parts.count > 0 {
                     finalSegments.append(.text(msg.modelContent.parts[0].text ?? ""))
                 }
@@ -220,7 +220,7 @@ extension CueChatMessage {
                         finalSegments.append(.file(fileData))
                     }
                 }
-            } else if case .openAI(let msg, _, _) = self {
+            } else if case .openAI(let msg, _, _, _) = self {
                 if msg.contentBlocks.count > 0, case .text(let text) = msg.contentBlocks[0] {
                     finalSegments.append(.text(text))
                 }
@@ -242,7 +242,7 @@ extension CueChatMessage {
                     }
                 }
             }
-        } else if case .anthropic(let msg, _, let streamingState) = self {
+        } else if case .anthropic(let msg, _, let streamingState, _) = self {
             let contentBlocks: [Anthropic.ContentBlock]
             if let blocks = streamingState?.contentBlocks {
                 contentBlocks = blocks
@@ -253,7 +253,7 @@ extension CueChatMessage {
                 let newSegments = extractSegments(from: contentBlock.text, isThinking: contentBlock.isThinking)
                 finalSegments.append(contentsOf: newSegments)
             }
-        } else if case .openAI(let msg, _, let streamingState) = self {
+        } else if case .openAI(let msg, _, let streamingState, _) = self {
             let content: String
             if let currentContent = streamingState?.content {
                 content = currentContent

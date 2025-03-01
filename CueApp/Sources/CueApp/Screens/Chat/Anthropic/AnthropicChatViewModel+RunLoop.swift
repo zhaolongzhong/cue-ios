@@ -1,44 +1,43 @@
 //
-//  OpenAIChatViewModel+RunLoop.swift
+//  AnthropicChatViewModel+RunLoop.swift
 //  CueApp
 //
-
 import Foundation
+import CueAnthropic
 import CueCommon
-import CueOpenAI
 
 // MARK: - Run Loop
-
-extension OpenAIChatViewModel {
+extension AnthropicChatViewModel {
     func runLoop(
         request: CompletionRequest,
-        onStreamEvent: @escaping (OpenAIStreamEvent) async -> Void
+        onStreamEvent: @escaping (StreamEvent) async -> Void
     ) async throws -> [CueChatMessage] {
         var currentMessages = Array(request.messages)
         var iteration = 0
         var shouldContinue = true
 
-        while iteration < request.maxTurns {
+        while shouldContinue && iteration < request.maxTurns {
             shouldContinue = false
 
             let messageParams = prepareMessageParams(currentMessages)
 
+            // Create and process stream
             let streamResult = try await executeIteration(
                 messageParams: messageParams,
                 request: request,
                 onStreamEvent: onStreamEvent
             )
+            // Process results
             if let assistantMessage = streamResult.finalMessage {
                 // Add the assistant message to the conversation
-                currentMessages.append(.openAI(assistantMessage, stableId: streamResult.messageId, createdAt: Date()))
-            }
+                currentMessages.append(createAssistantChatMessage(assistantMessage, id: streamResult.messageId))
 
-            // Process results and determine if we should continue
-            shouldContinue = await processIterationResults(
-                streamResult: streamResult,
-                currentMessages: &currentMessages,
-                onStreamEvent: onStreamEvent
-            )
+                shouldContinue = await processIterationResults(
+                    streamResult: streamResult,
+                    currentMessages: &currentMessages,
+                    onStreamEvent: onStreamEvent
+                )
+            }
 
             if !shouldContinue {
                 break
@@ -52,23 +51,23 @@ extension OpenAIChatViewModel {
     /// Execute a single iteration of the conversation loop
     /// - Returns: Whether another iteration should be performed
     private func executeIteration(
-        messageParams: [OpenAI.ChatMessageParam],
+        messageParams: [Anthropic.ChatMessageParam],
         request: CompletionRequest,
-        onStreamEvent: @escaping (OpenAIStreamEvent) async -> Void
-    ) async throws -> OpenAIStreamResult {
+        onStreamEvent: @escaping (StreamEvent) async -> Void
+    ) async throws -> StreamResult {
 
-        // Create stream processor
-        let streamProcessor = OpenAIStreamProcessor(
+        let streamProcessor = AnthropicStreamProcessor(
             toolManager: self.toolManager,
             onEvent: onStreamEvent
         )
 
-        let (events, connectionState, cancel) = openai.chat.completions.createStream(
+        let (events, connectionState, cancel) = anthropic.messages.createStream(
             model: request.model,
             maxTokens: request.maxTokens,
             messages: messageParams,
-            tools: request.tools,
-            toolChoice: request.toolChoice
+            tools: tools,
+            toolChoice: request.toolChoice != nil ? ["type": request.toolChoice!] : nil,
+            thinking: request.thinking
         )
 
         let connectionTask = Task { await monitorConnectionState(connectionState) }
@@ -86,87 +85,83 @@ extension OpenAIChatViewModel {
             throw error
         }
 
-        var result = OpenAIStreamResult()
-        result.messageId = streamProcessor.messageId ?? ""
+        var result = StreamResult()
         result.finalMessage = streamProcessor.getFinalMessage()
         result.toolResults = streamProcessor.getToolResults()
+        result.messageId = streamProcessor.messageId ?? ""
         result.hasAllToolResults = streamProcessor.hasAllToolResults()
         return result
     }
 
-    /// Process all events in the stream
-    private func processStreamEvents(
-        _ events: AsyncThrowingStream<ServerStreamingEvent, Error>,
-        _ streamProcessor: OpenAIStreamProcessor
-    ) async throws {
-        do {
-            for try await event in events {
-                _ = await streamProcessor.processEvent(event)
-            }
-        } catch {
-            logger.error("Error processing stream: \(error.localizedDescription)")
-            throw error
-        }
+    /// Creates a chat message from an assistant message
+    private func createAssistantChatMessage(
+        _ assistantMessage: Anthropic.ChatMessageParam,
+        id: String
+    ) -> CueChatMessage {
+        return .anthropic(
+            assistantMessage,
+            stableId: id,
+            streamingState: nil,
+            createdAt: Date()
+        )
     }
 
-    /// Process the results of an iteration and update messages
-    /// - Returns: Tool result messages that were added
+    /// Process tool uses if there are any
     private func processIterationResults(
-        streamResult: OpenAIStreamResult,
+        streamResult: StreamResult,
         currentMessages: inout [CueChatMessage],
-        onStreamEvent: @escaping (OpenAIStreamEvent) async -> Void
+        onStreamEvent: @escaping (StreamEvent) async -> Void
     ) async -> Bool {
-        guard let hasToolCall = streamResult.finalMessage?.hasToolCall else {
+        guard let hasToolCall = streamResult.finalMessage?.hasToolUse else {
             // No tool call, we can stop the conversation
             return false
         }
 
-        // If there are tool results, add them and indicate we should continue
+        // Tool uses with results
         if hasToolCall && streamResult.hasAllToolResults {
             // Add the tool result message to the conversation
-            let toolResult = streamResult.createChatResultMessage()
-            currentMessages.append(contentsOf: toolResult)
+            let toolResultMessage = streamResult.createChatResultMessage()
+            currentMessages.append(toolResultMessage)
 
             // Notify about the tool result
-            for msg in toolResult {
-                await onStreamEvent(.toolResult(streamResult.messageId, msg))
-            }
+            await onStreamEvent(.toolResult(streamResult.messageId, toolResultMessage))
 
+            // Signal that we should continue the conversation
             return true
         } else if !hasToolCall {
             logger.debug("No tool calls in final message, won't continue. messageId: \(streamResult.messageId)")
         } else {
             logger.error("Tool call without corresponding tool result. Cannot continue.")
         }
-
         return false
     }
 
-    func prepareMessageParams(_ messages: [CueChatMessage]) -> [OpenAI.ChatMessageParam] {
-        // First convert all messages to OpenAIChatParam
-        var messageParams = messages.compactMap { $0.openAIChatParam }
+    func prepareMessageParams(_ messages: [CueChatMessage]) -> [Anthropic.ChatMessageParam] {
+        // First convert all messages to AnthropicChatParam
+        var messageParams = messages.compactMap { $0.anthropicChatParam }
 
-        // Remove any leading tool messages (they should only follow tool calls)
+        // Remove any leading tool messages (they should only follow tool uses)
         while messageParams.count > 0, messageParams[0].isToolMessage {
             messageParams.removeFirst()
         }
 
-        // Ensure tool calls are immediately followed by their corresponding tool messages
+        // Ensure tool uses are immediately followed by their corresponding tool messages
         var i = 0
         while i < messageParams.count - 1 {
-            if messageParams[i].hasToolCall {
-                // This message has tool calls
-                let toolCallIds = messageParams[i].toolCalls.map { $0.id }
+            let toolUses = messageParams[i].toolUses
+            if !toolUses.isEmpty {
+                // This message has tool uses
+                let toolUseIds = toolUses.map { $0.id }
 
                 // Look for corresponding tool messages that might be out of order
                 var j = i + 1
                 while j < messageParams.count {
                     if messageParams[j].isToolMessage,
-                       let toolCallId = messageParams[j].toolMessage?.toolCallId,
-                       toolCallIds.contains(toolCallId) {
+                       let toolContent = messageParams[j].toolMessage?.content.first,
+                       toolUseIds.contains(toolContent.toolUseId) {
                         // Found a matching tool message but it's not in the right position
                         if j > i + 1 {
-                            // Move the tool message right after the tool call
+                            // Move the tool message right after the tool use
                             let toolMessage = messageParams.remove(at: j)
                             messageParams.insert(toolMessage, at: i + 1)
                         }
@@ -182,7 +177,7 @@ extension OpenAIChatViewModel {
     }
 }
 
-extension OpenAIChatViewModel {
+extension AnthropicChatViewModel {
     /// Monitor the connection state changes
     private func monitorConnectionState(_ connectionState: AsyncStream<ServerStreamingEvent.ConnectionState>) async {
         for await state in connectionState {
@@ -202,25 +197,18 @@ extension OpenAIChatViewModel {
     }
 }
 
-struct OpenAIStreamResult {
-    var messageId: String = ""
-    var finalMessage: OpenAI.ChatMessageParam?
-    var toolResults: [OpenAI.ToolMessage] = []
-    var hasAllToolResults: Bool = true
-}
-
-extension OpenAIStreamResult {
-    func createChatResultMessage() -> [CueChatMessage] {
-        var toolResults: [CueChatMessage] = []
-        for toolMessage in self.toolResults {
-            let cueChatMessage = CueChatMessage.openAI(
-                .toolMessage(toolMessage),
-                stableId: "tool_result_\(toolMessage.toolCallId)",
-                createdAt: Date().addingTimeInterval(TimeInterval(0.001))
-            )
-            toolResults.append(cueChatMessage)
-        }
-
-        return toolResults
+extension StreamResult {
+    func createChatResultMessage() -> CueChatMessage {
+        let toolResult = Anthropic.ToolResultMessage(
+            role: "user",
+            content: toolResults
+        )
+        let stableId = self.toolResults.first?.toolUseId ?? "EMPTY_TOOL_USE_ID"
+        return CueChatMessage.anthropic(
+            .toolMessage(toolResult),
+            stableId: "tool_result_\(stableId)",
+            streamingState: nil,
+            createdAt: Date().addingTimeInterval(0.001)
+        )
     }
 }

@@ -65,7 +65,7 @@ extension MCPServerManager {
                                let jsonData = currentBuffer[..<range.lowerBound].data(using: .utf8) {
                                 do {
                                     let response = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                                     print("📥 Parsed response: \(String(describing: response))")
+//                                     print("📥 Parsed response: \(String(describing: response))")
 
                                     if let result = response?["result"] {
                                         let jsonResult = JSONValue(any: result)

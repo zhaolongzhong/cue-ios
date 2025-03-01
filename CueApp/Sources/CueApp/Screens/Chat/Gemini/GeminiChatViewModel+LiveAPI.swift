@@ -151,7 +151,6 @@ extension GeminiChatViewModel {
                     "result": .string(result)
                 ]
             )
-            AppLog.log.debug("function response: \(String(describing: functionResponse))")
             functionReponses.append(functionResponse)
         }
 
@@ -165,6 +164,7 @@ extension GeminiChatViewModel {
 
     private func sendToolResponse(_ toolResponse: BidiGenerateContentToolResponse) async throws {
         do {
+            AppLog.log.debug("Send tool response: \(String(describing: toolResponse))")
             try await liveAPIClient.send(toolResponse)
         } catch {
             self.error = .sessionError(error.localizedDescription)

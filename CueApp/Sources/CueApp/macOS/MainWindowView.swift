@@ -14,7 +14,6 @@ public struct MainWindowView: View {
 
     // MARK: - State Properties
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @State private var lastStatusUpdate: Date = Date()
     @State private var selectedEmailCategory: EmailCategory? = .newsletters
 
     #if os(macOS)
@@ -39,9 +38,6 @@ public struct MainWindowView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .environmentObject(providersViewModel)
-        .onReceive(assistantsViewModel.$clientStatuses) { _ in
-            lastStatusUpdate = Date()
-        }
         .onChange(of: appStateViewModel.state.currentUser) { _, user in
             handleUserChange(user)
         }
@@ -66,7 +62,6 @@ public struct MainWindowView: View {
             ideal: WindowSize.sidebarIdealWidth,
             max: WindowSize.sidebarMaxWidth
         )
-        .id("sidebar-\(lastStatusUpdate.timeIntervalSince1970)")
     }
 
     @ViewBuilder

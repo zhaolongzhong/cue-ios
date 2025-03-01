@@ -5,6 +5,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
     case gpt4o = "gpt-4o"
     case gpt4_5 = "gpt-4.5-preview"
     case o3mini = "o3-mini"
+    case o1 = "o1"
     case claude37Sonnet = "claude-3-7-sonnet-20250219"
     case claude35Sonnet = "claude-3-5-sonnet-20241022"
     case claude35Haiku = "claude-3-5-haiku-20241022"
@@ -24,6 +25,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
         case .gpt4o: return "GPT-4o"
         case .gpt4_5: return "GPT-4.5"
         case .o3mini: return "o3 mini"
+        case .o1: return "o1"
         case .claude37Sonnet: return "Claude 3.7 Sonnet"
         case .claude35Sonnet: return "Claude 3.5 Sonnet"
         case .claude35Haiku: return "Claude 3.5 Haiku"
@@ -37,7 +39,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
 
     var provider: Provider {
         switch self {
-        case .gpt4oMini, .gpt4o, .gpt4_5, .o3mini:
+        case .gpt4oMini, .gpt4o, .gpt4_5, .o3mini, .o1:
             return .openai
         case .claude37Sonnet, .claude35Sonnet, .claude35Haiku:
             return .anthropic
@@ -53,6 +55,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
             return [
                 ChatModel.gpt4oMini,
                 ChatModel.o3mini,
+                ChatModel.o1,
                 ChatModel.gpt4_5,
                 ChatModel.claude35Sonnet,
                 ChatModel.claude37Sonnet,

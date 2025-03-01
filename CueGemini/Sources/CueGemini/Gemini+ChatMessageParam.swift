@@ -84,8 +84,21 @@ extension Gemini {
             }
         }
 
-        public var hasFunctionCalls: Bool {
+        public var hasFunctionCall: Bool {
             functionCalls.count > 0
+        }
+
+        public var isToolMessage: Bool {
+            if case .toolMessage = self {
+                return true
+            }
+            return false
+        }
+        public var isUserMessage: Bool {
+            if case .userMessage = self {
+                return true
+            }
+            return false
         }
 
         public var toolName: String? {

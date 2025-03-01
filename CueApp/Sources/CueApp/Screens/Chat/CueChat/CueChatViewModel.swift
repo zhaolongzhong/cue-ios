@@ -10,7 +10,7 @@ import CueOpenAI
 import CueAnthropic
 
 @MainActor
-public final class CueChatViewModel: BaseChatViewModel, ChatViewModel {
+public final class CueChatViewModel: BaseChatViewModel {
     private let cueClient: CueClient
 
     public init() {

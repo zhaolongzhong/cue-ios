@@ -170,27 +170,27 @@ public class ToolManager {
         var results: [OpenAI.ToolMessage] = []
 
         for toolCall in toolCalls {
-            if let data = toolCall.function.arguments.data(using: .utf8),
-               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                do {
-                    let result = try await self.callTool(
-                        name: toolCall.function.name,
-                        arguments: args
-                    )
-                    results.append(OpenAI.ToolMessage(
-                        role: "tool",
-                        content: result,
-                        toolCallId: toolCall.id
-                    ))
-                } catch {
-                    let toolError = ChatError.toolError(error.localizedDescription)
-                    ErrorLogger.log(toolError)
-                    results.append(OpenAI.ToolMessage(
-                        role: "tool",
-                        content: "Error: \(error.localizedDescription)",
-                        toolCallId: toolCall.id
-                    ))
-                }
+            do {
+                // Parse the arguments using our reusable function
+                let args = parseToolArguments(toolCall.function.arguments)
+
+                let result = try await self.callTool(
+                    name: toolCall.function.name,
+                    arguments: args
+                )
+                results.append(OpenAI.ToolMessage(
+                    role: "tool",
+                    content: result,
+                    toolCallId: toolCall.id
+                ))
+            } catch {
+                let toolError = ChatError.toolError(error.localizedDescription)
+                ErrorLogger.log(toolError)
+                results.append(OpenAI.ToolMessage(
+                    role: "tool",
+                    content: "Error: \(error.localizedDescription)",
+                    toolCallId: toolCall.id
+                ))
             }
         }
 
@@ -206,8 +206,8 @@ public class ToolManager {
                 case .int(let int): arguments[key] = int
                 case .number(let double): arguments[key] = double
                 case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = arr
-                case .object(let dict): arguments[key] = dict
+                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
+                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
                 case .null: arguments[key] = NSNull()
                 }
             }
@@ -235,17 +235,20 @@ public class ToolManager {
 
     func handleToolCall(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
         var results: [OpenAI.ToolMessage] = []
+
         for toolCall in toolCalls {
-            if let data = toolCall.function.arguments.data(using: .utf8),
-               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                do {
-                    let result = try await self.callTool(name: toolCall.function.name, arguments: args)
-                    results.append(OpenAI.ToolMessage(role: "tool", content: result, toolCallId: toolCall.id))
-                } catch {
-                    results.append(OpenAI.ToolMessage(role: "tool", content: "Error: \(error.localizedDescription)", toolCallId: toolCall.id))
-                }
+            do {
+                // Parse the arguments using our reusable function
+                let args = parseToolArguments(toolCall.function.arguments)
+
+                // Call the tool with the arguments (even if empty)
+                let result = try await self.callTool(name: toolCall.function.name, arguments: args)
+                results.append(OpenAI.ToolMessage(role: "tool", content: result, toolCallId: toolCall.id))
+            } catch {
+                results.append(OpenAI.ToolMessage(role: "tool", content: "Error: \(error.localizedDescription)", toolCallId: toolCall.id))
             }
         }
+
         return results
     }
 
@@ -258,8 +261,8 @@ public class ToolManager {
                 case .int(let int): arguments[key] = int
                 case .number(let double): arguments[key] = double
                 case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = arr
-                case .object(let dict): arguments[key] = dict
+                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
+                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
                 case .null: arguments[key] = NSNull()
                 }
             }
@@ -271,6 +274,51 @@ public class ToolManager {
             AppLog.log.error("Tool error: \(error)")
             return "Error: \(error.localizedDescription)"
         }
+    }
+
+    private func sanitizeForJSON(_ value: Any) -> Any {
+        if let array = value as? [Any] {
+            return array.map { sanitizeForJSON($0) }
+        } else if let dict = value as? [String: Any] {
+            var result: [String: Any] = [:]
+            for (key, val) in dict {
+                result[key] = sanitizeForJSON(val)
+            }
+            return result
+        } else if value is NSNull || value is String || value is Int ||
+                  value is Double || value is Bool || value is NSNumber {
+            return value
+        } else {
+            // Convert non-JSON types to a string representation
+            return String(describing: value)
+        }
+    }
+
+    /// Parses tool call arguments into a dictionary, handling potential issues like incomplete JSON
+    /// - Parameter argumentsString: The raw arguments string from a tool call
+    /// - Returns: A dictionary of parsed arguments (empty if parsing fails)
+    private func parseToolArguments(_ argumentsString: String) -> [String: Any] {
+        // Return empty dictionary for empty input
+        if argumentsString.isEmpty {
+            return [:]
+        }
+
+        // Process the arguments string
+        var processedArgs = argumentsString
+
+        // Fix incomplete JSON (missing closing brace)
+        if processedArgs.contains("{") && !processedArgs.contains("}") {
+            processedArgs += "}"
+        }
+
+        // Try to parse the JSON
+        if let data = processedArgs.data(using: .utf8),
+           let parsedArgs = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return parsedArgs
+        }
+
+        // Return empty dictionary if parsing fails
+        return [:]
     }
 }
 

@@ -24,4 +24,8 @@ public struct StreamingState: Codable, Equatable, Sendable {
         let effectiveEnd = self.thinkingEndTime ?? Date()
         return effectiveEnd.timeIntervalSince(start)
     }
+
+    var hasToolcall: Bool {
+        return !self.toolCalls.isEmpty || contentBlocks.filter { $0.isToolUse }.count > 0
+    }
 }

@@ -42,7 +42,7 @@ public struct GeminiLiveChatView: View {
         }
         .onAppear {
             Task {
-//                await viewModel.startServer()
+                await viewModel.startServer()
             }
         }
         .withCoordinatorAlert(isCompanion: true)

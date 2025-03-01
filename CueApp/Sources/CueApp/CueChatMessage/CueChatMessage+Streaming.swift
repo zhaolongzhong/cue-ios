@@ -9,9 +9,9 @@ extension CueChatMessage {
     /// Returns the streaming state if this message is a streaming message
     var streamingState: StreamingState? {
         switch self {
-        case .local(_, _, let streamingState):
+        case .local(_, _, let streamingState, _):
             return streamingState
-        case .anthropic(_, _, let streamingState):
+        case .anthropic(_, _, let streamingState, _):
             return streamingState
         default:
             return nil
@@ -64,9 +64,9 @@ extension CueChatMessage {
     /// Updates the streaming state of a message
     func updateStreamingState(_ newState: StreamingState) -> CueChatMessage {
         switch self {
-        case .local(let msg, let stableId, _):
+        case .local(let msg, let stableId, _, _):
             return .local(msg, stableId: stableId, streamingState: newState)
-        case .openAI(let msg, let stableId, _):
+        case .openAI(let msg, let stableId, _, _):
             return .local(msg, stableId: stableId, streamingState: newState)
         default:
             return self

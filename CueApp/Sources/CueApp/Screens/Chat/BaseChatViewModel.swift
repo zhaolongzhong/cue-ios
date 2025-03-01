@@ -11,7 +11,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public class BaseChatViewModel: ObservableObject {
+public class BaseChatViewModel: ObservableObject, ChatViewModel {
     @Dependency(\.conversationRepository) var conversationRepository
     @Dependency(\.messageRepository) var messageRepository
 
@@ -87,7 +87,6 @@ public class BaseChatViewModel: ObservableObject {
     // Tools management
     func updateTools() {
         tools = self.toolManager.getToolsJSONValue(model: self.model.id)
-        print("inx tools: \(tools.count)")
     }
 
     private func setupToolsSubscription() {
@@ -104,7 +103,7 @@ public class BaseChatViewModel: ObservableObject {
 
     func startServer() async {
         #if os(macOS)
-        await self.toolManager.startMcpServer()
+//        await self.toolManager.startMcpServer()
         #endif
     }
 
@@ -167,11 +166,18 @@ public class BaseChatViewModel: ObservableObject {
         guard let conversationId = selectedConversationId else { return }
         switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
         case .success(let messageModels):
-            self.cueChatMessages = messageModels.compactMap { $0.toCueChatMessage() }
+            self.cueChatMessages = messageModels
+                .sorted(by: { $0.createdAt < $1.createdAt })
+                .compactMap { $0.toCueChatMessage() }
             AppLog.log.debug("Loading messages for conversation \(conversationId) succeeded: \(self.cueChatMessages.count)")
         case .failure(let error):
             self.error = ChatError.unknownError(error.localizedDescription)
         }
+    }
+
+    func deleteMessage(_ message: CueChatMessage) async {
+        await messageRepository.deleteCachedMessage(id: message.id)
+        cueChatMessages = cueChatMessages.filter { $0.id != message.id }
     }
 
     func getOrCreateConversationId() async -> String? {

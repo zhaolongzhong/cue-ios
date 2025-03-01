@@ -77,9 +77,10 @@ public struct CompletionRequest: Encodable {
     let websocketRequestId: String?
     let tools: [JSONValue]?
     let toolChoice: String?
-    let maxTokens: Int?
+    let maxTokens: Int
     let temperature: Double?
     let maxTurns: Int
+    let thinking: Anthropic.Thinking?
     let stream: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -92,6 +93,9 @@ public struct CompletionRequest: Encodable {
         case toolChoice = "tool_choice"
         case maxTokens = "max_tokens"
         case temperature
+        case maxTurns = "max_turns"
+        case thinking
+        case stream = "stream"
     }
 
     init(
@@ -100,11 +104,12 @@ public struct CompletionRequest: Encodable {
         conversationId: String? = nil,
         parentMessageId: String? = nil,
         websocketRequestId: String? = nil,
-        maxTokens: Int = 1000,
+        maxTokens: Int = 10000,
         temperature: Double = 1.0,
         tools: [JSONValue]? = nil,
         toolChoice: String? = nil,
         maxTurns: Int = 30,
+        thinking: Anthropic.Thinking? = nil,
         stream: Bool = false
     ) {
         self.model = model
@@ -117,6 +122,7 @@ public struct CompletionRequest: Encodable {
         self.tools = tools
         self.toolChoice = toolChoice
         self.maxTurns = maxTurns
+        self.thinking = thinking
         self.stream = stream
     }
 }

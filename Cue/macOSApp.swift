@@ -62,7 +62,7 @@ struct macOSApp: App {
             windowManager: windowManager
         )
 
-        CommonWindowGroup(id: WindowId.settings.rawValue, dependencies: dependencies, appCoordinator: mainCoordinator) {
+        CommonWindowGroup(id: WindowId.settings.rawValue, dependencies: dependencies, appCoordinator: AppCoordinator(updater: nil)) {
             SettingsWindowView()
         }
 
