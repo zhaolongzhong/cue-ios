@@ -11,7 +11,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public class BaseChatViewModel: ObservableObject {
+public class BaseChatViewModel: ObservableObject, ChatViewModel {
     @Dependency(\.conversationRepository) var conversationRepository
     @Dependency(\.messageRepository) var messageRepository
 
@@ -87,7 +87,6 @@ public class BaseChatViewModel: ObservableObject {
     // Tools management
     func updateTools() {
         tools = self.toolManager.getToolsJSONValue(model: self.model.id)
-        print("inx tools: \(tools.count)")
     }
 
     private func setupToolsSubscription() {
@@ -172,6 +171,11 @@ public class BaseChatViewModel: ObservableObject {
         case .failure(let error):
             self.error = ChatError.unknownError(error.localizedDescription)
         }
+    }
+
+    func deleteMessage(_ message: CueChatMessage) async {
+        await messageRepository.deleteCachedMessage(id: message.id)
+        cueChatMessages = cueChatMessages.filter { $0.id != message.id }
     }
 
     func getOrCreateConversationId() async -> String? {

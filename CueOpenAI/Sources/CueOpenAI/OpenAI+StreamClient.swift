@@ -18,12 +18,10 @@ extension OpenAIClient {
         encoder.keyEncodingStrategy = .convertToSnakeCase
 
         let bodyData = try encoder.encode(body)
-        var bodyDict = try JSONSerialization.jsonObject(
+        let bodyDict = try JSONSerialization.jsonObject(
             with: bodyData,
             options: []
         ) as? [String: Any] ?? [:]
-
-        bodyDict["stream"] = true
 
         let finalBodyData = try JSONSerialization.data(withJSONObject: bodyDict)
         request.httpBody = finalBodyData

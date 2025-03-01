@@ -206,8 +206,8 @@ public class ToolManager {
                 case .int(let int): arguments[key] = int
                 case .number(let double): arguments[key] = double
                 case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = arr
-                case .object(let dict): arguments[key] = dict
+                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
+                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
                 case .null: arguments[key] = NSNull()
                 }
             }
@@ -258,8 +258,8 @@ public class ToolManager {
                 case .int(let int): arguments[key] = int
                 case .number(let double): arguments[key] = double
                 case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = arr
-                case .object(let dict): arguments[key] = dict
+                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
+                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
                 case .null: arguments[key] = NSNull()
                 }
             }
@@ -270,6 +270,25 @@ public class ToolManager {
         } catch {
             AppLog.log.error("Tool error: \(error)")
             return "Error: \(error.localizedDescription)"
+        }
+    }
+
+    // Add this function to your ToolManager class
+    private func sanitizeForJSON(_ value: Any) -> Any {
+        if let array = value as? [Any] {
+            return array.map { sanitizeForJSON($0) }
+        } else if let dict = value as? [String: Any] {
+            var result: [String: Any] = [:]
+            for (key, val) in dict {
+                result[key] = sanitizeForJSON(val)
+            }
+            return result
+        } else if value is NSNull || value is String || value is Int ||
+                  value is Double || value is Bool || value is NSNumber {
+            return value
+        } else {
+            // Convert non-JSON types to a string representation
+            return String(describing: value)
         }
     }
 }

@@ -144,9 +144,8 @@ class AnthropicStreamingDelegate: Anthropic.StreamingDelegate {
             await onEvent(.thinkingSignature(messageId, true))
         }
 
-        // When a tool use block is complete, execute the tool
-        if let toolInput = toolUseBuildUp[index], !toolInput.isEmpty,
-           let toolName = currentToolUseName,
+        // When a tool use block is complete, execute the tool, tool input might be empty
+        if let toolInput = toolUseBuildUp[index], let toolName = currentToolUseName,
            let toolId = currentToolUseId {
             logger.debug("[\(self.messageId)] Processing completed tool use at index \(index)")
 
@@ -217,7 +216,7 @@ class AnthropicStreamingDelegate: Anthropic.StreamingDelegate {
     }
 
     func didReceiveMessageDelta(stopReason: String?, stopSequence: String?, usage: Anthropic.Usage) async {
-        logger.debug("[\(self.messageId)] Message delta - stop reason: \(stopReason ?? "none")")
+        logger.debug("[\(self.messageId)] Message delta - stop reason: \(stopReason ?? "none") usage: \(String(describing: usage))")
     }
 
     func didReceiveMessageStop() async {

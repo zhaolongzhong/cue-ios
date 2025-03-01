@@ -12,7 +12,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public final class LocalChatViewModel: BaseChatViewModel, ChatViewModel {
+public final class LocalChatViewModel: BaseChatViewModel {
     @AppStorage(ProviderSettingsKeys.SelectedConversation.local) private var storedConversationId: String?
 
     // Streaming state

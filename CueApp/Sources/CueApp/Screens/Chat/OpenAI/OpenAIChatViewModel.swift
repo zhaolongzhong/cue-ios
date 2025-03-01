@@ -9,7 +9,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public final class OpenAIChatViewModel: BaseChatViewModel, ChatViewModel {
+public final class OpenAIChatViewModel: BaseChatViewModel {
     private let openAI: OpenAI
 
     private var streamingTask: Task<Void, Error>?

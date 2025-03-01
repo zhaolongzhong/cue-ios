@@ -81,6 +81,7 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
         state = .connecting
 
         let liveAPI = LiveAPI()
+
         self.connection = try liveAPI.createConnection(apiKey: apiKey)
         let setup = BidiGenerateContentSetup(setup: setupDetails)
         try await self.connection?.send(setup)

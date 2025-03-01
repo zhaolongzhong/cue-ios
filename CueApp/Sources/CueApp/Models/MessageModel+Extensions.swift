@@ -68,12 +68,11 @@ extension MessageModel {
                 default:
                     continue
                 }
-
             }
-            return false
         default:
-            return false
+            break
         }
+        return false
     }
 
     var isToolMessage: Bool {
@@ -91,17 +90,15 @@ extension MessageModel {
                 default:
                     continue
                 }
-
             }
-            return false
         case .object(let dict):
             if dict["role"]?.asString == "tool" {
                 return true
             }
-            return false
         default:
-            return false
+            break
         }
+        return false
     }
 }
 
@@ -184,7 +181,7 @@ extension MessageContent {
             // Check for function_call blocks
             let toolCallItems = array.filter { item in
                 if case .object(let dict) = item,
-                   (dict["type"]?.asString == "function" || dict["type"]?.asString == "tool_call") {
+                dict["type"]?.asString == "function" || dict["type"]?.asString == "tool_call" {
                     return true
                 }
                 return false

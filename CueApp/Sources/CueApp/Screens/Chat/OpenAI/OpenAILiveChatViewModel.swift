@@ -77,38 +77,38 @@ public final class OpenAILiveChatViewModel: ObservableObject {
 
     private func setupRealtimeSubscription() {
         realtimeClient.voiceChatStatePublisher
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] state in
-                    self?.state = state
-                }
-                .store(in: &cancellables)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.state = state
+            }
+            .store(in: &cancellables)
 
         realtimeClient.eventsPublisher
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] serverEvent in
-                    guard let self = self else { return }
-                    switch serverEvent {
-                    case .error(let errorEvent):
-                        self.logger.debug("Received server error: \(errorEvent.error.message)")
-                    case .responseAudioTranscriptDelta(let event):
-                        if !self.deltaMessageItemId.isEmpty && self.deltaMessageItemId != event.itemId {
-                            self.deltaMessage = ""
-                        }
-                        self.deltaMessageItemId = event.itemId
-                        self.deltaMessage += event.delta
-                    case .responseOutputItemDone(let itemDoneEvent):
-                        if self.handledEventIds.contains(itemDoneEvent.eventId) {
-                            return
-                        }
-                        self.handledEventIds.insert(itemDoneEvent.eventId)
-                        Task {
-                            await self.handleItemDoneEvent(itemDoneEvent)
-                        }
-                    default:
-                        break
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] serverEvent in
+                guard let self = self else { return }
+                switch serverEvent {
+                case .error(let errorEvent):
+                    self.logger.debug("Received server error: \(errorEvent.error.message)")
+                case .responseAudioTranscriptDelta(let event):
+                    if !self.deltaMessageItemId.isEmpty && self.deltaMessageItemId != event.itemId {
+                        self.deltaMessage = ""
                     }
+                    self.deltaMessageItemId = event.itemId
+                    self.deltaMessage += event.delta
+                case .responseOutputItemDone(let itemDoneEvent):
+                    if self.handledEventIds.contains(itemDoneEvent.eventId) {
+                        return
+                    }
+                    self.handledEventIds.insert(itemDoneEvent.eventId)
+                    Task {
+                        await self.handleItemDoneEvent(itemDoneEvent)
+                    }
+                default:
+                    break
                 }
-                .store(in: &cancellables)
+            }
+            .store(in: &cancellables)
     }
 
     private func handleItemDoneEvent(_ itemDoneEvent: ResponseOutputItemDoneEvent) async {

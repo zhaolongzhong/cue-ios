@@ -286,8 +286,7 @@ extension AgentLoop where Client == Anthropic {
             },
             onToolCall: { _, toolUseBlock in
                 if let toolManager = self.toolManager {
-                    let result = await toolManager.handleToolUse(toolUseBlock)
-                    return result
+                    return await toolManager.handleToolUse(toolUseBlock)
                 } else {
                     let errorMsg = "No tool manager available to handle tool: \(toolUseBlock.name)"
                     return errorMsg
@@ -319,11 +318,13 @@ extension AgentLoop where Client == Anthropic {
             let cueChatMessage = CueChatMessage.anthropic(.toolMessage(toolResult), stableId: "tool_result_\(delegate.messageId.prefix(6))_\(UUID().uuidString.prefix(8))", streamingState: nil)
             messages.append(cueChatMessage)
             shouldContinue = true
+            logger.debug("Adding final message, has tool use: \(String(describing: finalMessage))")
             return cueChatMessage
         } else if !hasToolUses {
             // No tool uses, safe to add the message
             messages.append(.anthropic(finalMessage, stableId: delegate.messageId, streamingState: nil))
             shouldContinue = false
+            logger.debug("Adding final message, has no tool use: \(String(describing: finalMessage))")
         } else {
             // Tool use without results - error case
             logger.error("Tool use without corresponding tool result. Cannot continue.")

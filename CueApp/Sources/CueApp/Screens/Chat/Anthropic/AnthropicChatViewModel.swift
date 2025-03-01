@@ -13,7 +13,7 @@ import CueOpenAI
 import CueAnthropic
 
 @MainActor
-public final class AnthropicChatViewModel: BaseChatViewModel, ChatViewModel {
+public final class AnthropicChatViewModel: BaseChatViewModel {
     @Published var currentStreamState: StreamingState? {
         didSet {
             if let newState = currentStreamState, let id = newState.id {

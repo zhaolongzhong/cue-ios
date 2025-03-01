@@ -24,28 +24,28 @@ public typealias GeminiSchema = Schema
 
 public final class Schema: Sendable {
   /// The data type.
-  let type: DataType
+  public let type: DataType
 
   /// The format of the data.
-  let format: String?
+  public let format: String?
 
   /// A brief description of the parameter.
-  let description: String?
+  public let description: String?
 
   /// Indicates if the value may be null.
-  let nullable: Bool?
+  public let nullable: Bool?
 
   /// Possible values of the element of type ``DataType/string`` with "enum" format.
-  let enumValues: [String]?
+  public let enumValues: [String]?
 
   /// Schema of the elements of type ``DataType/array``.
-  let items: Schema?
+  public let items: Schema?
 
   /// Properties of type ``DataType/object``.
-  let properties: [String: Schema]?
+  public let properties: [String: Schema]?
 
   /// Required properties of type ``DataType/object``.
-  let requiredProperties: [String]?
+  public let requiredProperties: [String]?
 
   enum CodingKeys: String, CodingKey {
     case type
@@ -119,13 +119,13 @@ public enum DataType: String, Sendable {
 /// by the model and executed by the client.
 public struct FunctionDeclaration: Sendable {
   /// The name of the function.
-  let name: String
+  public let name: String
 
   /// A brief description of the function.
-  let description: String
+  public let description: String
 
   /// Describes the parameters to this function; must be of type ``DataType/object``.
-  let parameters: Schema?
+  public let parameters: Schema?
 
   /// Constructs a new `FunctionDeclaration`.
   ///

@@ -79,7 +79,7 @@ public struct CoordinatorAlertModifier: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        if !isCompanion {
+        if isCompanion {
             content
         } else {
             content

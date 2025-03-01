@@ -25,7 +25,8 @@ final class OpenAIClient {
             let encoder = JSONEncoder()
             request.httpBody = try encoder.encode(body)
         }
-        
+        log.debugRequest("inxxxx", body: body)
+
         do {
             let (data, response) = try await session.data(for: request)
             

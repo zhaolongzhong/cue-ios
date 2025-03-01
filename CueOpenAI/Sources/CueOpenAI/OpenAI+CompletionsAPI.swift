@@ -22,6 +22,7 @@ extension CompletionsAPI {
 
     public func streamCreate(
         model: String = "gpt-4o-mini",
+        reasoningEffort: String = "medium",
         maxTokens: Int = 1024,
         temperature: Double = 1.0,
         messages: [OpenAI.ChatMessageParam],
@@ -31,6 +32,7 @@ extension CompletionsAPI {
     ) async throws -> Task<Void, Error> {
         let request = OpenAI.ChatCompletionRequest(
             model: model,
+            reasoningEffort: reasoningEffort,
             messages: messages,
             maxTokens: maxTokens,
             temperature: temperature,
