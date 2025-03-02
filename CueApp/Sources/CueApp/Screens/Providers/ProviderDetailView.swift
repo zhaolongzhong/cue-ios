@@ -75,30 +75,49 @@ struct GenericProviderSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            // API Key Settings
             if provider.requiresAPIKey {
-                GroupBox {
-                    Button {
-                        viewModel.promptForAPIKey()
-                    } label: {
-                        HStack {
-                            Image(systemName: "key")
-                                .frame(width: 24)
+                Section {
+                    GroupBox {
+                        Button {
+                            viewModel.promptForAPIKey()
+                        } label: {
+                            HStack {
+                                Image(systemName: "key")
+                                    .frame(width: 24)
 
-                            Text("API Key")
-                                .foregroundColor(.primary)
+                                Text("API Key")
+                                    .foregroundColor(.primary)
 
-                            Spacer()
+                                Spacer()
 
-                            Text(viewModel.hasAPIKey ? "••••••••" : "Not set")
-                                .foregroundColor(.secondary)
+                                Text(viewModel.hasAPIKey ? "••••••••" : "Not set")
+                                    .foregroundColor(.secondary)
 
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
                         }
-                        .padding()
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
+                } header: {
+                    ProviderDetailSectionHeader(title: "Authentication")
+                }
+                
+                // Request Limit Settings
+                Section {
+                    RequestLimitView(
+                        provider: provider,
+                        requestLimit: $viewModel.requestLimit,
+                        requestLimitWindow: $viewModel.requestLimitWindow
+                    )
+                } header: {
+                    ProviderDetailSectionHeader(title: "Usage Limits")
+                }
+                .onAppear {
+                    viewModel.refreshRequestCountData()
                 }
             }
         }
@@ -119,6 +138,21 @@ struct LocalProviderSettingsSection: View {
             basicSettingsView
             modelSettingsView
             serverSettingsView
+            
+            // Request Limit Settings
+            Section {
+                RequestLimitView(
+                    provider: provider,
+                    requestLimit: $viewModel.requestLimit,
+                    requestLimitWindow: $viewModel.requestLimitWindow
+                )
+            } header: {
+                ProviderDetailSectionHeader(title: "Usage Limits")
+            }
+            .onAppear {
+                viewModel.refreshRequestCountData()
+            }
+            
             advancedSettingsView
         }
         .numberInputAlert(

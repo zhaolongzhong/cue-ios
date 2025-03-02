@@ -159,6 +159,86 @@ public enum ProviderSettingsKeys {
             }
         }
     }
+    
+    /// Keys for request limit settings
+    public enum RequestLimit {
+        public static let local = "local_request_limit"
+        public static let openai = "openai_request_limit"
+        public static let anthropic = "anthropic_request_limit"
+        public static let gemini = "gemini_request_limit"
+        public static let cue = "cue_request_limit"
+        
+        /// Gets the appropriate request limit key for a provider
+        public static func key(for provider: Provider) -> String {
+            switch provider {
+            case .local: return local
+            case .openai: return openai
+            case .anthropic: return anthropic
+            case .gemini: return gemini
+            case .cue: return cue
+            }
+        }
+    }
+    
+    /// Keys for request limit time window settings (in hours)
+    public enum RequestLimitWindow {
+        public static let local = "local_request_limit_window"
+        public static let openai = "openai_request_limit_window"
+        public static let anthropic = "anthropic_request_limit_window"
+        public static let gemini = "gemini_request_limit_window"
+        public static let cue = "cue_request_limit_window"
+        
+        /// Gets the appropriate request limit window key for a provider
+        public static func key(for provider: Provider) -> String {
+            switch provider {
+            case .local: return local
+            case .openai: return openai
+            case .anthropic: return anthropic
+            case .gemini: return gemini
+            case .cue: return cue
+            }
+        }
+    }
+    
+    /// Keys for request limit timestamp
+    public enum RequestLimitTimestamp {
+        public static let local = "local_request_limit_timestamp"
+        public static let openai = "openai_request_limit_timestamp"
+        public static let anthropic = "anthropic_request_limit_timestamp"
+        public static let gemini = "gemini_request_limit_timestamp"
+        public static let cue = "cue_request_limit_timestamp"
+        
+        /// Gets the appropriate request limit timestamp key for a provider
+        public static func key(for provider: Provider) -> String {
+            switch provider {
+            case .local: return local
+            case .openai: return openai
+            case .anthropic: return anthropic
+            case .gemini: return gemini
+            case .cue: return cue
+            }
+        }
+    }
+    
+    /// Keys for request count
+    public enum RequestCount {
+        public static let local = "local_request_count"
+        public static let openai = "openai_request_count"
+        public static let anthropic = "anthropic_request_count"
+        public static let gemini = "gemini_request_count"
+        public static let cue = "cue_request_count"
+        
+        /// Gets the appropriate request count key for a provider
+        public static func key(for provider: Provider) -> String {
+            switch provider {
+            case .local: return local
+            case .openai: return openai
+            case .anthropic: return anthropic
+            case .gemini: return gemini
+            case .cue: return cue
+            }
+        }
+    }
 }
 
 // Extension to UserDefaults to provide type-safe access
@@ -258,5 +338,103 @@ extension UserDefaults {
         default:
             return ""
         }
+    }
+    
+    // Request limit methods
+    func requestLimit(for provider: Provider) -> Int {
+        let value = integer(forKey: ProviderSettingsKeys.RequestLimit.key(for: provider))
+        return value > 0 ? value : 50 // Default is 50 if not set
+    }
+    
+    func setRequestLimit(_ value: Int, for provider: Provider) {
+        set(value, forKey: ProviderSettingsKeys.RequestLimit.key(for: provider))
+    }
+    
+    // Request limit window methods (in hours)
+    func requestLimitWindow(for provider: Provider) -> Int {
+        let value = integer(forKey: ProviderSettingsKeys.RequestLimitWindow.key(for: provider))
+        return value > 0 ? value : 24 // Default is 24 hours if not set
+    }
+    
+    func setRequestLimitWindow(_ value: Int, for provider: Provider) {
+        set(value, forKey: ProviderSettingsKeys.RequestLimitWindow.key(for: provider))
+    }
+    
+    // Request count and timestamp methods
+    func requestCount(for provider: Provider) -> Int {
+        return integer(forKey: ProviderSettingsKeys.RequestCount.key(for: provider))
+    }
+    
+    func setRequestCount(_ value: Int, for provider: Provider) {
+        set(value, forKey: ProviderSettingsKeys.RequestCount.key(for: provider))
+    }
+    
+    func requestLimitTimestamp(for provider: Provider) -> Date? {
+        return object(forKey: ProviderSettingsKeys.RequestLimitTimestamp.key(for: provider)) as? Date
+    }
+    
+    func setRequestLimitTimestamp(_ date: Date, for provider: Provider) {
+        set(date, forKey: ProviderSettingsKeys.RequestLimitTimestamp.key(for: provider))
+    }
+    
+    // Function to check if request limit is reached
+    func isRequestLimitReached(for provider: Provider) -> Bool {
+        let limit = requestLimit(for: provider)
+        
+        // If limit is 0, there's no limit
+        if limit == 0 {
+            return false
+        }
+        
+        let currentCount = requestCount(for: provider)
+        let windowHours = requestLimitWindow(for: provider)
+        
+        // If we haven't reached the limit yet, we're good
+        if currentCount < limit {
+            return false
+        }
+        
+        // Check if we're still within the time window
+        if let timestamp = requestLimitTimestamp(for: provider) {
+            let windowSeconds = Double(windowHours * 3600)
+            let elapsedTime = Date().timeIntervalSince(timestamp)
+            
+            // If we're still within the time window, the limit is reached
+            if elapsedTime < windowSeconds {
+                return true
+            } else {
+                // Time window has passed, reset counters
+                resetRequestCounters(for: provider)
+                return false
+            }
+        } else {
+            // No timestamp, reset counters
+            resetRequestCounters(for: provider)
+            return false
+        }
+    }
+    
+    // Function to increment request count
+    func incrementRequestCount(for provider: Provider) {
+        let currentCount = requestCount(for: provider)
+        let limit = requestLimit(for: provider)
+        
+        // If limit is 0, there's no limit, so don't increment
+        if limit == 0 {
+            return
+        }
+        
+        // If this is the first request or we're starting a new window, set the timestamp
+        if currentCount == 0 {
+            setRequestLimitTimestamp(Date(), for: provider)
+        }
+        
+        setRequestCount(currentCount + 1, for: provider)
+    }
+    
+    // Function to reset request counters
+    func resetRequestCounters(for provider: Provider) {
+        setRequestCount(0, for: provider)
+        setRequestLimitTimestamp(Date(), for: provider)
     }
 }

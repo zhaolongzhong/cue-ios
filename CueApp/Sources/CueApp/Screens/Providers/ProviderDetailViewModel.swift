@@ -11,6 +11,10 @@ public class ProviderDetailViewModel: ObservableObject {
     @Published var baseURL: String = ""
     @Published var showingBaseURLAlert = false
     @Published var tempBaseURL: String = ""
+    @Published var requestLimit: Int
+    @Published var requestLimitWindow: Int
+    @Published var requestCount: Int
+    @Published var requestLimitTimestamp: Date?
 
     private let provider: Provider
     private let defaults = UserDefaults.standard
@@ -24,6 +28,10 @@ public class ProviderDetailViewModel: ObservableObject {
         self.isStreamingEnabled = defaults.isStreamingEnabled(for: provider)
         self.isToolEnabled = defaults.isToolEnabled(for: provider)
         self.baseURL = defaults.baseURLWithDefault(for: provider)
+        self.requestLimit = defaults.requestLimit(for: provider)
+        self.requestLimitWindow = defaults.requestLimitWindow(for: provider)
+        self.requestCount = defaults.requestCount(for: provider)
+        self.requestLimitTimestamp = defaults.requestLimitTimestamp(for: provider)
 
         if provider.requiresAPIKey {
             self.hasAPIKey = defaults.hasAPIKey(for: provider)
@@ -99,6 +107,40 @@ public class ProviderDetailViewModel: ObservableObject {
     func resetBaseURLToDefault() {
         defaults.removeObject(forKey: ProviderSettingsKeys.BaseURL.key(for: provider))
         baseURL = defaults.baseURLWithDefault(for: provider)
+    }
+    
+    func updateRequestLimit(_ value: Int) {
+        requestLimit = value
+        defaults.setRequestLimit(value, for: provider)
+    }
+    
+    func updateRequestLimitWindow(_ value: Int) {
+        requestLimitWindow = value
+        defaults.setRequestLimitWindow(value, for: provider)
+    }
+    
+    func resetRequestCounters() {
+        defaults.resetRequestCounters(for: provider)
+        requestCount = 0
+        requestLimitTimestamp = Date()
+    }
+    
+    /// Updates request count in response to a new API request
+    func incrementRequestCount() {
+        defaults.incrementRequestCount(for: provider)
+        requestCount = defaults.requestCount(for: provider)
+        requestLimitTimestamp = defaults.requestLimitTimestamp(for: provider)
+    }
+    
+    /// Checks if the request limit has been reached
+    func isRequestLimitReached() -> Bool {
+        return defaults.isRequestLimitReached(for: provider)
+    }
+    
+    /// Refreshes request count data from UserDefaults
+    func refreshRequestCountData() {
+        requestCount = defaults.requestCount(for: provider)
+        requestLimitTimestamp = defaults.requestLimitTimestamp(for: provider)
     }
 }
 
