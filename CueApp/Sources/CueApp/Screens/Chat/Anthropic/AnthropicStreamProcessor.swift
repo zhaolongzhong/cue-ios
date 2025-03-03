@@ -264,8 +264,6 @@ class AnthropicStreamProcessor {
 
                 // Execute the tool
                 let toolResult = try await executeToolCall(id, toolUseBlock)
-
-                // Store the result
                 toolResults[toolUseBlock.id] = toolResult
 
                 // Create a tool result message and emit event

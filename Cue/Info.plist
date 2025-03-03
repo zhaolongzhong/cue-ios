@@ -2,16 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
-	<string>${PRODUCT_BUNDLE_IDENTIFIER}</string>
-	<key>CFBundleDisplayName</key>
-	<string>${DISPLAY_NAME}</string>
-	<key>CFBundleShortVersionString</key>
-	<string>${MARKETING_VERSION}</string>
-	<key>BUILD_VERSION</key>
-	<string>${BUILD_VERSION}</string>
 	<key>BASE_URL</key>
 	<string>${BASE_URL}</string>
+	<key>BUILD_VERSION</key>
+	<string>${BUILD_VERSION}</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.317182542550-3bdem6r507g9t0jsm913272tvmoi492c</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>317182542550-3bdem6r507g9t0jsm913272tvmoi492c.apps.googleusercontent.com</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -19,28 +26,9 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
+	<key>SUPublicEDKey</key>
+	<string>NorYmWIctYxmvhL92MFiQWm0tG9eSrLujt4DfFqRg8A=</string>
+	<key>SUShowReleaseNotes</key>
 	<false/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Enable microphone access to voice chat</string>
-    <key>NSCameraUsageDescription</key>
-    <string>Allow camera access to take photos</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow access to photo library to select photos</string>
-    <key>GIDClientID</key>
-    <string>317182542550-3bdem6r507g9t0jsm913272tvmoi492c.apps.googleusercontent.com</string>
-    <key>SUPublicEDKey</key>
-    <string>NorYmWIctYxmvhL92MFiQWm0tG9eSrLujt4DfFqRg8A=</string>
-    <key>SUShowReleaseNotes</key>
-    <false/>
-    <key>CFBundleURLTypes</key>
-    <array>
-      <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>com.googleusercontent.apps.317182542550-3bdem6r507g9t0jsm913272tvmoi492c</string>
-        </array>
-      </dict>
-    </array>
 </dict>
 </plist>

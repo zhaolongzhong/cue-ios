@@ -33,16 +33,14 @@ struct CodeBlockView: View {
                     Spacer()
                     CopyCodeButton(code: code.strippedCodeBlock(for: language))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(14)
                 .frame(height: 42)
                 .background(Color(colorScheme == .light ? .black.opacity(0.06) : .white.opacity(0.03)))
             }
 
             Text(AttributedString(SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: language, code: code.strippedCodeBlock(for: language))))
-                .font(.system(size: 12, design: .monospaced))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
+                .padding(14)
                 .textSelection(.enabled)
                 .background(
                     colorScheme == .light

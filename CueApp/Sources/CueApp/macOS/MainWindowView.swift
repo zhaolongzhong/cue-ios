@@ -38,8 +38,10 @@ public struct MainWindowView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .environmentObject(providersViewModel)
-        .onChange(of: appStateViewModel.state.currentUser) { _, user in
-            handleUserChange(user)
+        .onChange(of: appStateViewModel.state.currentUser) { oldValue, newValue in
+            if let newUser = newValue, newUser != oldValue {
+                handleUserChange(newUser)
+            }
         }
         #if os(macOS)
         .overlay(windowStateHandler)
@@ -169,11 +171,9 @@ public struct MainWindowView: View {
         mainNavigationManager.navigateTo(.email)
     }
 
-    private func handleUserChange(_ user: User?) {
-        if user != nil {
-            Task {
-                await homeViewModel.initialize()
-            }
+    private func handleUserChange(_ user: User) {
+        Task {
+            await homeViewModel.initialize()
         }
     }
 

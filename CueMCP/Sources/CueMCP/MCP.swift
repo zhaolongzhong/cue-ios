@@ -66,7 +66,7 @@ public class ServerContext {
         ] as [String: Any]
 
         let res = try await callTool(server: serverContext.serverName, request: initRequest)
-        print("\n📱 Initialize response: \(res)")
+        print("\n📱 Initialize response: \(String(describing: res.prettyPrinted()))")
 
         // Send initialized notification
         let initializedNotification = [

@@ -43,6 +43,12 @@ struct ToolMessageView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if let segment = message.segments.filter({ $0.isThinking }).first {
+                ThinkingBlockView(
+                    text: segment.text,
+                    message: message
+                )
+            }
             assistantMessageView
             viewToolDetailButton
             if expansionState != .collapsed {

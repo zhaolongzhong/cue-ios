@@ -138,42 +138,97 @@ extension AnthropicChatViewModel {
 
     func prepareMessageParams(_ messages: [CueChatMessage]) -> [Anthropic.ChatMessageParam] {
         // First convert all messages to AnthropicChatParam
-        var messageParams = messages.compactMap { $0.anthropicChatParam }
+        let originalParams = messages.compactMap { $0.anthropicChatParam }
 
-        // Remove any leading tool messages (they should only follow tool uses)
-        while messageParams.count > 0, messageParams[0].isToolMessage {
-            messageParams.removeFirst()
-        }
+        // Create a new array for ordered messages
+        var orderedParams: [Anthropic.ChatMessageParam] = []
 
-        // Ensure tool uses are immediately followed by their corresponding tool messages
-        var i = 0
-        while i < messageParams.count - 1 {
-            let toolUses = messageParams[i].toolUses
-            if !toolUses.isEmpty {
-                // This message has tool uses
-                let toolUseIds = toolUses.map { $0.id }
+        // Track tool uses and tool messages
+        var pendingToolUseIds = Set<String>()
+        var pendingToolMessages: [String: Anthropic.ChatMessageParam] = [:]
 
-                // Look for corresponding tool messages that might be out of order
-                var j = i + 1
-                while j < messageParams.count {
-                    if messageParams[j].isToolMessage,
-                       let toolContent = messageParams[j].toolMessage?.content.first,
-                       toolUseIds.contains(toolContent.toolUseId) {
-                        // Found a matching tool message but it's not in the right position
-                        if j > i + 1 {
-                            // Move the tool message right after the tool use
-                            let toolMessage = messageParams.remove(at: j)
-                            messageParams.insert(toolMessage, at: i + 1)
+        // First pass: Sort user and assistant messages, collect tool-related messages
+        for param in originalParams {
+            // Special case: For Anthropic, a "user" role might actually be a tool message result
+            if param.role == "user" {
+                // Check if this is actually a tool message (Anthropic specific)
+                if param.isToolMessage {
+                    if let toolContent = param.toolMessage?.content.first {
+                        let toolUseId = toolContent.toolUseId
+                        if pendingToolUseIds.contains(toolUseId) {
+                            // If we've already seen the tool use, add tool message now
+                            if let index = orderedParams.lastIndex(where: { msg in
+                                let toolUses = msg.toolUses
+                                if !toolUses.isEmpty {
+                                    return toolUses.contains { $0.id == toolUseId }
+                                }
+                                return false
+                            }) {
+                                // Insert right after the tool use
+                                orderedParams.insert(param, at: index + 1)
+                                pendingToolUseIds.remove(toolUseId)
+                            }
+                        } else {
+                            // Save this tool message for when we encounter its tool use
+                            pendingToolMessages[toolUseId] = param
                         }
-                        break
                     }
-                    j += 1
+                } else {
+                    // Regular user message
+                    orderedParams.append(param)
+                }
+            } else if param.role == "assistant" {
+                let toolUses = param.toolUses
+                if !toolUses.isEmpty {
+                    // Remember tool use IDs
+                    for toolUse in toolUses {
+                        pendingToolUseIds.insert(toolUse.id)
+                    }
+
+                    // Add assistant message with tool uses
+                    orderedParams.append(param)
+
+                    // Immediately add any matching tool messages we've seen
+                    for toolUseId in pendingToolUseIds {
+                        if let toolMessage = pendingToolMessages[toolUseId] {
+                            orderedParams.append(toolMessage)
+                            pendingToolMessages.removeValue(forKey: toolUseId)
+                        }
+                    }
+                } else {
+                    // Regular assistant message - only add if it's not between a tool use and tool message
+                    if !toolUses.isEmpty && !pendingToolUseIds.isEmpty {
+                        // Don't add it yet - would interrupt tool flow
+                    } else {
+                        orderedParams.append(param)
+                    }
+                }
+            } else if param.isToolMessage {
+
+                if let toolContent = param.toolMessage?.content.first {
+                    let toolUseId = toolContent.toolUseId
+                    if pendingToolUseIds.contains(toolUseId) {
+                        // If we've already seen the tool use, add tool message now
+                        if let index = orderedParams.lastIndex(where: { msg in
+                            let toolUses = msg.toolUses
+                            if !toolUses.isEmpty {
+                                return toolUses.contains { $0.id == toolUseId }
+                            }
+                            return false
+                        }) {
+                            // Insert right after the tool use
+                            orderedParams.insert(param, at: index + 1)
+                            pendingToolUseIds.remove(toolUseId)
+                        }
+                    } else {
+                        // Save this tool message for when we encounter its tool use
+                        pendingToolMessages[toolUseId] = param
+                    }
                 }
             }
-            i += 1
         }
 
-        return messageParams
+        return orderedParams
     }
 }
 

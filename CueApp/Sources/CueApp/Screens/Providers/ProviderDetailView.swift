@@ -24,8 +24,8 @@ public struct ProviderDetailView: View {
             .frame(maxWidth: 600)
             #endif
         }
-        .navigationTitle("\(provider.displayName) Settings")
-        .defaultNavigationBar(title: "\(provider.displayName) Settings")
+        .navigationTitle("\(provider.displayName)")
+        .defaultNavigationBar(title: "\(provider.displayName)")
         .alert("API Key", isPresented: $viewModel.showingAPIKeyAlert) {
             TextField("Enter API Key", text: $viewModel.tempAPIKey)
                 .autocorrectionDisabled()
@@ -84,13 +84,17 @@ struct GenericProviderSettingsSection: View {
                             Image(systemName: "key")
                                 .frame(width: 24)
 
-                            Text("API Key")
-                                .foregroundColor(.primary)
+                            VStack(alignment: .leading) {
+                                Text("API Key")
+                                    .foregroundColor(.primary)
+                                SecretView(secret: viewModel.tempAPIKey)
+                            }
 
                             Spacer()
-
-                            Text(viewModel.hasAPIKey ? "••••••••" : "Not set")
-                                .foregroundColor(.secondary)
+                            if !viewModel.hasAPIKey {
+                                Text("Not set")
+                                    .foregroundColor(.secondary)
+                            }
 
                             Image(systemName: "chevron.right")
                                 .font(.caption)

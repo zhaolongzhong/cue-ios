@@ -27,6 +27,7 @@ public class ProviderDetailViewModel: ObservableObject {
 
         if provider.requiresAPIKey {
             self.hasAPIKey = defaults.hasAPIKey(for: provider)
+            self.tempAPIKey = defaults.apiKey(for: provider) ?? ""
         }
     }
 
@@ -55,7 +56,7 @@ public class ProviderDetailViewModel: ObservableObject {
     }
 
     func promptForAPIKey() {
-        tempAPIKey = ""  // Reset temp key
+        tempAPIKey = defaults.apiKey(for: provider) ?? ""
         showingAPIKeyAlert = true
     }
 
@@ -69,7 +70,7 @@ public class ProviderDetailViewModel: ObservableObject {
 
     func cancelAPIKeyEditing() {
         showingAPIKeyAlert = false
-        tempAPIKey = ""
+        tempAPIKey = defaults.apiKey(for: provider) ?? ""
     }
 
     func promptForBaseURL() {

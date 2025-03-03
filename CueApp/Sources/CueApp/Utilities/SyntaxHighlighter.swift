@@ -92,11 +92,13 @@ public struct SyntaxHighlighter {
         let syntaxColors = syntaxColors(colorScheme)
         let attributedString = NSMutableAttributedString(string: code)
         let languageDef = LanguageDefinitions.getDefinition(for: language)
+
         #if os(iOS)
-        let defaultFont = UIFont.systemFont(ofSize: 14)
+        let defaultFont = UIFont(name: "SF Mono", size: 13) ?? UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         #elseif os(macOS)
-        let defaultFont = NSFont.systemFont(ofSize: 14)
+        let defaultFont = NSFont(name: "SF Mono", size: 13) ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         #endif
+
         attributedString.addAttribute(
             .font,
             value: defaultFont,

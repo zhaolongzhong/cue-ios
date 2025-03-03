@@ -99,7 +99,6 @@ struct HomeDefaultView: View {
         if viewModel.quoteOrFunFact.isEmpty {
             isLoadingQuote = true
             Task {
-                await viewModel.fetchQuoteOrFunFact()
                 await MainActor.run {
                     isLoadingQuote = false
                     withAnimation(.easeOut(duration: 0.6)) { animateQuote = true }

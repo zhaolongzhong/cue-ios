@@ -36,7 +36,8 @@ public class GeminiChatViewModel: BaseChatViewModel {
         super.init(
             apiKey: apiKey,
             provider: .gemini,
-            model: .gemini20FlashExp
+            model: .gemini20FlashExp,
+            richTextFieldState: RichTextFieldState(showVoiceChat: true)
         )
 
         setupLiveAPISubscription()

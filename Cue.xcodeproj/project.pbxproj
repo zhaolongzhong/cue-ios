@@ -454,7 +454,10 @@
 				FUSE_BUILD_SCRIPT_PHASES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires microphone access to record voice notes.";
+				INFOPLIST_KEY_CFBundleDisplayName = "${DISPLAY_NAME}";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to take photos";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Enable microphone access to voice chat";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to photo library to select photos";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -501,7 +504,10 @@
 				FUSE_BUILD_SCRIPT_PHASES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cue/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires microphone access to record voice notes.";
+				INFOPLIST_KEY_CFBundleDisplayName = "${DISPLAY_NAME}";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to take photos";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Enable microphone access to voice chat";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to photo library to select photos";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

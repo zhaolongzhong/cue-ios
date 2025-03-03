@@ -131,7 +131,6 @@ extension OpenAIChatViewModel {
             for msg in toolResult {
                 await onStreamEvent(.toolResult(streamResult.messageId, msg))
             }
-
             return true
         } else if !hasToolCall {
             logger.debug("No tool calls in final message, won't continue. messageId: \(streamResult.messageId)")
@@ -144,41 +143,69 @@ extension OpenAIChatViewModel {
 
     func prepareMessageParams(_ messages: [CueChatMessage]) -> [OpenAI.ChatMessageParam] {
         // First convert all messages to OpenAIChatParam
-        var messageParams = messages.compactMap { $0.openAIChatParam }
+        let originalParams = messages.compactMap { $0.openAIChatParam }
 
-        // Remove any leading tool messages (they should only follow tool calls)
-        while messageParams.count > 0, messageParams[0].isToolMessage {
-            messageParams.removeFirst()
-        }
+        // Create a new array for ordered messages
+        var orderedParams: [OpenAI.ChatMessageParam] = []
 
-        // Ensure tool calls are immediately followed by their corresponding tool messages
-        var i = 0
-        while i < messageParams.count - 1 {
-            if messageParams[i].hasToolCall {
-                // This message has tool calls
-                let toolCallIds = messageParams[i].toolCalls.map { $0.id }
+        // Track tool calls and tool messages
+        var pendingToolCallIds = Set<String>()
+        var pendingToolMessages: [String: OpenAI.ChatMessageParam] = [:]
 
-                // Look for corresponding tool messages that might be out of order
-                var j = i + 1
-                while j < messageParams.count {
-                    if messageParams[j].isToolMessage,
-                       let toolCallId = messageParams[j].toolMessage?.toolCallId,
-                       toolCallIds.contains(toolCallId) {
-                        // Found a matching tool message but it's not in the right position
-                        if j > i + 1 {
-                            // Move the tool message right after the tool call
-                            let toolMessage = messageParams.remove(at: j)
-                            messageParams.insert(toolMessage, at: i + 1)
-                        }
-                        break
+        // First pass: Sort user and assistant messages, collect tool-related messages
+        for param in originalParams {
+            if param.role == "user" {
+                // Always include user messages
+                orderedParams.append(param)
+            } else if param.role == "assistant" {
+                if param.hasToolCall {
+                    // Remember tool call IDs
+                    for toolCall in param.toolCalls {
+                        pendingToolCallIds.insert(toolCall.id)
                     }
-                    j += 1
+
+                    // Add assistant message with tool calls
+                    orderedParams.append(param)
+
+                    // Immediately add any matching tool messages we've seen
+                    for toolCallId in pendingToolCallIds {
+                        if let toolMessage = pendingToolMessages[toolCallId] {
+                            orderedParams.append(toolMessage)
+                            pendingToolMessages.removeValue(forKey: toolCallId)
+                        }
+                    }
+                } else {
+                    // Regular assistant message - only add if it's not between a tool call and tool message
+                    if let lastMessage = orderedParams.last,
+                       lastMessage.hasToolCall && !pendingToolCallIds.isEmpty {
+                        // Don't add it yet - will be added at end or in a different position
+                    } else {
+                        orderedParams.append(param)
+                    }
+                }
+            } else if param.role == "tool" {
+                if let toolCallId = param.toolMessage?.toolCallId {
+                    if pendingToolCallIds.contains(toolCallId) {
+                        // If we've already seen the tool call, add tool message now
+                        if let index = orderedParams.lastIndex(where: { msg in
+                            if msg.hasToolCall {
+                                return msg.toolCalls.contains { $0.id == toolCallId }
+                            }
+                            return false
+                        }) {
+                            // Insert right after the tool call
+                            orderedParams.insert(param, at: index + 1)
+                            pendingToolCallIds.remove(toolCallId)
+                        }
+                    } else {
+                        // Save this tool message for when we encounter its tool call
+                        pendingToolMessages[toolCallId] = param
+                    }
                 }
             }
-            i += 1
         }
 
-        return messageParams
+        return orderedParams
     }
 }
 

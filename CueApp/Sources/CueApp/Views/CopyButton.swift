@@ -54,6 +54,6 @@ struct CopyButton: View {
         }
         .buttonStyle(BorderlessButtonStyle())
         .opacity(isVisible ? 1 : 0)
-        .frame(width: 18, height: 18)
+        .frame(width: 16, height: 16)
     }
 }

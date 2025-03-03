@@ -32,12 +32,17 @@ extension CueChatMessage {
     }
 
     func extractSegments(from text: String, isThinking: Bool = false) -> [MessageSegment] {
+        let text = text.trimmingCharacters(in: .whitespaces)
         var segments: [MessageSegment] = []
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         var lineIndex = 0
 
+        let cleanedText = text.replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
         if isThinking {
-            return [.thinking(text)]
+            if cleanedText.isEmpty {
+                return []
+            }
+            return [.thinking(cleanedText)]
         }
 
         // Process thinking block at the beginning if present
@@ -72,7 +77,10 @@ extension CueChatMessage {
         } else if line.contains("<think>") && line.contains("</think>") {
             return extractInlineThinking(line: line, segments: &segments)
         } else {
-            segments.append(.text(line))
+            let cleanLine = line.trimmingCharacters(in: .whitespaces)
+            if !cleanLine.isEmpty {
+                segments.append(.text(cleanLine))
+            }
             return startIndex + 1
         }
     }

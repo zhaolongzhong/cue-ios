@@ -45,15 +45,22 @@ struct SlidingSidebar<Content: View>: View {
     var body: some View {
         ZStack(alignment: edge == .trailing ? .trailing : .leading) {
             // Semi-transparent overlay to capture taps outside the sidebar
-            if isShowing && showOverlay {
-                Color.black.opacity(overlayOpacity)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: animationDuration)) {
-                            isShowing = false
-                            onDismiss?()
-                        }
+            Group {
+                if isShowing {
+                    if showOverlay {
+                        Color.black.opacity(overlayOpacity)
+                    } else {
+                        Color.clear
                     }
+                }
+            }
+            .contentShape(Rectangle())
+            .ignoresSafeArea()
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: animationDuration)) {
+                    isShowing = false
+                    onDismiss?()
+                }
             }
 
             ZStack {

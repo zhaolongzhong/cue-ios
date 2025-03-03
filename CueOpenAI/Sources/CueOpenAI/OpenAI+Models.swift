@@ -5,11 +5,11 @@ extension OpenAI {
     public struct Usage: Codable, Equatable, Sendable {
         public let totalTokens: Int
         public let completionTokens: Int
-        public let completionTokensDetails: TokenDetails
+        public let completionTokensDetails: CompletionTokenDetails
         public let promptTokensDetails: PromptTokenDetails
         public let promptTokens: Int
     
-        public init(totalTokens: Int, completionTokens: Int, completionTokensDetails: TokenDetails, promptTokensDetails: PromptTokenDetails, promptTokens: Int) {
+        public init(totalTokens: Int, completionTokens: Int, completionTokensDetails: CompletionTokenDetails, promptTokensDetails: PromptTokenDetails, promptTokens: Int) {
             self.totalTokens = totalTokens
             self.completionTokens = completionTokens
             self.completionTokensDetails = completionTokensDetails
@@ -24,9 +24,27 @@ extension OpenAI {
             case promptTokensDetails = "prompt_tokens_details"
             case promptTokens = "prompt_tokens"
         }
+
+        public init(from decoder: Decoder) throws {
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.totalTokens = try container.decode(Int.self, forKey: .totalTokens)
+            self.completionTokens = try container.decode(Int.self, forKey: .completionTokens)
+            self.promptTokens = try container.decode(Int.self, forKey: .promptTokens)
+
+            // These are nested structures that need special handling
+            self.completionTokensDetails = try container.decodeIfPresent(CompletionTokenDetails.self, forKey: .completionTokensDetails) ?? CompletionTokenDetails(
+                rejectedPredictionTokens: 0,
+                audioTokens: 0,
+                acceptedPredictionTokens: 0,
+                reasoningTokens: 0
+            )
+
+            // Handle prompt_tokens_details which might have different structure
+            self.promptTokensDetails = try container.decodeIfPresent(PromptTokenDetails.self, forKey: .promptTokensDetails) ?? PromptTokenDetails(cachedTokens: 0)
+        }
     }
 
-    public struct TokenDetails: Codable, Equatable, Sendable {
+    public struct CompletionTokenDetails: Codable, Equatable, Sendable {
         public let rejectedPredictionTokens: Int
         public let audioTokens: Int
         public let acceptedPredictionTokens: Int
@@ -70,13 +88,6 @@ extension OpenAI {
         
         public init(cachedTokens: Int) {
             self.cachedTokens = cachedTokens
-        }
-    }
-
-    public struct CompletionTokenDetails: Codable, Sendable {
-        public let reasoningTokens: Int
-        enum CodingKeys: String, CodingKey {
-            case reasoningTokens = "reasoning_tokens"
         }
     }
     
@@ -123,6 +134,7 @@ extension OpenAI {
     // MARK: - ChatCompletion
     public struct ChatCompletion: Codable, Equatable, Sendable {
         public let systemFingerprint: String
+        public let serviceTier: String
         public let usage: Usage
         public let choices: [Choice]
         public let id: String
@@ -130,8 +142,9 @@ extension OpenAI {
         public let model: String
         public let created: Int
     
-        public init(systemFingerprint: String, usage: Usage, choices: [Choice], id: String, object: String, model: String, created: Int) {
+        public init(systemFingerprint: String, serviceTier: String, usage: Usage, choices: [Choice], id: String, object: String, model: String, created: Int) {
             self.systemFingerprint = systemFingerprint
+            self.serviceTier = serviceTier
             self.usage = usage
             self.choices = choices
             self.id = id
@@ -142,6 +155,7 @@ extension OpenAI {
     
         enum CodingKeys: String, CodingKey {
             case systemFingerprint = "system_fingerprint"
+            case serviceTier = "service_tier"
             case usage
             case choices
             case id
@@ -209,20 +223,4 @@ extension OpenAI {
             self.reasoningEffort = model.contains("o3-mini") ? reasoningEffort : nil
         }
     }
-    
-    public struct ChatCompletionResponse: Decodable, Sendable {
-        public struct Choice: Decodable, Sendable {
-            public let message: MessageParam
-            public let finishReason: String?
-            
-            private enum CodingKeys: String, CodingKey {
-                case message
-                case finishReason = "finish_reason"
-            }
-        }
-        
-        public let id: String
-        public let choices: [Choice]
-    }
-    
 }

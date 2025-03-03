@@ -28,62 +28,30 @@ struct MessageBubble: View {
         self.onShowMore = onShowMore
     }
 
-    var bubbleColor: Color {
-        isUser ? AppTheme.Colors.Message.userBubble.opacity(0.2) : AppTheme.Colors.background
-    }
-
     var body: some View {
         HStack(alignment: .top) {
             if isUser { Spacer() }
             VStack(spacing: 0) {
                 HStack(alignment: .top) {
                     if isUser { Spacer() }
-                    VStack(alignment: .leading, spacing: 4) {
-                        MessageBubbleContent(
-                            message: message,
-                            maxCharacters: maxCharacters,
-                            isExpanded: isExpanded,
-                            onShowMore: onShowMore
-                        )
-                    }
-                    .padding(.horizontal, isUser ? 16 : 6)
-                    .padding(.vertical, isUser ? 10 : 0)
-                    .background(isUser ? bubbleColor : .clear)
-                    .clipShape(RoundedRectangle(cornerRadius: isUser ? 18 : 0))
+                    MessageBubbleContent(
+                        message: message,
+                        maxCharacters: maxCharacters,
+                        isExpanded: isExpanded,
+                        onShowMore: onShowMore
+                    )
                     .textSelection(.enabled)
                     if !isUser { Spacer() }
                 }
 
                 if !message.isTool && !message.isToolMessage {
-                    HStack(alignment: .top) {
-                        if isUser { Spacer() }
-                        CopyButton(content: message.content.contentAsString, isVisible: isHovering && !isStreaming)
-                            .padding(.horizontal, isUser ? 0 : 2)
-                            .padding(.top, 4)
-                        if !isUser { Spacer() }
-                    }
-                }
-                if isStreaming {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { index in
-                            Circle()
-                                .fill(Color.gray.opacity(0.5))
-                                .frame(width: 5, height: 5)
-                                .opacity(isStreaming ? 1 : 0)
-                                .animation(
-                                    Animation.easeInOut(duration: 0.5)
-                                        .repeatForever()
-                                        .delay(0.2 * Double(index)),
-                                    value: isStreaming
-                                )
-                        }
-                    }
-                    .padding(.top, 4)
+                    MessageBubbleControlButtons(message: message, isHovering: $isHovering)
+                        .padding(.top, 4)
                 }
             }
             if !isUser { Spacer() }
         }
-        .padding(.horizontal, isUser ? 18 : 14)
+        .padding(.horizontal, 20)
         .animation(.spring(), value: isStreaming)
         #if os(macOS)
         .onHover { hovering in
@@ -111,26 +79,14 @@ struct MessageBubbleContent: View {
     }
 
     var body: some View {
-        return VStack(alignment: .leading, spacing: 4) {
+        return Group {
             if message.isUser {
-                VStack(alignment: .leading, spacing: 4) {
-                    if message.isUser {
-                        ForEach(segments.indices, id: \.self) { index in
-                            switch segments[index] {
-                            case .text(let content):
-                                Text(content)
-                            default:
-                                EmptyView()
-                            }
-                        }
-                    }
-                }
+                UserMessageView(segments: segments)
             } else if message.isTool {
                 VStack(alignment: .leading) {
                     if let segment = segments.filter({ $0.isThinking }).first {
                         ThinkingBlockView(
                             text: segment.text,
-                            blockId: "",
                             message: message
                         )
                     }
@@ -138,33 +94,80 @@ struct MessageBubbleContent: View {
                 }
             } else if message.isToolMessage {
                ToolMessageView(message: message)
-           } else {
-                ForEach(segments.indices, id: \.self) { index in
-                    switch segments[index] {
-                    case .text(let content):
-                        StyledTextView(
-                            content: content,
-                            maxCharacters: maxCharacters,
-                            isExpanded: isExpanded,
-                            onShowMore: { onShowMore(message) }
-                        )
-                    case .code(let language, let code):
-                        CodeBlockView(language: language, code: code)
-                    case .thinking(let text):
-                        let cleanedText = text.replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
-                        if !cleanedText.isEmpty {
-                            let blockId = message.generateConsistentBlockId(index: index)
+            } else {
+                VStack(alignment: .leading) {
+                    ForEach(segments.indices, id: \.self) { index in
+                        switch segments[index] {
+                        case .text(let content):
+                            if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                StyledTextView(
+                                    content: content,
+                                    maxCharacters: maxCharacters,
+                                    isExpanded: isExpanded,
+                                    onShowMore: { onShowMore(message) }
+                                )
+                            }
+                        case .code(let language, let code):
+                            CodeBlockView(language: language, code: code)
+                                .padding(.top, 10)
+                        case .thinking(let text):
                             ThinkingBlockView(
                                 text: text,
-                                blockId: blockId,
                                 message: message
                             )
+                        case .file(let fileData):
+                            Text(fileData.fileName)
                         }
-                    case .file(let fileData):
-                        Text(fileData.fileName)
                     }
                 }
            }
+        }
+    }
+}
+
+struct UserMessageView: View {
+    let segments: [CueChatMessage.MessageSegment]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(segments.indices, id: \.self) { index in
+                switch segments[index] {
+                case .text(let content):
+                    Text(content)
+                default:
+                    EmptyView()
+                }
+            }
+        }
+        .padding(10)
+        .background(AppTheme.Colors.Message.userBubble.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+struct MessageBubbleControlButtons: View {
+    let message: CueChatMessage
+    @Binding var isHovering: Bool
+
+    var body: some View {
+        HStack(alignment: .center) {
+            if message.isUser {
+                Spacer()
+                if isHovering, let createdAt = message.createdAt {
+                    Text("\(createdAt.relativeDate)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+            CopyButton(content: message.content.contentAsString, isVisible: isHovering)
+            if !message.isUser {
+                if isHovering, let createdAt = message.createdAt {
+                    Text("\(createdAt.relativeDate)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
         }
     }
 }

@@ -55,10 +55,10 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
+        isRunning = true
         newMessage = ""
 
         await startStreamingTask(messageParams)
-        isLoading = false
     }
 
     func cancelStreaming() {
@@ -80,6 +80,7 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
             )
             addOrUpdateMessage(newChatMessage, persistInCache: true)
         }
+        isRunning = false
     }
 }
 

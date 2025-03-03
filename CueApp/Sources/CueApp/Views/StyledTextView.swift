@@ -7,6 +7,12 @@ struct StyledTextView: View {
     let isExpanded: Bool
     let onShowMore: (() -> Void)?
 
+    #if os(iOS)
+    let defaultFont = UIFont(name: "SF Mono", size: 13) ?? UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    #elseif os(macOS)
+    let defaultFont = NSFont(name: "SF Mono", size: 13) ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    #endif
+
     init(content: String, maxCharacters: Int = 500, isExpanded: Bool = true, onShowMore: (() -> Void)? = nil) {
         self.content = content
         self.maxCharacters = maxCharacters
@@ -21,14 +27,16 @@ struct StyledTextView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             styledText(truncatedContent)
             if isTruncated, let onShowMore = onShowMore {
                 Button(action: onShowMore) {
                     Text("Show More")
                         .font(.system(.callout))
                         .foregroundColor(.gray)
-                }.buttonStyle(.plain)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
             }
         }
     }
@@ -63,14 +71,8 @@ struct StyledTextView: View {
                 let highlightedCode = SyntaxHighlighter.highlightedCode(colorScheme: colorScheme, language: "", code: code)
                 let attributedString = NSMutableAttributedString(attributedString: highlightedCode)
 
-                #if os(macOS)
-                let codeFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-                #else
-                let codeFont = UIFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-                #endif
-
                 attributedString.addAttributes([
-                    .font: codeFont,
+                    .font: defaultFont,
                     .backgroundColor: colorToNative(codeBackgroundColor)
                 ], range: NSRange(location: 0, length: attributedString.length))
 
@@ -81,7 +83,7 @@ struct StyledTextView: View {
                 return result + Text(text).font(.title2).bold().foregroundColor(colorScheme == .dark ? .white : .black)
             case .header3(let text):
                 return result + Text(text).font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black)
-            case .bulletPoint(let text):
+            case .bulletPoint:
                 return result + Text("• ").font(.body).foregroundColor(colorScheme == .dark ? .white : .black)
             }
         }
@@ -102,11 +104,11 @@ struct StyledTextView: View {
     private func convertDashesToDots(_ text: String) -> String {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         let processedLines = lines.map { line -> String in
-            if line.trimmingCharacters(in: .whitespaces).starts(with: "- ") {
-                let dashIndex = line.firstIndex(of: "-")!
-                var newLine = line
-                newLine.replaceSubrange(dashIndex...dashIndex, with: "•")
-                return String(newLine)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.starts(with: "- ") {
+                // Convert directly using the trimmed line, then preserve leading whitespace
+                let leadingWhitespace = String(line.prefix(while: { $0.isWhitespace }))
+                return leadingWhitespace + "• " + String(trimmed.dropFirst(2))
             }
             return String(line)
         }
@@ -131,13 +133,13 @@ struct StyledTextView: View {
                 let headerText = String(trimmedLine.dropFirst(4))
                 segments.append(.header3(headerText))
             }
-            // Check for bullet points
+            // Check for bullet points - using trimmedLine for safer handling
             else if trimmedLine.starts(with: "• ") {
-                // Extract the content after the bullet point
-                let bulletContent = String(line.dropFirst(line.firstIndex(of: "•")!.utf16Offset(in: String(line)) + 2))
-
                 // Add the bullet point marker
                 segments.append(.bulletPoint(""))
+
+                // Safely extract the content after the bullet point using the trimmed line
+                let bulletContent = String(trimmedLine.dropFirst(2))
 
                 // Process inline styles within the bullet point content
                 let inlineSegments = parseInlineStyles(text: bulletContent)

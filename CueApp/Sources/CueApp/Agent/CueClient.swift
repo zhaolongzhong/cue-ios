@@ -64,7 +64,6 @@ public final class CueClient {
         let endpoint = conversationId != nil ?
             CueEndpoint.completionsCue(request) :
             CueEndpoint.completions(request)
-
         return try await networkClient.request(endpoint)
     }
 }
@@ -135,15 +134,36 @@ public struct CueCompletionResponse: Decodable, Sendable {
     public let conversationId: String?
 
     enum RootKeys: String, CodingKey {
-        case model
         case chatCompletion = "chat_completion"
         case anthropicMessage = "anthropic_message"
         case geminiMessage = "gemini_message"
+        case model
         case usage
     }
 
+    public init(content: CueContent? = nil) {
+        self.content = content
+        self.author = nil
+        self.metadata = nil
+        self.parentId = nil
+        self.conversationId = nil
+    }
+
     public init(from decoder: Decoder) throws {
+        // First try to decode as direct model response (not nested)
+        if let directModelResponse = try? Self.decodeDirectModelResponse(from: decoder) {
+            self.content = directModelResponse
+            self.author = nil
+            self.metadata = nil
+            self.parentId = nil
+            self.conversationId = nil
+            return
+        }
+
+        // If not a direct model response, try to decode from nested structure
         let container = try decoder.container(keyedBy: RootKeys.self)
+
+        // Try to decode from each possible nested key
         if let chatCompletion = try container.decodeIfPresent(OpenAI.ChatCompletion.self, forKey: .chatCompletion),
            let choice = chatCompletion.choices.first {
             self.content = CueContent(
@@ -175,10 +195,53 @@ public struct CueCompletionResponse: Decodable, Sendable {
         } else {
             self.content = nil
         }
+
         self.author = nil
         self.metadata = nil
         self.parentId = nil
         self.conversationId = nil
+    }
+
+    // Helper method to try decoding direct model responses
+    private static func decodeDirectModelResponse(from decoder: Decoder) throws -> CueContent? {
+        let container = try decoder.singleValueContainer()
+
+        if let chatCompletion = try? container.decode(OpenAI.ChatCompletion.self),
+           let choice = chatCompletion.choices.first {
+            return CueContent(
+                type: "chat",
+                content: choice.message.content ?? "",
+                chatCompletionMessage: nil,
+                anthropicMessage: nil,
+                geminiMessage: nil,
+                chatCompletion: chatCompletion
+            )
+        }
+
+        if let anthropicMessage = try? container.decode(Anthropic.AnthropicMessage.self) {
+            return CueContent(
+                type: "anthropic",
+                content: anthropicMessage.content.first?.text ?? "",
+                chatCompletionMessage: nil,
+                anthropicMessage: anthropicMessage,
+                geminiMessage: nil,
+                chatCompletion: nil
+            )
+        }
+
+        if let geminiMessage = try? container.decode(ModelContent.self) {
+            return CueContent(
+                type: "gemini",
+                content: geminiMessage.parts.first?.text ?? "",
+                chatCompletionMessage: nil,
+                anthropicMessage: nil,
+                geminiMessage: geminiMessage,
+                chatCompletion: nil
+            )
+        }
+
+        // If none worked, return nil and fall back to next approach
+        return nil
     }
 }
 

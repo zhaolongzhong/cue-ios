@@ -5,22 +5,22 @@ struct AssistantChatView: View {
     @Environment(\.openWindow) private var openWindow
     @StateObject private var viewModel: AssistantChatViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
-    @SceneStorage("chatScrollPosition") private var scrollPosition: String?
     @FocusState private var isFocused: Bool
     @State private var scrollProxy: ScrollViewProxy?
     @State private var selectedMessage: CueChatMessage?
-    @State private var showingToolsList = false
-    @State private var isHovering = false
+    @State private var chatViewState: ChatViewState
+    @State private var shouldScroll: Bool = false
     let assistantsViewModel: AssistantsViewModel
-    private let isCompanion: Bool
+    @State var shouldScrollToBottom = false
+    @State var shouldScrollToUserMessage: Bool = false
 
     init(assistantChatViewModel: AssistantChatViewModel,
          assistantsViewModel: AssistantsViewModel,
          isCompanion: Bool = false
     ) {
         self.assistantsViewModel = assistantsViewModel
-        _viewModel = StateObject(wrappedValue: assistantChatViewModel)
-        self.isCompanion = isCompanion
+        self._viewModel = StateObject(wrappedValue: assistantChatViewModel)
+        self.chatViewState = ChatViewState(isCompanion: isCompanion, isHovering: false, showingToolsList: false)
     }
 
     var body: some View {
@@ -28,26 +28,17 @@ struct AssistantChatView: View {
             VStack(spacing: 16) {
                 messageList
                 RichTextField(
-                    isEnabled: viewModel.isInputEnabled,
-                    onShowTools: {
-                    },
-                    onSend: {
-                        Task {
-                            await viewModel.sendMessage()
-                        }
-                        withAnimation {
-                            scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
-                        }
-                    },
                     inputMessage: $viewModel.newMessage,
-                    isFocused: $isFocused
+                    isFocused: $isFocused,
+                    richTextFieldState: RichTextFieldState(),
+                    richTextFieldDelegate: richTextFieldDelegate
                 )
             }
-            if isCompanion {
-                CompanionHeaderView(title: viewModel.assistant.name, isHovering: $isHovering)
+            if chatViewState.isCompanion {
+                CompanionHeaderView(title: viewModel.assistant.name, isHovering: $chatViewState.isHovering)
             }
         }
-        .withCoordinatorAlert(isCompanion: isCompanion)
+        .withCoordinatorAlert(isCompanion: chatViewState.isCompanion)
         #if os(iOS)
         .defaultNavigationBar(showCustomBackButton: false, title: viewModel.assistant.name)
         #endif
@@ -117,7 +108,7 @@ struct AssistantChatView: View {
         #endif
         #if os(macOS)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering }
+            withAnimation(.easeInOut(duration: 0.2)) { chatViewState.isHovering = hovering }
         }
         #endif
         .onAppear {
@@ -139,16 +130,15 @@ struct AssistantChatView: View {
     }
 
     private var messageList: some View {
-        MessagesListView(
+        MessageListView(
             messages: viewModel.messageModels,
-            shouldAutoScroll: shouldAutoScroll,
-            onScrollProxyReady: { proxy in
-                scrollProxy = proxy
-            },
             onLoadMore: viewModel.loadMoreMessages,
             onShowMore: { message in
                 selectedMessage = message
-            }
+            },
+            shouldScrollToUserMessage: $shouldScrollToUserMessage,
+            shouldScrollToBottom: $shouldScrollToBottom,
+            isLoadingMore: $viewModel.isLoadingMore
         )
         .scrollDismissesKeyboard(.never)
         .id(viewModel.assistant.id)
@@ -165,5 +155,24 @@ struct AssistantChatView: View {
         )
         let windowId = windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
         openWindow(id: WindowId.compainionChatWindow.rawValue, value: windowId.id)
+    }
+
+    @MainActor
+    private var richTextFieldDelegate: RichTextFieldDelegate {
+        ChatViewDelegate(
+            showToolsAction: {
+                chatViewState.showingToolsList = true
+            },
+            sendAction: {
+                Task {
+                    await viewModel.sendMessage()
+                }
+                Task { @MainActor in
+                    withAnimation {
+                        scrollProxy?.scrollTo(viewModel.messageModels.last?.id, anchor: .bottom)
+                    }
+                }
+            }
+        )
     }
 }

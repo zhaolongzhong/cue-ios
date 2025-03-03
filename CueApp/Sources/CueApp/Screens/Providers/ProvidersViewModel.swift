@@ -7,7 +7,7 @@ public final class ProvidersViewModel: ObservableObject {
     @Published private(set) var geminiKey: String = ""
 
     @Published private(set) var editingProvider: Provider?
-    @Published private(set) var isAlertPresented: Bool = false
+    @Published var isAlertPresented: Bool = false
     @Published var tempAPIKey: String = ""
 
     private let userDefaults: UserDefaults

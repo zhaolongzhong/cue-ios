@@ -181,6 +181,11 @@ public final class LocalChatViewModel: BaseChatViewModel {
         isLoading = false
     }
 
+    override func stopAction() async {
+        isRunning = false
+        isLoading = false
+    }
+
     // MARK: Streaming
     private func updateStreamingMessage(for id: String, content: String, isComplete: Bool = false) {
         var updatedContent = content

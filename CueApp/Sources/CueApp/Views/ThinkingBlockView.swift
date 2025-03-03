@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ThinkingBlockView: View {
     let text: String
-    let blockId: String
     let message: CueChatMessage
     @State private var expansionState: ExpansionState = .collapsed
     // Explicitly track content height for smoother animation
@@ -17,9 +16,8 @@ struct ThinkingBlockView: View {
         expansionState == .expanded
     }
 
-    init(text: String, blockId: String, message: CueChatMessage) {
+    init(text: String, message: CueChatMessage) {
         self.text = text
-        self.blockId = blockId
         self.message = message
         self._expansionState = State(initialValue: message.isStreaming ? .expanded : .collapsed)
     }

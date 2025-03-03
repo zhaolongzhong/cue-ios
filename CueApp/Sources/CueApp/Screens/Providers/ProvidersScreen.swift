@@ -3,6 +3,7 @@ import SwiftUI
 public struct ProvidersScreen: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: ProvidersViewModel
+    @State private var selectedProvider: Provider?
 
     public init(providersViewModel: ProvidersViewModel) {
         _viewModel = StateObject(wrappedValue: providersViewModel)
@@ -14,11 +15,17 @@ public struct ProvidersScreen: View {
                 Spacer()
                 LazyVStack {
                     ForEach(Provider.allCases) { provider in
-                        ProviderRow(
-                            provider: provider,
-                            viewModel: viewModel
+                        NavigationLink(
+                            destination: ProviderDetailView(provider: provider),
+                            label: {
+                                ProviderRow(
+                                    provider: provider,
+                                    viewModel: viewModel
+                                )
+                                .listRowSeparator(.hidden)
+                            }
                         )
-                        .listRowSeparator(.hidden)
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding()
@@ -26,22 +33,21 @@ public struct ProvidersScreen: View {
                 .frame(maxWidth: 600)
                 Spacer()
             }
-        }
-        .defaultNavigationBar(title: "Providers")
-        .inputAlert(
-            title: "Edit Key",
-            text: Binding(
-                get: { viewModel.tempAPIKey },
-                set: { viewModel.tempAPIKey = $0 }
-            ),
-            isPresented: Binding(
-                get: { viewModel.isAlertPresented },
-                set: { if !$0 { viewModel.cancelEditing() } }
-            ),
+            .alert("Edit Key", isPresented: $viewModel.isAlertPresented) {
+                TextField("Enter API Key", text: $viewModel.tempAPIKey)
+                    .autocorrectionDisabled()
 
-            onSave: { _ in
-                viewModel.saveKey()
+                Button("Cancel", role: .cancel) {
+                    viewModel.cancelEditing()
+                }
+
+                Button("Save") {
+                    viewModel.saveKey()
+                }
             }
-        )
+            message: {
+                EmptyView()
+            }
+        }
     }
 }

@@ -12,6 +12,7 @@ extension JSONValue {
               let object = dict["object"]?.asString,
               let model = dict["model"]?.asString,
               let systemFingerprint = dict["system_fingerprint"]?.asString,
+              let serviceTier = dict["service_tier"]?.asString,
               case .int(let created) = dict["created"],
               case .array(let choicesArray) = dict["choices"],
               case .object(let usageDict) = dict["usage"] else {
@@ -79,7 +80,7 @@ extension JSONValue {
             return nil
         }
 
-        let completionTokensDetails = OpenAI.TokenDetails(
+        let completionTokensDetails = OpenAI.CompletionTokenDetails(
             rejectedPredictionTokens: rejectedPredictionTokens,
             audioTokens: audioTokens,
             acceptedPredictionTokens: acceptedPredictionTokens,
@@ -99,6 +100,7 @@ extension JSONValue {
 
         return OpenAI.ChatCompletion(
             systemFingerprint: systemFingerprint,
+            serviceTier: serviceTier,
             usage: usage,
             choices: choices,
             id: id,

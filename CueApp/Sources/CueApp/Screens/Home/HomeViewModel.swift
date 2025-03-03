@@ -11,6 +11,12 @@ final class HomeViewModel: ObservableObject {
     @Published var greeting: String = ""
     @Published var quoteOrFunFact: [QuoteContent] = []
 
+    public init() {
+        Task {
+            await fetchQuoteOrFunFact()
+        }
+    }
+
     func initialize() async {
         guard let currentUser = authRepository.currentUser else { return }
         getGreeting(for: currentUser)
