@@ -7,31 +7,27 @@ import SwiftUI
 
 struct ConversationsView: View {
     @Binding var isShowing: Bool
-    @StateObject var viewModel: ConversationsViewModel
+    @ObservedObject var viewModel: ConversationsViewModel
     @State private var editingConversationId: String?
     @State private var editedTitle: String = ""
     @State private var conversationToDelete: String?
     @State private var isRenaming: Bool = false
     @State private var showDeleteAlert: Bool = false
     @State private var showMultiDeleteAlert: Bool = false
+    @FocusState private var isTextFieldFocused: Bool
 
     private let animationDuration: Double = 0.2
 
     var onSelectConversation: (String) -> Void
 
     init(
+        viewModel: ConversationsViewModel,
         isShowing: Binding<Bool>,
         provider: Provider,
-        selectedConversationId: String?,
         onSelectConversation: @escaping (String) -> Void
     ) {
+        self.viewModel = viewModel
         self._isShowing = isShowing
-        self._viewModel = StateObject(
-            wrappedValue: ConversationsViewModel(
-                selectedConversationId: selectedConversationId,
-                provider: provider
-            )
-        )
         self.onSelectConversation = onSelectConversation
     }
 
@@ -272,6 +268,7 @@ struct ConversationsView: View {
                     }
                 }
                 editingConversationId = nil
+                isTextFieldFocused = false
             })
             .textFieldStyle(PlainTextFieldStyle())
             .padding(.vertical, 8)
@@ -280,6 +277,14 @@ struct ConversationsView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(AppTheme.Colors.separator.opacity(0.5))
             )
+            .focused($isTextFieldFocused) // Connect to focus state
+            .onAppear {
+                // Automatically focus the text field when it appears
+                // Adding a slight delay helps ensure the view is fully loaded
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isTextFieldFocused = true
+                }
+            }
 
             Button {
                 if !editedTitle.isEmpty {
@@ -288,6 +293,7 @@ struct ConversationsView: View {
                     }
                 }
                 editingConversationId = nil
+                isTextFieldFocused = false
             } label: {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
@@ -296,6 +302,7 @@ struct ConversationsView: View {
 
             Button {
                 editingConversationId = nil
+                isTextFieldFocused = false
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.gray)

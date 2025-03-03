@@ -102,11 +102,11 @@ struct StyledTextView: View {
     private func convertDashesToDots(_ text: String) -> String {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         let processedLines = lines.map { line -> String in
-            if line.trimmingCharacters(in: .whitespaces).starts(with: "- ") {
-                let dashIndex = line.firstIndex(of: "-")!
-                var newLine = line
-                newLine.replaceSubrange(dashIndex...dashIndex, with: "•")
-                return String(newLine)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.starts(with: "- ") {
+                // Convert directly using the trimmed line, then preserve leading whitespace
+                let leadingWhitespace = String(line.prefix(while: { $0.isWhitespace }))
+                return leadingWhitespace + "• " + String(trimmed.dropFirst(2))
             }
             return String(line)
         }
@@ -131,13 +131,13 @@ struct StyledTextView: View {
                 let headerText = String(trimmedLine.dropFirst(4))
                 segments.append(.header3(headerText))
             }
-            // Check for bullet points
+            // Check for bullet points - using trimmedLine for safer handling
             else if trimmedLine.starts(with: "• ") {
-                // Extract the content after the bullet point
-                let bulletContent = String(line.dropFirst(line.firstIndex(of: "•")!.utf16Offset(in: String(line)) + 2))
-
                 // Add the bullet point marker
                 segments.append(.bulletPoint(""))
+
+                // Safely extract the content after the bullet point using the trimmed line
+                let bulletContent = String(trimmedLine.dropFirst(2))
 
                 // Process inline styles within the bullet point content
                 let inlineSegments = parseInlineStyles(text: bulletContent)

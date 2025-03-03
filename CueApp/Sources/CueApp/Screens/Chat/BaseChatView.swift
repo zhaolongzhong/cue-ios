@@ -9,7 +9,9 @@ import CueOpenAI
 // MARK: - Chat View Model Protocol
 @MainActor
 protocol ChatViewModel: ObservableObject {
+    var attachments: [Attachment] { get set }
     var cueChatMessages: [CueChatMessage] { get set }
+    var richTextFieldState: RichTextFieldState { get set }
     var newMessage: String { get set }
     var error: ChatError? { get }
     var observedApp: AccessibleApplication? { get }
@@ -25,6 +27,7 @@ protocol ChatViewModel: ObservableObject {
     func stopObserveApp()
     func addAttachment(_ attachment: Attachment)
     func sendMessage() async
+    func stopAction() async
     func deleteMessage(_ message: CueChatMessage) async
     func clearError()
 }
@@ -38,25 +41,22 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
 
     @ObservedObject var viewModel: ViewModel
     @StateObject private var conversationsViewModel: ConversationsViewModel
-    @FocusState var isFocused: Bool
-    @Namespace var bottomID
+
+    @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
+    @State private var scrollProxy: ScrollViewProxy?
+    @FocusState private var isFocused: Bool
+    @State private var scrollThrottleWorkItem: DispatchWorkItem?
+
+    @State private var chatViewState: ChatViewState
 
     var provider: Provider
     var availableModels: [ChatModel]
     var storedModel: Binding<ChatModel>
-    var isCompanion: Bool
-    var showVoiceChat: Bool
-    var showingSidebar: Binding<Bool>
-    var isHovering: Binding<Bool>
-    var scrollThrottleWorkItem: Binding<DispatchWorkItem?>
-    var showingToolsList: Binding<Bool>
-    var isShowingProviderDetails: Binding<Bool>
 
     var isStreamingEnabled: Binding<Bool>?
     var isToolEnabled: Binding<Bool>?
     var storedConversationId: String?
 
-    let onAppear: () -> Void
     var onReloadProviderSettings: (() -> Void)?
 
     init(
@@ -64,35 +64,21 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
         provider: Provider,
         availableModels: [ChatModel],
         storedModel: Binding<ChatModel>,
-        isCompanion: Bool,
-        showVoiceChat: Bool,
-        showingSidebar: Binding<Bool>,
-        isHovering: Binding<Bool>,
-        scrollThrottleWorkItem: Binding<DispatchWorkItem?>,
-        showingToolsList: Binding<Bool>,
-        isShowingProviderDetails: Binding<Bool>,
         isStreamingEnabled: Binding<Bool>? = nil,
         isToolEnabled: Binding<Bool>? = nil,
         storedConversationId: String? = nil,
-        onAppear: @escaping () -> Void,
-        onReloadProviderSettings: (() -> Void)? = nil
+        onReloadProviderSettings: (() -> Void)? = nil,
+        chatViewState: ChatViewState? = nil
     ) {
         self.viewModel = viewModel
         self.provider = provider
         self.availableModels = availableModels
         self.storedModel = storedModel
-        self.isCompanion = isCompanion
-        self.showVoiceChat = showVoiceChat
-        self.showingSidebar = showingSidebar
-        self.isHovering = isHovering
-        self.scrollThrottleWorkItem = scrollThrottleWorkItem
-        self.showingToolsList = showingToolsList
-        self.isShowingProviderDetails = isShowingProviderDetails
         self.isStreamingEnabled = isStreamingEnabled
         self.isToolEnabled = isToolEnabled
         self.storedConversationId = storedConversationId
-        self.onAppear = onAppear
         self.onReloadProviderSettings = onReloadProviderSettings
+        self.chatViewState = chatViewState ?? ChatViewState()
 
         self._conversationsViewModel = StateObject(
             wrappedValue: ConversationsViewModel(
@@ -109,34 +95,31 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
                 observedAppView
                 richTextField
             }
-            if isCompanion {
-                CompanionHeaderView(isHovering: isHovering)
+            if chatViewState.isCompanion {
+                CompanionHeaderView(isHovering: $chatViewState.isHovering)
             }
         }
         .slidingSidebar(
-            isShowing: showingSidebar,
+            isShowing: $chatViewState.showingSidebar,
             width: 280,
             edge: .trailing,
             sidebarOpacity: 0.95
         ) {
             ConversationsView(
-                isShowing: showingSidebar,
-                provider: provider,
-                selectedConversationId: storedConversationId ?? viewModel.selectedConversationId
+                viewModel: conversationsViewModel,
+                isShowing: $chatViewState.showingSidebar,
+                provider: provider
             ) { conversationId in
                 viewModel.selectedConversationId = conversationId
             }
         }
-        .withCoordinatorAlert(isCompanion: isCompanion)
+        .withCoordinatorAlert(isCompanion: chatViewState.isCompanion)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             toolbarContent
             #if os(macOS)
             macToolbarContent
             #endif
-        }
-        .onAppear {
-            onAppear()
         }
         .onChange(of: viewModel.cueChatMessages.count) { _, _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -149,11 +132,11 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
                 viewModel.clearError()
             }
         }
-        .sheet(isPresented: showingToolsList) {
+        .sheet(isPresented: $chatViewState.showingToolsList) {
             ToolsListView(tools: viewModel.availableTools)
         }
         .sheet(
-            isPresented: isShowingProviderDetails,
+            isPresented: $chatViewState.isShowingProviderDetails,
             onDismiss: {
                 onReloadProviderSettings?()
             },
@@ -174,7 +157,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
         #endif
         #if os(macOS)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) { isHovering.wrappedValue = hovering }
+            withAnimation(.easeInOut(duration: 0.2)) { $chatViewState.isHovering.wrappedValue = hovering }
         }
         #endif
     }
@@ -211,7 +194,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
             .help("Create New Session")
             Button {
                 withAnimation(.easeInOut) {
-                    showingSidebar.wrappedValue.toggle()
+                    $chatViewState.showingSidebar.wrappedValue.toggle()
                 }
             } label: {
                 Image(systemName: "list.bullet")
@@ -224,7 +207,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
                     openCompanionChat(viewModel.model)
                 }
                 Button("Provider Details") {
-                    isShowingProviderDetails.wrappedValue = true
+                    $chatViewState.isShowingProviderDetails.wrappedValue = true
                 }
                 Button("Clear Messages") {
                     if let localVM = viewModel as? LocalChatViewModel {
@@ -244,92 +227,67 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
 
     // MARK: - Message List
     private var messageList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(viewModel.cueChatMessages) { message in
-                        MessageBubble(message: message).contextMenu {
-                            Button {
-                                Task {
-                                    await viewModel.deleteMessage(message)
-                                }
-                            } label: {
-                                Text("Delete")
-                            }
-                        }
-                    }
-                    // Invisible marker view at bottom
-                    Color.clear
-                        .frame(height: 1)
-                        .id(bottomID)
-                }
-                .padding(.top)
-            }
-            #if os(macOS)
-            .safeAreaInset(edge: .top) {
-                if isCompanion {
-                    Color.clear.frame(height: 36)
-                }
-            }
-            #endif
-            #if os(iOS)
-            .simultaneousGesture(DragGesture().onChanged { _ in
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                              to: nil, from: nil, for: nil)
-            })
-            #endif
-            .onChange(of: viewModel.cueChatMessages.count) { _, _ in
-                throttledScroll(proxy: proxy)
-            }
-            // Add streaming message content change handler if needed
-            .onChange(of: (viewModel as? LocalChatViewModel)?.streamingMessageContent) { _, _ in
-                throttledScroll(proxy: proxy)
+        MessagesListView(
+            messages: viewModel.cueChatMessages,
+            shouldAutoScroll: shouldAutoScroll,
+            onScrollProxyReady: { proxy in
+                scrollProxy = proxy
+            },
+            onLoadMore: {},
+            onShowMore: { _ in }
+        )
+        .scrollDismissesKeyboard(.never)
+        .id(viewModel.selectedConversationId)
+        #if os(macOS)
+        .safeAreaInset(edge: .top) {
+            if chatViewState.isCompanion {
+                Color.clear.frame(height: 36)
             }
         }
-    }
-
-    private func throttledScroll(proxy: ScrollViewProxy) {
-        guard scrollThrottleWorkItem.wrappedValue == nil else { return }
-
-        let workItem = DispatchWorkItem {
-            DispatchQueue.main.async {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo(bottomID, anchor: .bottom)
-                }
-                scrollThrottleWorkItem.wrappedValue = nil
-            }
-        }
-
-        scrollThrottleWorkItem.wrappedValue = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+        #endif
+        #if os(iOS)
+        .simultaneousGesture(DragGesture().onChanged { _ in
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                          to: nil, from: nil, for: nil)
+        })
+        #endif
     }
 
     // MARK: - Rich Text Field
     private var richTextField: some View {
         RichTextField(
-            showVoiceChat: showVoiceChat,
-            showAXapp: true,
-            onShowTools: {
-                showingToolsList.wrappedValue = true
-            },
-            onOpenVoiceChat: openLiveChat,
-            onStartAXApp: { app in
-                viewModel.updateObservedApplication(to: app)
-            },
-            onSend: {
-                Task {
-                    await viewModel.sendMessage()
-                }
-            },
-            onAttachmentPicked: { attachment in
-                viewModel.addAttachment(attachment)
-            },
-            toolCount: (isToolEnabled?.wrappedValue ?? true) ? viewModel.availableTools.count : 0,
             inputMessage: Binding(
                 get: { viewModel.newMessage },
                 set: { viewModel.newMessage = $0 }
             ),
-            isFocused: $isFocused
+            isFocused: $isFocused,
+            richTextFieldState: viewModel.richTextFieldState,
+            richTextFieldDelegate: richTextFieldDelegate
+        )
+    }
+
+    private var richTextFieldDelegate: RichTextFieldDelegate {
+        ChatViewDelegate(
+            chatViewModel: viewModel,
+            showToolsAction: {
+                $chatViewState.showingToolsList.wrappedValue = true
+            },
+            openLiveChatAction: {
+                self.openLiveChat()
+            },
+            scrollToBottomAction: {
+                withAnimation {
+                    scrollProxy?.scrollTo(viewModel.cueChatMessages.last?.id, anchor: .bottom)
+                }
+            },
+            sendAction: {
+                Task {
+                    await viewModel.sendMessage()
+                }
+            },
+            stopAction: {
+                print("ix")
+            }
         )
     }
 
@@ -360,7 +318,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
             if let newId = await conversationsViewModel.createConversation(provider: provider) {
                 viewModel.selectedConversationId = newId
                 withAnimation(.easeInOut(duration: 0.3)) {
-                    showingSidebar.wrappedValue = false
+                    $chatViewState.showingSidebar.wrappedValue = false
                 }
             }
         }

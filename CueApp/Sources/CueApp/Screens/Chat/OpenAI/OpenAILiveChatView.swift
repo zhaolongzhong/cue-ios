@@ -90,14 +90,26 @@ public struct OpenAILiveChatView: View {
     }
 
     private var messageInputView: some View {
-        RichTextField(onShowTools: {
-            showingToolsList = true
-        }, onSend: {
-            Task {
-                viewModel.sendMessage()
+        RichTextField(
+            inputMessage: $viewModel.newMessage,
+            isFocused: $isFocused,
+            richTextFieldState: RichTextFieldState(toolCount: viewModel.availableTools.count),
+            richTextFieldDelegate: richTextFieldDelegate
+        )
+    }
+
+    @MainActor
+    private var richTextFieldDelegate: RichTextFieldDelegate {
+        ChatViewDelegate(
+            showToolsAction: {
+                showingToolsList = true
+            },
+            sendAction: {
+                Task {
+                    await viewModel.sendMessage()
+                }
             }
-        },
-       toolCount: viewModel.availableTools.count, inputMessage: $viewModel.newMessage, isFocused: $isFocused)
+        )
     }
 
     // MARK: - Button Actions

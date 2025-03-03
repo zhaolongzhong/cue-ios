@@ -34,7 +34,8 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
             apiKey: apiKey,
             provider: .openai,
             model: .gpt4oMini,
-            conversationId: conversationId
+            conversationId: conversationId,
+            richTextFieldState: RichTextFieldState(showVoiceChat: true)
         )
     }
 
@@ -60,6 +61,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
+        isRunning = true
         newMessage = ""
 
         if isStreamingEnabled {
@@ -67,6 +69,13 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
         } else {
             await sendMessageWithoutStreaming(messageParams)
         }
+    }
+
+    override func stopAction() async {
+        streamingTask?.cancel()
+        streamingTask = nil
+        isRunning = false
+        isLoading = false
     }
 
     private func sendMessageWithoutStreaming(_ messageParams: [CueChatMessage]) async {
@@ -79,12 +88,12 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
                 let cueChatMessage = CueChatMessage.openAI(message, stableId: UUID().uuidString)
                 addOrUpdateMessage(cueChatMessage, persistInCache: true)
             }
+            isRunning = false
         } catch {
             let chatError = ChatError.unknownError(error.localizedDescription)
             self.error = chatError
             ErrorLogger.log(chatError)
         }
-        isLoading = false
     }
 }
 
@@ -121,6 +130,7 @@ extension OpenAIChatViewModel {
 
                 // Update chat messages with final results
                 updateChatMessages(with: updatedMessages)
+                isRunning = false
             }
 
             // Wait for completion or cancellation

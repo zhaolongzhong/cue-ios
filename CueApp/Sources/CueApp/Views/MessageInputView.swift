@@ -83,7 +83,7 @@ struct MessageInputView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.leading)
 
-                SendButton(isEnabled: isMessageValid, action: onSend)
+                SendButton(isEnabled: isMessageValid, onSend: onSend)
                     .padding(.trailing, 8)
                     .keyboardShortcut(.return, modifiers: [])
             }

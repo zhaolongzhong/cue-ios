@@ -9,7 +9,8 @@ extension CueChatMessage {
     /// Returns the streaming state if this message is a streaming message
     var streamingState: StreamingState? {
         switch self {
-        case .local(_, _, let streamingState, _):
+        case .local(_, _, let streamingState, _),
+                .openAI(_, _, let streamingState, _):
             return streamingState
         case .anthropic(_, _, let streamingState, _):
             return streamingState

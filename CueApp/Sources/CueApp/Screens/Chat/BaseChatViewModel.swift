@@ -26,13 +26,23 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     @Published var conversations: [ConversationModel] = []
     @Published var cueChatMessages: [CueChatMessage] = []
     @Published var newMessage: String = ""
+    @Published var richTextFieldState: RichTextFieldState
 
     // Configuration
     @Published var model: ChatModel
-    @Published var availableTools: [Tool] = []
+    @Published var availableTools: [Tool] = [] {
+        didSet {
+            richTextFieldState.toolCount = availableTools.count
+        }
+    }
     @Published var attachments: [Attachment] = []
     @Published var isStreamingEnabled: Bool = true
     @Published var isToolEnabled: Bool = true
+    @Published var isRunning: Bool = false {
+        didSet {
+            richTextFieldState.isRunning = isRunning
+        }
+    }
     @Published var maxMessages: Int = 10
     @Published var maxTurns: Int = 10
 
@@ -57,7 +67,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     var cancellables = Set<AnyCancellable>()
     let provider: Provider
 
-    init(apiKey: String, provider: Provider, model: ChatModel, conversationId: String? = nil) {
+    init(apiKey: String, provider: Provider, model: ChatModel, conversationId: String? = nil, richTextFieldState: RichTextFieldState? = nil) {
         self.apiKey = apiKey
         self.provider = provider
         self.model = model
@@ -69,6 +79,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
 
         self.availableTools = toolManager.getTools()
         self.selectedConversationId = conversationId
+        self.richTextFieldState = richTextFieldState ?? RichTextFieldState()
 
         updateTools()
 
@@ -103,7 +114,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
 
     func startServer() async {
         #if os(macOS)
-//        await self.toolManager.startMcpServer()
+        await self.toolManager.startMcpServer()
         #endif
     }
 
@@ -228,5 +239,9 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     // This method must be implemented by subclasses
     func sendMessage() async {
         fatalError("sendMessage() must be implemented by subclasses")
+    }
+
+    func stopAction() async {
+        fatalError("stopAction() must be implemented by subclasses")
     }
 }

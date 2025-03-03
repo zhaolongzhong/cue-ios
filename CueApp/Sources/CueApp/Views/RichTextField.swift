@@ -4,50 +4,30 @@ import Dependencies
 struct RichTextField: View {
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @Environment(\.colorScheme) private var colorScheme
-    let isEnabled: Bool
-    let showVoiceChat: Bool
-    let showAXApp: Bool
-    let onShowTools: () -> Void
-    let onOpenVoiceChat: (() -> Void)?
-    let onStartAXApp: ((AccessibleApplication) -> Void)?
-    let onSend: () -> Void
-    var onAttachmentPicked: ((Attachment) -> Void)?
-    let toolCount: Int
     @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
-    @State private var attachments: [Attachment] = []
     @State private var isTextFieldVisible = false
+    @ObservedObject var richTextFieldState: RichTextFieldState
+    private let richTextFieldDelegate: RichTextFieldDelegate
 
     init(
-        isEnabled: Bool = true,
-        showVoiceChat: Bool = false,
-        showAXapp: Bool = false,
-        onShowTools: @escaping () -> Void,
-        onOpenVoiceChat: (() -> Void)? = nil,
-        onStartAXApp: ((AccessibleApplication) -> Void)? = nil,
-        onSend: @escaping () -> Void,
-        onAttachmentPicked: ((Attachment) -> Void)? = nil,
-        toolCount: Int = 0,
         inputMessage: Binding<String>,
-        isFocused: FocusState<Bool>.Binding
+        isFocused: FocusState<Bool>.Binding,
+        richTextFieldState: RichTextFieldState,
+        richTextFieldDelegate: RichTextFieldDelegate
     ) {
-        self.isEnabled = isEnabled
-        self.showVoiceChat = showVoiceChat
-        self.showAXApp = showAXapp
-        self.onShowTools = onShowTools
-        self.onOpenVoiceChat = onOpenVoiceChat
-        self.onStartAXApp = onStartAXApp
-        self.onSend = onSend
-        self.onAttachmentPicked = onAttachmentPicked
-        self.toolCount = toolCount
         self._inputMessage = inputMessage
         self._isFocused = isFocused
+        self.richTextFieldState = richTextFieldState
+        self.richTextFieldDelegate = richTextFieldDelegate
     }
 
     var body: some View {
         VStack {
-            if !attachments.isEmpty {
-                attachmentsView
+            if !richTextFieldState.attachments.isEmpty {
+                AttachmentsListView(attachments: richTextFieldState.attachments, onRemove: { index in
+                    richTextFieldState.attachments.remove(at: index)
+                })
             }
 
             if isTextFieldVisible {
@@ -60,9 +40,9 @@ struct RichTextField: View {
                     .focused($isFocused)
                     .background(.clear)
                     .onSubmit {
-                        if isMessageValid {
-                            attachments.removeAll()
-                            onSend()
+                        if isMessageValid && !richTextFieldState.isRunning {
+                            richTextFieldState.attachments.removeAll()
+                            richTextFieldDelegate.onSend()
                         }
                     }
                     .submitLabel(.return)
@@ -103,66 +83,46 @@ struct RichTextField: View {
 
     private var controlButtons: some View {
         HStack {
-            if featureFlags.enableMediaOptions && onAttachmentPicked != nil {
+            if featureFlags.enableMediaOptions {
                 AttachmentPickerMenu { attachment in
-                    attachments.append(attachment)
-                    onAttachmentPicked?(attachment)
+                    richTextFieldState.attachments.append(attachment)
+                    richTextFieldDelegate.onPickAttachment(attachment)
                 }
             }
             Text("Type a message ...")
                 .foregroundColor(.secondary.opacity(0.6))
                 .opacity(isTextFieldVisible ? 0 : 1)
             Spacer()
-            if toolCount != 0 {
-                ToolButton(count: toolCount, action: {
-                    onShowTools()
+            if richTextFieldState.toolCount != 0 {
+                ToolButton(count: richTextFieldState.toolCount, action: {
+                    richTextFieldDelegate.onShowTools()
                     checkAndUpdateTextFieldVisibility()
                 })
             }
-            if showAXApp {
+            if richTextFieldState.showAXApp {
                 #if os(macOS)
-                AXAppSelectionMenu(onStartAXApp: onStartAXApp)
+                AXAppSelectionMenu(onStartAXApp: richTextFieldDelegate.onShowAXApp)
                 #endif
             }
-            if showVoiceChat {
+            if richTextFieldState.showVoiceChat {
                 VoiceChatButton(action: {
-                    onOpenVoiceChat?()
+                    richTextFieldDelegate.onOpenVoiceChat()
                     checkAndUpdateTextFieldVisibility()
                 })
             }
-            SendButton(isEnabled: isMessageValid) {
-                attachments.removeAll()
-                onSend()
-            }
+            SendButton(
+                isEnabled: isMessageValid,
+                isRunning: richTextFieldState.isRunning,
+                onSend: {
+                    richTextFieldState.attachments.removeAll()
+                    richTextFieldDelegate.onSend()
+                },
+                onStop: richTextFieldDelegate.onStop
+            )
         }
         .contentShape(Rectangle())
         .onTapGesture {
             showTextField()
-        }
-    }
-
-    private var attachmentsView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(attachments.indices, id: \.self) { index in
-                    HStack {
-                        Text(attachments[index].name)
-                            .lineLimit(1)
-                        Button {
-                            attachments.remove(at: index)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.gray.opacity(0.2))
-                    )
-                }
-            }
-            .padding(.horizontal, 4)
         }
     }
 
@@ -179,74 +139,5 @@ struct RichTextField: View {
 
     private var isMessageValid: Bool {
         inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1
-    }
-}
-
-struct AttachmentPickerMenu: View {
-    var onAttachmentPicked: ((Attachment) -> Void)?
-    private let attachmentService = AttachmentService()
-
-    var body: some View {
-        HoverButton {
-            Menu {
-                Button {
-                    Task {
-                        if let attachment = try? await attachmentService.pickFile(of: .document) {
-                            onAttachmentPicked?(attachment)
-                        }
-                    }
-                } label: {
-                    Label("Upload File", systemImage: "folder")
-                }
-//                Button {
-//                    Task {
-//                        if let attachment = try? await attachmentService.pickImage(from: .photoLibrary) {
-//                            onAttachmentPicked?(attachment)
-//                        }
-//                    }
-//                } label: {
-//                    Label("Upload Photo", systemImage: "photo")
-//                }
-            } label: {
-                Label("", systemImage: "plus")
-                    .font(.system(size: 18, weight: .bold))
-                    .imageScale(.large)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-        }
-    }
-}
-
-struct ToolButton: View {
-    let count: Int
-    let action: () -> Void
-
-    var body: some View {
-        HoverButton {
-            Button(action: action) {
-                HStack(spacing: 2) {
-                    Image(systemName: "hammer")
-                        .font(.system(size: 12))
-                    Text("\(count)")
-                }
-            }
-            .buttonStyle(.plain)
-        }
-    }
-}
-
-struct VoiceChatButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        HoverButton {
-            Button(action: action) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 12))
-            }
-            .buttonStyle(.plain)
-        }
     }
 }

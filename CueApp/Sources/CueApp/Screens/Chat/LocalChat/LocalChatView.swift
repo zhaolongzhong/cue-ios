@@ -8,8 +8,6 @@ import CueOpenAI
 
 public struct LocalChatView: View {
     @StateObject private var viewModel: LocalChatViewModel
-    @FocusState private var isFocused: Bool
-    @State private var scrollThrottleWorkItem: DispatchWorkItem?
     @AppStorage(ProviderSettingsKeys.SelectedModel.local) private var storedModel: ChatModel = .deepSeekR17B
     @AppStorage(ProviderSettingsKeys.SelectedConversation.local) private var storedConversationId: String?
 
@@ -18,11 +16,6 @@ public struct LocalChatView: View {
     @AppStorage(ProviderSettingsKeys.Streaming.local) private var storedStreamingEnabled: Bool = true
     @AppStorage(ProviderSettingsKeys.ToolEnabled.local) private var storedToolEnabled: Bool = true
     @AppStorage(ProviderSettingsKeys.BaseURL.local) private var storedBaseURL: String?
-
-    @State private var showingToolsList = false
-    @State private var showingSidebar = false
-    @State private var isHovering = false
-    @State private var isShowingProviderDetails = false
 
     private let isCompanion: Bool
 
@@ -37,20 +30,13 @@ public struct LocalChatView: View {
             provider: .local,
             availableModels: ChatModel.models(for: .local),
             storedModel: $storedModel,
-            isCompanion: isCompanion,
-            showVoiceChat: false,
-            showingSidebar: $showingSidebar,
-            isHovering: $isHovering,
-            scrollThrottleWorkItem: $scrollThrottleWorkItem,
-            showingToolsList: $showingToolsList,
-            isShowingProviderDetails: $isShowingProviderDetails,
             isStreamingEnabled: $viewModel.isStreamingEnabled,
             isToolEnabled: $viewModel.isToolEnabled,
-            onAppear: { handleOnAppear() },
             onReloadProviderSettings: {
                 reloadProviderSettings()
             }
         )
+        .onAppear { handleOnAppear() }
         .onChange(of: viewModel.selectedConversationId) { _, newId in
             if let newId = newId {
                 storedConversationId = newId

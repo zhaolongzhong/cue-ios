@@ -164,11 +164,9 @@ public final class OpenAILiveChatViewModel: ObservableObject {
         await realtimeClient.endChat()
     }
 
-    public func sendMessage() {
-        Task {
-            await createConversationItem(text: newMessage)
-            newMessage = ""
-        }
+    public func sendMessage() async {
+        await createConversationItem(text: newMessage)
+        newMessage = ""
     }
 
     private func createConversationItem(text: String) async {

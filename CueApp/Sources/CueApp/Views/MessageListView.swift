@@ -44,13 +44,6 @@ struct MessagesListView: View {
         }
     }
 
-    private func scrollToBottom() {
-        guard let lastMessage = messages.last else { return }
-        withAnimation(.easeOut(duration: 0.3)) {
-            scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
-        }
-    }
-
     private func scrollToBottomImmediately() {
         forceScrollID = UUID()
     }
@@ -69,6 +62,9 @@ struct MessagesList: View {
     let onLoadMore: () async -> Void
     let onShowMore: (CueChatMessage) -> Void
     @State var previousFirstVisibleIndex: Double = 0
+    @State private var lastMessageContent: String = ""
+    @State private var userHasManuallyScrolled = false
+    @State private var isAtBottom = true
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -85,6 +81,11 @@ struct MessagesList: View {
                 }
                 .padding(.vertical, 8)
             }
+            .simultaneousGesture(
+                DragGesture().onChanged { _ in
+                    userHasManuallyScrolled = true
+                }
+            )
             .onPreferenceChange(ViewVisibilityKey.self) { visibility in
                 if let firstVisibleIndex = visibility.first?.index {
                     #if os(macOS)
@@ -94,9 +95,22 @@ struct MessagesList: View {
                     #endif
                 }
 
+                // Check if last items are visible to determine if we're at the bottom
                 if let lastVisibleIndex = visibility.last?.index {
                     Task { @MainActor in
-                        showScrollButton = lastVisibleIndex < Double(messages.count - 3)
+                        let isNearBottom = lastVisibleIndex >= Double(messages.count - 2)
+                        showScrollButton = !isNearBottom
+
+                        // If we scrolled back to bottom, reset the manual scroll flag
+                        if isNearBottom && userHasManuallyScrolled {
+                            isAtBottom = true
+                            // Only reset the manual scroll flag if we're truly at the bottom
+                            if lastVisibleIndex >= Double(messages.count - 1) {
+                                userHasManuallyScrolled = false
+                            }
+                        } else if !isNearBottom {
+                            isAtBottom = false
+                        }
                     }
                 }
             }
@@ -104,31 +118,67 @@ struct MessagesList: View {
                 scrollProxy = proxy
                 onScrollProxyReady(proxy)
                 previousMessageCount = messages.count
+                userHasManuallyScrolled = false
+                isAtBottom = true
             }
             .onChange(of: messages) { _, newMessages in
-                if !hasScrolledToBottom && shouldAutoScroll && !newMessages.isEmpty {
-                    if let lastMessage = newMessages.last {
-                        // Scroll without animation for initial load
-                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                        hasScrolledToBottom = true
-                    }
-                } else if shouldAutoScroll && newMessages.count > previousMessageCount {
-                    if !showScrollButton {
-                        scrollToLastMessage(proxy)
-                    }
-                }
-                previousMessageCount = newMessages.count
+                handleScrollOnMessagesChange(proxy, newMessages: newMessages)
             }
             .onChange(of: forceScrollID) {
-                guard let lastMessage = messages.last else { return }
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                }
+                scrollToBottomWithoutAnimation(proxy)
+                // Reset manual scroll flag when user explicitly requests scroll to bottom
+                userHasManuallyScrolled = false
+                isAtBottom = true
             }
         }
         .background(Color.clear)
+    }
+
+    private func handleScrollOnMessagesChange(_ proxy: ScrollViewProxy, newMessages: [CueChatMessage]) {
+        var contentChanged: Bool = false
+        if let lastMessage = newMessages.last, let streamingState = lastMessage.streamingState {
+            let newLastMessageContent = streamingState.content
+            contentChanged = newLastMessageContent != lastMessageContent
+            lastMessageContent = newLastMessageContent
+        }
+
+        // Initial load case
+        if !hasScrolledToBottom && shouldAutoScroll && !newMessages.isEmpty {
+            if let lastMessage = newMessages.last {
+                scrollToBottomWithoutAnimation(proxy)
+                hasScrolledToBottom = true
+            }
+        }
+        // Content update cases
+        else if shouldAutoScroll {
+            let isNewMessage = newMessages.count > previousMessageCount
+
+            // Always scroll on new messages (not just content updates)
+            if isNewMessage {
+                if !showScrollButton {
+                    scrollToLastMessage(proxy)
+                }
+                // Reset manual scroll flag when a new message comes in, as that's expected behavior
+                if isAtBottom {
+                    userHasManuallyScrolled = false
+                }
+            }
+            // For content updates, only scroll if user hasn't manually scrolled away
+            else if contentChanged && !userHasManuallyScrolled && isAtBottom {
+                scrollToLastMessage(proxy)
+            }
+        }
+
+        previousMessageCount = newMessages.count
+    }
+
+    private func scrollToBottomWithoutAnimation(_ proxy: ScrollViewProxy) {
+        guard let lastMessage = messages.last else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+        }
     }
 
     private func scrollToLastMessage(_ proxy: ScrollViewProxy) {
@@ -148,35 +198,6 @@ struct MessagesList: View {
             }
         }
         previousFirstVisibleIndex = firstVisibleIndex
-    }
-}
-
-struct ScrollButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Circle()
-                .fill(AppTheme.Colors.alternateInputBackground)
-                .frame(width: platformButtonSize, height: platformButtonSize)
-                .overlay(
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(AppTheme.Colors.primaryText)
-                )
-                .shadow(radius: 2)
-        }
-        .buttonStyle(.plain)
-        .padding(16)
-        .transition(.opacity)
-    }
-
-    private var platformButtonSize: CGFloat {
-        #if os(iOS)
-        36
-        #else
-        32
-        #endif
     }
 }
 
