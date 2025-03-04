@@ -7,6 +7,7 @@ import SwiftUI
 @MainActor
 class ChatViewDelegate: RichTextFieldDelegate {
     weak var chatViewModel: (any ChatViewModel)?
+    let onPickAttachmentAction: ((_ attachment: Attachment) -> Void)?
     let showToolsAction: (() -> Void)?
     let openLiveChatAction: (() -> Void)?
     let scrollToBottomAction: (() -> Void)?
@@ -16,6 +17,7 @@ class ChatViewDelegate: RichTextFieldDelegate {
 
     init(
         chatViewModel: (any ChatViewModel)? = nil,
+        onPickAttachment: ((_ attachment: Attachment) -> Void)? = nil,
         showToolsAction: (() -> Void)? = nil,
         openLiveChatAction: (() -> Void)? = nil,
         scrollToBottomAction: (() -> Void)? = nil,
@@ -24,6 +26,7 @@ class ChatViewDelegate: RichTextFieldDelegate {
         onReloadProviderSettings: (() -> Void)? = nil
     ) {
         self.chatViewModel = chatViewModel
+        self.onPickAttachmentAction = onPickAttachment
         self.showToolsAction = showToolsAction
         self.openLiveChatAction = openLiveChatAction
         self.scrollToBottomAction = scrollToBottomAction
@@ -70,6 +73,7 @@ class ChatViewDelegate: RichTextFieldDelegate {
 
     func onPickAttachment(_ attachment: Attachment) {
         chatViewModel?.addAttachment(attachment)
+        onPickAttachmentAction?(attachment)
     }
 
     func onUpdateMessage(_ message: String) {

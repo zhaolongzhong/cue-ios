@@ -40,20 +40,20 @@ extension ClientMessage {
         return .setup(BidiGenerateContentSetup(setup: setupDetails))
     }
     
-    static func makeClientContentMessage(text: String, turnComplete: Bool = true) -> ClientMessage {
-        let part = BidiGenerateContentClientContent.ClientContent.Turn.Part(text: text)
-        let turn = BidiGenerateContentClientContent.ClientContent.Turn(role: "user", parts: [part])
-        let content = BidiGenerateContentClientContent.ClientContent(turnComplete: turnComplete, turns: [turn])
-        return .clientContent(BidiGenerateContentClientContent(clientContent: content))
-    }
+//    static func makeClientContentMessage(text: String, turnComplete: Bool = true) -> ClientMessage {
+//        let part = ModelContent.Part(text: text)
+//        let turn = BidiGenerateContentClientContent.ClientContent.Turn(role: "user", parts: [part])
+//        let content = BidiGenerateContentClientContent.ClientContent(turnComplete: turnComplete, turns: [turn])
+//        return .clientContent(BidiGenerateContentClientContent(clientContent: content))
+//    }
     
-    static func makeRealtimeInputMessage(mimeType: String, data: String) -> ClientMessage {
+    public static func makeRealtimeInputMessage(mimeType: BidiGenerateContentRealtimeInput.RealtimeInput.MimeType, data: String) -> BidiGenerateContentRealtimeInput {
         let chunk = BidiGenerateContentRealtimeInput.RealtimeInput.MediaChunk(mimeType: mimeType, data: data)
         let input = BidiGenerateContentRealtimeInput.RealtimeInput(mediaChunks: [chunk])
-        return .realtimeInput(BidiGenerateContentRealtimeInput(realtimeInput: input))
+        return BidiGenerateContentRealtimeInput(realtimeInput: input)
     }
     
-    static func makeToolResponseMessage(functionResponses: [FunctionResponse]) -> ClientMessage {
+    public static func makeToolResponseMessage(functionResponses: [FunctionResponse]) -> ClientMessage {
         let toolResponse = BidiGenerateContentToolResponse.BidiGenerateContentToolResponse(functionResponses: functionResponses)
         return .toolResponse(BidiGenerateContentToolResponse(toolResponse: toolResponse))
     }
@@ -106,37 +106,71 @@ public struct BidiGenerateContentClientContent: Encodable {
 
         public struct Turn: Encodable {
             public let role: String
-            public let parts: [Part]
+            public let parts: [ModelContent.Part]
 
-            public init(role: String, parts: [Part]) {
+            public init(role: String, parts: [ModelContent.Part]) {
                 self.role = role
                 self.parts = parts
             }
 
-            public struct Part: Encodable {
-                let text: String?
-
-                public init(text: String?) {
-                    self.text = text
-                }
-            }
+//            public struct Part: Encodable {
+//                let text: String?
+//
+//                public init(text: String?) {
+//                    self.text = text
+//                }
+//            }
         }
     }
 }
 
-public struct BidiGenerateContentRealtimeInput: Encodable {
+public struct BidiGenerateContentRealtimeInput: Encodable, Sendable {
     let realtimeInput: RealtimeInput
+
+    enum CodingKeys: String, CodingKey {
+        case realtimeInput
+    }
 
     public init(realtimeInput: RealtimeInput) {
         self.realtimeInput = realtimeInput
     }
 
-    public struct RealtimeInput: Encodable {
+    public struct RealtimeInput: Encodable, Sendable {
         let mediaChunks: [MediaChunk]
 
-        struct MediaChunk: Encodable {
+        public init(mediaChunks: [MediaChunk]) {
+            self.mediaChunks = mediaChunks
+        }
+
+        public struct MediaChunk: Encodable, Sendable {
             let mimeType: String
             let data: String
+
+            enum CodingKeys: String, CodingKey, Codable {
+                // https://github.com/google-gemini/cookbook/blob/main/gemini-2/websockets/live_api_streaming_in_colab.ipynb
+                // https://github.com/google-gemini/cookbook/blob/main/gemini-2/websockets/live_api_starter.py
+                case mimeType
+                case data
+            }
+
+            public init(mimeType: String, data: String) {
+                self.mimeType = mimeType
+                self.data = data
+            }
+
+            public init(mimeType: MimeType, data: String) {
+                self.mimeType = mimeType.rawValue
+                self.data = data
+            }
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case mediaChunks
+        }
+
+        public enum MimeType: String {
+            case imageJpeg = "image/jpeg"
+            case audioPcm = "audio/pcm"
         }
     }
 }

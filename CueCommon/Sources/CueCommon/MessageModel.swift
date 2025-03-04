@@ -167,7 +167,7 @@ public enum MessageContentType: String, Codable, Sendable {
             switch stringValue {
             case "text": self = .text
             case "image": self = .image
-            case "tool_calls": self = .toolCall
+            case "tool_call", "tool_calls": self = .toolCall
             case "tool_message": self = .toolMessage
             case "tool_use": self = .toolUse
             case "tool_result": self = .toolResult

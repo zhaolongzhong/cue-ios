@@ -1,3 +1,5 @@
+// AttachmentDefinitions.swift
+
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -27,8 +29,13 @@ struct Attachment: Identifiable {
     let name: String
     let size: Int64
     let createdAt: Date
-
+    var base64String: String?
+    var imageData: Data?
+    #if os(macOS)
     var thumbnail: Image?
+    #else
+    var thumbnail: Image?
+    #endif
 }
 
 protocol AttachmentServiceProtocol {
@@ -41,4 +48,31 @@ protocol AttachmentServiceProtocol {
 struct FileData {
     let fileName: String
     let content: String
+}
+
+extension Attachment {
+    var mimeType: String {
+        let fileExtension: String
+        if self.imageData != nil {
+            fileExtension = self.name.components(separatedBy: ".").last?.lowercased() ?? "jpg"            
+        } else if self.type == .image {
+            fileExtension = url.pathExtension.lowercased()
+        } else {
+            return ""
+        }
+
+        let mimeType: String
+
+        switch fileExtension {
+        case "png":
+            mimeType = "image/png"
+        case "gif":
+            mimeType = "image/gif"
+        case "heic":
+            mimeType = "image/heic"
+        default:
+            mimeType = "image/jpeg"
+        }
+        return mimeType
+    }
 }

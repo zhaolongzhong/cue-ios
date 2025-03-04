@@ -1,9 +1,11 @@
 import Foundation
+import os.log
 
 @MainActor
 final class GeminiClient {
     private let configuration: Gemini.Configuration
     private let session: URLSession
+    private let logger = Logger(subsystem: "GeminiClient", category: "GeminiClient")
 
     init(configuration: Gemini.Configuration, session: URLSession = .shared) {
         self.configuration = configuration

@@ -3,8 +3,8 @@ import CueGemini
 import CueOpenAI
 
 extension ToolManager {
-    func getGeminiTool() -> GeminiTool {
-        var functionDeclarations: [FunctionDeclaration] = localTools.map { tool in
+    func getGeminiTool() -> GeminiTool? {
+        var functionDeclarations: [FunctionDeclaration] = localTools.compactMap { tool in
             // Convert local tool properties to Schema dictionary
             let parameters: [String: Schema] = tool.parameterDefinition.schema.mapValues { localProperty in
                 Schema(
@@ -58,7 +58,9 @@ extension ToolManager {
         // Validate all function declarations before creating the tool
         let validatedDeclarations = validateFunctionDeclarations(functionDeclarations)
         AppLog.log.debug("Valid function declarations: \(validatedDeclarations.count)")
-
+        if validatedDeclarations.isEmpty {
+            return nil
+        }
         return Tool(functionDeclarations: validatedDeclarations)
     }
 

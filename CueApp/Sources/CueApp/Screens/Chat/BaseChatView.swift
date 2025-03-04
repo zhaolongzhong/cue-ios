@@ -289,15 +289,26 @@ extension BaseChatView {
         openWindow(id: WindowId.compainionChatWindow.rawValue, value: windowId.id)
     }
 
+    // MARK: - Live Chat
     func openLiveChat() {
+        var windowId: String?
         switch provider {
         case .openai:
-            openWindow(id: WindowId.openaiLiveChatWindow.rawValue, value: WindowId.openaiLiveChatWindow.rawValue)
+            windowId = WindowId.openaiLiveChatWindow.rawValue
         case .gemini:
-            openWindow(id: WindowId.geminiLiveChatWindow.rawValue, value: WindowId.geminiLiveChatWindow.rawValue)
+            windowId = WindowId.geminiLiveChatWindow.rawValue
         default:
             break
         }
+
+        #if os(iOS)
+        coordinator.showLiveChatSheet(.openai)
+        #endif
+        #if os(macOS)
+        if let windowId = windowId {
+            openWindow(id: windowId, value: windowId)
+        }
+        #endif
     }
 }
 

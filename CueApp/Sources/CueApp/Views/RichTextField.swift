@@ -138,6 +138,6 @@ struct RichTextField: View {
     }
 
     private var isMessageValid: Bool {
-        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1
+        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1 || !richTextFieldState.attachments.isEmpty
     }
 }

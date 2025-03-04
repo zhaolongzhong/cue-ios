@@ -9,8 +9,21 @@ import CueCommon
 import CueGemini
 import CueOpenAI
 
+public struct ScreenSharingState {
+    var isEnabled: Bool
+    var isScreenSharing: Bool
+
+    public init(isEnabled: Bool = false, isScreenSharing: Bool = false) {
+        self.isEnabled = isEnabled
+        self.isScreenSharing = isScreenSharing
+    }
+}
+
 @MainActor
 public class GeminiChatViewModel: BaseChatViewModel {
+    @Published var screenSharingState: ScreenSharingState = .init(isEnabled: true)
+    @Published var showPermissionAlert: Bool = false
+    @Published var isSpeaking = false
     @Published var state: VoiceState = .idle {
         didSet {
             logger.debug("Voice state change to \(self.state.description)")
@@ -27,11 +40,14 @@ public class GeminiChatViewModel: BaseChatViewModel {
     var geminiTool: GeminiTool?
     let liveAPIClient: LiveAPIClient
     let logger = Logger(subsystem: "Gemini", category: "Gemini")
+    var screenCaptureManager: ScreenCaptureManager
+    var screenCaptureTask: Task<Void, Never>?
 
     public init(apiKey: String) {
         self.gemini = Gemini(apiKey: apiKey)
         self.liveAPIClient = LiveAPIClient()
         self.state = liveAPIClient.voiceChatState
+        self.screenCaptureManager = ScreenCaptureManager()
 
         super.init(
             apiKey: apiKey,
@@ -48,24 +64,17 @@ public class GeminiChatViewModel: BaseChatViewModel {
         self.geminiTool = toolManager.getGeminiTool()
     }
 
-    public func sendMessageUseClient() async throws {
-        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let (userMessage, _) = await prepareGeminiMessage()
-        addOrUpdateMessage(.gemini(userMessage, stableId: UUID().uuidString), persistInCache: true)
-        newMessage = ""
-        try await generateContent()
-    }
-
     public func generateContent() async throws {
         do {
             let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
             let geminiChatParams = messageParams.compactMap { $0.geminiChatParam?.modelContent }
 
-            let tools = geminiTool.map { [$0] } ?? []
+            let tools: [GeminiTool] = geminiTool == nil ? [] : [geminiTool!]
+
             let response = try await gemini.chat.generateContent(
                 model: model.id,
                 messages: geminiChatParams,
-                tools: tools
+                tools: tools.isEmpty ? nil : tools
             )
             AppLog.log.debug("Generate content response: \(String(describing: response.candidates[0]))")
             let candidateContent = response.candidates[0].content
@@ -140,21 +149,127 @@ public class GeminiChatViewModel: BaseChatViewModel {
     }
 
     override func sendMessage() async {
-        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        if !self.state.isConnected {
-            do {
-                try await sendMessageUseClient()
-            } catch {
-                self.error = .sessionError(error.localizedDescription)
+        do {
+            if !self.state.isConnected {
+                try await sendMessageWithAsyncClient()
+            } else {
+                try await sendLiveMessage()
             }
+        } catch {
+            self.error = .sessionError(error.localizedDescription)
+        }
+    }
+
+    public func sendMessageWithAsyncClient() async throws {
+        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let (userMessage, _) = await prepareGeminiMessage()
+        AppLog.log.debug("Send message with async client. New message: \(self.newMessage)")
+        addOrUpdateMessage(.gemini(userMessage, stableId: UUID().uuidString), persistInCache: true)
+        newMessage = ""
+        try await generateContent()
+    }
+
+    private func sendLiveMessage() async throws {
+        do {
+            AppLog.log.debug("Send live message with attachments: \(self.attachments.count)")
+            let imageDataList = attachments.compactMap { attachment in
+                return attachment.imageData
+            }
+            cleanupAttachments()
+            for data in imageDataList {
+                let realtimeInput = ClientMessage.makeRealtimeInputMessage(
+                    mimeType: .imageJpeg,
+                    data: data.base64EncodedString()
+                )
+                try await self.liveAPIClient.send(realtimeInput)
+            }
+            let newMessage = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newMessage.isEmpty {
+                try await sendLiveText(newMessage)
+            }
+        } catch {
+            self.error = .sessionError(error.localizedDescription)
+        }
+    }
+
+    private func sendLiveText(_ text: String = "") async throws {
+        let part = ModelContent.Part.text(text)
+        AppLog.log.debug("Send live text: \(text)")
+        try await sendLiveText([part])
+        self.newMessage = ""
+    }
+
+    func interrupt() async {
+        AppLog.log.debug("Interrupt")
+        let part = ModelContent.Part.text("Sorry, I have to interrupt you.")
+        do {
+            try await sendLiveText([part])
+        } catch {
+            AppLog.log.debug("Interrupt error: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Screen Capture
+extension GeminiChatViewModel {
+    func startScreenCapture() async {
+        AppLog.log.debug("Start screen capture")
+        guard !screenSharingState.isScreenSharing else {
+            return
+        }
+
+        let isAvailable = await screenCaptureManager.requestPermission()
+        if !isAvailable {
+            showPermissionAlert = true
             return
         }
 
         do {
-            try await sendLiveText(newMessage)
-            newMessage = ""
+            try await screenCaptureManager.startCapturing()
         } catch {
-            self.error = .sessionError(error.localizedDescription)
+            self.error = ChatError.sessionError("Failed to start screen capture")
         }
+        screenSharingState.isScreenSharing = true
+
+        // Start processing frames from the stream
+        createScreenCaptureTask()
+    }
+
+    public func createScreenCaptureTask() {
+        screenCaptureTask?.cancel()
+        screenCaptureTask = Task {
+            guard let frameStream = screenCaptureManager.events else {
+                return
+            }
+            screenSharingState.isScreenSharing = true
+            do {
+                for try await frameData in frameStream {
+                    let base64Data = frameData.base64EncodedString()
+                    let chunk = BidiGenerateContentRealtimeInput.RealtimeInput.MediaChunk(
+                        mimeType: .imageJpeg,
+                        data: base64Data
+                    )
+                    let input = BidiGenerateContentRealtimeInput(realtimeInput: .init(mediaChunks: [chunk]))
+                    do {
+                        try await self.liveAPIClient.send(input)
+                    } catch {
+                        self.logger.error("Failed to send screen frame: \(error.localizedDescription)")
+                    }
+                }
+            } catch {
+                self.logger.error("Screen capture error: \(error)")
+            }
+        }
+    }
+
+    func stopScreenCapture() async {
+        AppLog.log.debug("Stop screen capture")
+        guard screenSharingState.isScreenSharing else { return }
+
+        screenCaptureTask?.cancel()
+        screenCaptureTask = nil
+
+        await screenCaptureManager.stopCapturing()
+        screenSharingState.isScreenSharing = false
     }
 }

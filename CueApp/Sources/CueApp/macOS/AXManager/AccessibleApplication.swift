@@ -43,11 +43,13 @@ extension AccessibleApplication {
     }
 
     var icon: Image {
+        #if os(macOS)
         if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: self.bundleId) {
             let nsImage = NSWorkspace.shared.icon(forFile: appURL.path)
             nsImage.size = NSSize(width: 16, height: 16)
             return Image(nsImage: nsImage)
         }
+        #endif
         return Image(systemName: "app")
     }
 }
