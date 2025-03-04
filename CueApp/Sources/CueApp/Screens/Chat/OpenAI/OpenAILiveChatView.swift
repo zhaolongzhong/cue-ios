@@ -52,7 +52,7 @@ public struct OpenAILiveChatView: View {
                 .padding(.top, 38)
 
                 LiveChatControlButtons(
-                    state: viewModel.state,
+                    voiceState: viewModel.state,
                     onLeftButtonTap: {
                         handleLeftButtonTap()
                     },

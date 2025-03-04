@@ -115,7 +115,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
 
     func startServer() async {
         #if os(macOS)
-        await self.toolManager.startMcpServer()
+//        await self.toolManager.startMcpServer()
         #endif
     }
 

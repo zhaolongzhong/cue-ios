@@ -8,6 +8,9 @@ import CueCommon
 import CueOpenAI
 import CueAnthropic
 import CueGemini
+#if os(iOS)
+import UIKit
+#endif
 
 // Extension to add common content handling functionality
 extension BaseChatViewModel {
@@ -29,9 +32,12 @@ extension BaseChatViewModel {
             contentBlocks.append(contentsOf: attachmentBlocks)
         }
 
-        attachments.removeAll()
-
         return contentBlocks
+    }
+
+    @MainActor
+    func cleanupAttachments() {
+        attachments.removeAll()
     }
 
     /// Gets text area content if available
@@ -44,6 +50,38 @@ extension BaseChatViewModel {
         }
         #endif
         return nil
+    }
+
+    @MainActor
+    func getImageParts() -> [ModelContent.Part] {
+        return self.attachments.compactMap { attachment in
+            if let imageData = attachment.imageData {
+                let mimeType = attachment.mimeType
+
+                if let processed = ImageProcessorUtil.processImageData(imageData: imageData, mimeType: mimeType) {
+                    return ModelContent.Part.data(mimetype: processed.mimeType, processed.data)
+                }
+
+                return ModelContent.Part.data(mimetype: mimeType, imageData)
+            } else if attachment.type == .image {
+                do {
+                    let url = attachment.url
+                    let data = try Data(contentsOf: url)
+                    let mimeType = attachment.mimeType
+
+                    // Process the image data with our utility
+                    if let processed = ImageProcessorUtil.processImageData(imageData: data, mimeType: mimeType) {
+                        return ModelContent.Part.data(mimetype: processed.mimeType, processed.data)
+                    }
+
+                    // Fallback to original data
+                    return ModelContent.Part.data(mimetype: mimeType, data)
+                } catch {
+                    print("Failed to read image from URL: \(error.localizedDescription)")
+                }
+            }
+            return nil
+        }
     }
 }
 
@@ -120,10 +158,15 @@ extension BaseChatViewModel {
             parts.append(textAreaPart)
         }
 
-        // Create user message
+        // Process images from attachments
+        let imageParts = getImageParts()
+        parts.append(contentsOf: imageParts)
+
+        // Now we can safely remove attachments
+        cleanupAttachments()
+
         let newContent = ModelContent(role: "user", parts: parts)
         let userMessage = Gemini.ChatMessageParam.userMessage(newContent)
-
         return (userMessage, newMessage)
     }
 }

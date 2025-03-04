@@ -41,6 +41,14 @@ extension GeminiChatViewModel {
                 }
             }
             .store(in: &cancellables)
+
+        liveAPIClient.isSpeakingPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isSpeaking in
+                guard let self = self else { return }
+                self.isSpeaking = isSpeaking
+            }
+            .store(in: &cancellables)
     }
 
     public func startSession() async {
@@ -63,13 +71,16 @@ extension GeminiChatViewModel {
         liveAPIClient.resumeChat()
     }
 
-    public func sendLiveText(_ text: String) async throws {
-        logger.debug("Sending text message: \(text)")
+    public func sendLiveText(_ parts: [ModelContent.Part]) async throws {
+        logger.debug("Send live text: \(parts.count)")
+
+        // Send any BidiGenerateContentClientContent will interrupt any current model generation.
+        // https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rpc/google.cloud.aiplatform.v1beta1#bidigeneratecontentclientcontent
         let content = BidiGenerateContentClientContent(clientContent: .init(
             turnComplete: true,
             turns: [.init(
                 role: "user",
-                parts: [.init(text: text)]
+                parts: parts
             )]
         ))
         try await liveAPIClient.send(content)
@@ -83,6 +94,9 @@ extension GeminiChatViewModel {
             await handleModelTurn(content.modelTurn)
             if content.turnComplete == true {
                 await handleTurnComplete()
+            }
+            if content.interrupted {
+                await handleInterruped()
             }
         case .toolCall(let toolCall):
             if let functionCalls = toolCall.functionCalls {
@@ -128,6 +142,12 @@ extension GeminiChatViewModel {
             AppLog.log.error("Error calling tool: \(error.localizedDescription)")
             return "Error calling tool: \(error.localizedDescription)"
         }
+    }
+
+    private func handleInterruped() async {
+        logger.debug("Turn interrupted")
+        // stop TTS, clear audio player queue
+
     }
 
     private func handleTurnComplete() async {

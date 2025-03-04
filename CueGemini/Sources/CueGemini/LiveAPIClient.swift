@@ -6,6 +6,7 @@ import CueCommon
 import OSLog
 
 public protocol LiveAPIClientProtocol: AnyObject {
+    var isSpeaking: Bool { get }
     var voiceChatState: VoiceChatState { get }
     var voiceChatStatePublisher: AnyPublisher<VoiceChatState, Never> { get }
     var eventsPublisher: AnyPublisher<ServerMessage, Never> { get }
@@ -44,6 +45,27 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
         voiceChatStateSubject.value
     }
 
+    @MainActor
+    public var isSpeaking: Bool {
+        get {
+            return isSpeakingSubject.value
+        }
+        set {
+            if isSpeakingSubject.value != newValue {
+                logger.debug("isSpeaking changed to \(newValue)")
+                isSpeakingSubject.send(newValue)
+            }
+        }
+    }
+
+    @MainActor
+    private let isSpeakingSubject = CurrentValueSubject<Bool, Never>(false)
+
+    @MainActor
+    public var isSpeakingPublisher: AnyPublisher<Bool, Never> {
+        isSpeakingSubject.eraseToAnyPublisher()
+    }
+
     private let liveAPIEventSubject = PassthroughSubject<ServerMessage, Never>()
     
     @MainActor
@@ -52,7 +74,7 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
     }
 
     private let audioManager = AudioManager()
-    private var isListening: Bool = false
+    private var isInterrupted: Bool = false
     private var connection: LiveAPIConnectionProtocol?
     private var connectionState: WebsocketConnectionState = .disconnected {
         didSet {
@@ -144,6 +166,10 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
     }
 
     public func send<T>(_ message: T) async throws where T : Encodable {
+        if isInterrupted {
+            logger.debug("Send new message, set isInterrupted to false")
+            isInterrupted = false
+        }
         try await self.connection?.send(message)
     }
 
@@ -190,6 +216,17 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
         audioManager.stopAudioEngine()
     }
 
+    @MainActor
+    private func handleInterrupt() {
+        logger.debug("LiveAPIClient - interrupted")
+        audioManager.interrupt()
+    }
+
+    @MainActor
+    private func handleTurnComplete() {
+        logger.debug("LiveAPIClient - turn complete")
+    }
+
     private func setEventsSubscription() async throws {
         guard let connection = connection else { return }
         eventSubscriptionTask?.cancel()
@@ -205,12 +242,17 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
 
         switch message {
         case .serverContent(let content):
-            isListening = !(content.turnComplete == true)
+            if content.interrupted {
+                isInterrupted = true
+                await handleInterrupt()
+            }
+
             switch content.modelTurn.parts.first {
             case .data(mimetype: let mimetype, let data):
                 logger.debug("Received data with mimetype: \(mimetype)")
-                if mimetype.starts(with: "audio/pcm") {
+                if mimetype.starts(with: "audio/pcm") && !isInterrupted {
                     audioManager.playAudioData(data, id: UUID().uuidString)
+                    await MainActor.run { isSpeaking = true }
                 }
             default:
                 break
@@ -226,6 +268,18 @@ public final class LiveAPIClient: @preconcurrency LiveAPIClientProtocol, @unchec
 extension LiveAPIClient: AudioManagerDelegate {
     public func audioManager(_ manager: AudioManager, didChangeState state: AudioManagerState) {
         self.logger.debug("audioManager didChangeState: \(state.description)")
+        switch state {
+        case .playing(_):
+            Task { @MainActor in
+                isSpeaking = true
+            }
+            break
+        default:
+            Task { @MainActor in
+                isSpeaking = false
+            }
+            break
+        }
     }
 
     public func audioManager(_ manager: AudioManager, didReceiveProcessedAudio data: Data) {
@@ -234,15 +288,16 @@ extension LiveAPIClient: AudioManagerDelegate {
             let base64Data = data.base64EncodedString()
 
             let chunk = BidiGenerateContentRealtimeInput.RealtimeInput.MediaChunk(
-                mimeType: "audio/pcm",
+                mimeType: .audioPcm,
                 data: base64Data
             )
             let input = BidiGenerateContentRealtimeInput(realtimeInput: .init(mediaChunks: [chunk]))
 
             do {
-                try await self.connection?.send(input)
+                try await self.send(input)
             } catch {
                 self.logger.error("Failed to send audio data: \(error.localizedDescription)")
+                await disconnect()
             }
         }
     }

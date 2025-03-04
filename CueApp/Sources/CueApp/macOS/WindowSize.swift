@@ -23,7 +23,7 @@ public enum WindowSize {
     public struct Companion {
         public static let width: CGFloat = 440
         public static let height: CGFloat = 540
-        public static let minWidth: CGFloat = 320
+        public static let minWidth: CGFloat = 300
         public static let maxWidth: CGFloat = 600
         public static let minHeight: CGFloat = 280
     }

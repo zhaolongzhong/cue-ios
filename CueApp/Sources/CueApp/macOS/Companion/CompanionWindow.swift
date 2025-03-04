@@ -111,7 +111,7 @@ struct CompanionWindowContent: View {
         }
         .background(
             ZStack {
-                CompainionWindowAccessor(id: id, maxWidth: .infinity, cornerRadius: 14)
+                CompainionWindowAccessor(id: id, maxWidth: .infinity, cornerRadius: 30)
             }
         )
     }

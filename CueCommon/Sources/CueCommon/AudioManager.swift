@@ -291,12 +291,20 @@ public class AudioManager: NSObject, @unchecked Sendable {
     }
     
     public func interrupt() {
-        playbackQueue.removeAll()
-        if playerNode.isPlaying {
-            playerNode.stop()
+        Task { @MainActor in
+            logger.debug("Interrupting playback and clearing queue")
+            // Clear the queue first
+            playbackQueue.removeAll()
+            currentItemID = nil
+
+            // Then stop playback if active
+            if playerNode.isPlaying {
+                playerNode.pause()
+                updateState(to: .interrupted)
+            }
         }
     }
-    
+
     public func playAudioData(_ data: Data, id: String) {
         playbackQueue.append((data: data, id: id))
         if !playerNode.isPlaying {
@@ -307,6 +315,9 @@ public class AudioManager: NSObject, @unchecked Sendable {
     private func processNextInQueue() {
         guard !playbackQueue.isEmpty else {
             playerNode.pause()
+            Task { @MainActor in
+                updateState(to: .paused)
+            }
             return
         }
         
@@ -323,6 +334,9 @@ public class AudioManager: NSObject, @unchecked Sendable {
             if !playerNode.isPlaying {
                 playerNode.play()
                 logger.debug("playerNode started playing Event ID: \(id)")
+                Task { @MainActor in
+                    updateState(to: .playing(id: id))
+                }
             }
         } else {
             logger.error("Failed to prepare buffer for Event ID: \(id)")

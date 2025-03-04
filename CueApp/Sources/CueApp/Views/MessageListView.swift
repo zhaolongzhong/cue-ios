@@ -50,7 +50,7 @@ struct MessageListView: View {
                             }
                             if !messages.isEmpty {
                                 Spacer()
-                                    .frame(minHeight: geometry.size.height * (            expandScrollViewForUserMessage ? 0.75 : 0))
+                                    .frame(minHeight: geometry.size.height * (expandScrollViewForUserMessage ? 0.75 : 0))
                                     .id("bottomSpace")
                             }
                             Color.clear
@@ -137,11 +137,11 @@ struct MessageListView: View {
                     scrollProxy.scrollTo(lastUserMessageIndex, anchor: .top)
                 }
             }
+        }
 
-            DispatchQueue.main.async {
-                self.shouldScrollToUserMessage = false
-                scrollState.isProgrammaticScroll = false
-            }
+        DispatchQueue.main.async {
+            self.shouldScrollToUserMessage = false
+            scrollState.isProgrammaticScroll = false
         }
     }
 

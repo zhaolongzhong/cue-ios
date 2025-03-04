@@ -7,7 +7,7 @@ import SwiftUI
 
 class RichTextFieldState: ObservableObject {
     @Published var inputMessage: String = ""
-    @Published var attachments: [Attachment] = []
+    @Published var attachments: [Attachment]
     @Published var isTextFieldVisible: Bool = false
     @Published var isRunning: Bool = false
     @Published var isEnabled: Bool = true
