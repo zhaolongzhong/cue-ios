@@ -13,12 +13,13 @@ import CueAnthropic
 public final class CueChatViewModel: BaseChatViewModel {
     private let cueClient: CueClient
 
-    public init() {
+    public init(conversationId: String? = nil) {
         self.cueClient = CueClient()
         super.init(
             apiKey: "",
             provider: .anthropic,
-            model: .claude37Sonnet
+            model: .claude37Sonnet,
+            conversationId: conversationId
         )
     }
 
@@ -26,7 +27,7 @@ public final class CueChatViewModel: BaseChatViewModel {
         var messageParams = Array(cueChatMessages.suffix(maxMessages))
         let userMessage = CueChatMessage.anthropic(
             Anthropic.ChatMessageParam.userMessage(
-                Anthropic.MessageParam(role: "user", content: [Anthropic.ContentBlock(content: newMessage)])
+                Anthropic.MessageParam(role: "user", content: [Anthropic.ContentBlock(content: richTextFieldState.inputMessage)])
             )
         )
 
@@ -34,7 +35,7 @@ public final class CueChatViewModel: BaseChatViewModel {
         messageParams.append(userMessage)
 
         isLoading = true
-        newMessage = ""
+        richTextFieldState.inputMessage = ""
 
         do {
             let agent = AgentLoop(chatClient: cueClient, toolManager: toolManager, model: model.rawValue)

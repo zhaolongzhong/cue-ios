@@ -3,14 +3,13 @@
 //  CueApp
 //
 import SwiftUI
+import CueOpenAI
 
 @MainActor
 class ChatViewDelegate: RichTextFieldDelegate {
     weak var chatViewModel: (any ChatViewModel)?
     let onPickAttachmentAction: ((_ attachment: Attachment) -> Void)?
-    let showToolsAction: (() -> Void)?
     let openLiveChatAction: (() -> Void)?
-    let scrollToBottomAction: (() -> Void)?
     let stopAction: (() -> Void)?
     let sendAction: (() -> Void)?
     let reloadProviderSettingsAction: (() -> Void)?
@@ -18,18 +17,14 @@ class ChatViewDelegate: RichTextFieldDelegate {
     init(
         chatViewModel: (any ChatViewModel)? = nil,
         onPickAttachment: ((_ attachment: Attachment) -> Void)? = nil,
-        showToolsAction: (() -> Void)? = nil,
         openLiveChatAction: (() -> Void)? = nil,
-        scrollToBottomAction: (() -> Void)? = nil,
         sendAction: (() -> Void)? = nil,
         stopAction: (() -> Void)? = nil,
         onReloadProviderSettings: (() -> Void)? = nil
     ) {
         self.chatViewModel = chatViewModel
         self.onPickAttachmentAction = onPickAttachment
-        self.showToolsAction = showToolsAction
         self.openLiveChatAction = openLiveChatAction
-        self.scrollToBottomAction = scrollToBottomAction
         self.sendAction = sendAction
         self.stopAction = stopAction
         self.reloadProviderSettingsAction = onReloadProviderSettings
@@ -43,16 +38,17 @@ class ChatViewDelegate: RichTextFieldDelegate {
 
         Task {
             await chatViewModel.sendMessage()
-            scrollToBottomAction?()
         }
-    }
-
-    func onShowTools() {
-        showToolsAction?()
     }
 
     func onOpenVoiceChat() {
         openLiveChatAction?()
+    }
+
+    func onUpdateSelectedCapabilities(_ capabilities: [Capability]) {
+        Task {
+            await chatViewModel?.updateSelectedCapabilities(capabilities)
+        }
     }
 
     func onShowAXApp(_ app: AccessibleApplication) {
@@ -74,10 +70,6 @@ class ChatViewDelegate: RichTextFieldDelegate {
     func onPickAttachment(_ attachment: Attachment) {
         chatViewModel?.addAttachment(attachment)
         onPickAttachmentAction?(attachment)
-    }
-
-    func onUpdateMessage(_ message: String) {
-        chatViewModel?.newMessage = message
     }
 
     func onReloadProviderSettings() {

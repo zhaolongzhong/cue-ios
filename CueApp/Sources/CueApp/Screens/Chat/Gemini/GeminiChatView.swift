@@ -13,8 +13,8 @@ public struct GeminiChatView: View {
 
     private let isCompanion: Bool
 
-    public init(_ viewModelFactory: @escaping () -> GeminiChatViewModel, isCompanion: Bool = false) {
-        _viewModel = StateObject(wrappedValue: viewModelFactory())
+    public init(_ viewModelFactory: @escaping (String?) -> GeminiChatViewModel, conversationId: String? = nil, isCompanion: Bool = false) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory(conversationId))
         self.isCompanion = isCompanion
     }
 

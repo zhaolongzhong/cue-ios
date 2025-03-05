@@ -4,8 +4,7 @@ public enum WindowId: String {
     case settings = "settings-window"
     case providersManagement = "providers-management-window"
     case compainionChatWindow = "companion-chat-window"
-    case openaiLiveChatWindow = "live-chat-window-openai"
-    case geminiLiveChatWindow = "live-chat-window-gemini"
+    case liveChatWindow = "live-chat-window"
 
     public static func companionChatWindowId(_ id: String) -> String {
         return "companion-chat-window-\(id)"
@@ -16,16 +15,14 @@ public enum WindowId: String {
     }
 
     public static func isLiveChatWindowId(_ id: String) -> Bool {
-        return id.contains("live-chat-window-")
+        return id.contains("live-chat-window")
     }
 
     public static func fromRawValue(_ rawValue: String) -> WindowId? {
         if rawValue.contains(WindowId.compainionChatWindow.rawValue) {
             return WindowId.compainionChatWindow
-        } else if rawValue.contains(WindowId.openaiLiveChatWindow.rawValue) {
-            return .openaiLiveChatWindow
-        } else if rawValue.contains(WindowId.geminiLiveChatWindow.rawValue) {
-            return .geminiLiveChatWindow
+        } else if rawValue.contains(WindowId.liveChatWindow.rawValue) {
+            return WindowId.liveChatWindow
         }
         return WindowId(rawValue: rawValue)
     }
@@ -33,12 +30,12 @@ public enum WindowId: String {
 
 enum HomeDestination: Hashable {
     case home
-    case cue
     case email
-    case openai
-    case anthropic
-    case gemini
-    case local
+    case cue(String? = nil)
+    case openai(String? = nil)
+    case anthropic(String? = nil)
+    case gemini(String? = nil)
+    case local(String? = nil)
     case chat(Assistant)
     case providers
 }
@@ -68,16 +65,8 @@ final class HomeNavigationManager: ObservableObject {
         case .email:
             currentView = .email
             isEmailViewPresented = true
-        case .cue:
-            currentView = .cue
-        case .anthropic:
-            currentView = .anthropic
-        case .gemini:
-            currentView = .gemini
-        case .openai:
-            currentView = .openai
-        case .local:
-            currentView = .local
+        case .cue, .anthropic, .gemini, .openai, .local:
+            currentView = detailType
         case .providers:
             #if os(macOS)
             openMacOSWindow(WindowId.providersManagement)

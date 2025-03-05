@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import CueOpenAI
 
 class RichTextFieldState: ObservableObject {
     @Published var inputMessage: String = ""
@@ -13,10 +14,11 @@ class RichTextFieldState: ObservableObject {
     @Published var isEnabled: Bool = true
     @Published var showVoiceChat: Bool = false
     @Published var showAXApp: Bool = false
-    @Published var toolCount: Int = 0
+    @Published var availableCapabilities: [Capability] = []
+    @Published var selectedCapabilities: [Capability] = []
 
     var isMessageValid: Bool {
-        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1
+        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1 || attachments.count > 0
     }
 
     init(
@@ -27,7 +29,8 @@ class RichTextFieldState: ObservableObject {
         isEnabled: Bool = true,
         showVoiceChat: Bool = false,
         showAXApp: Bool = false,
-        toolCount: Int = 0
+        availableCapabilities: [Capability] = [],
+        selectedCapabilities: [Capability] = []
     ) {
         self.inputMessage = inputMessage
         self.attachments = attachments
@@ -36,6 +39,7 @@ class RichTextFieldState: ObservableObject {
         self.isEnabled = isEnabled
         self.showVoiceChat = showVoiceChat
         self.showAXApp = showAXApp
-        self.toolCount = toolCount
+        self.availableCapabilities = availableCapabilities
+        self.selectedCapabilities = selectedCapabilities
     }
 }

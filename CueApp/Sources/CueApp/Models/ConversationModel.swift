@@ -6,9 +6,16 @@ struct ConversationCreate: Codable {
 
 struct ConversationMetadata: Codable, Equatable {
     let isPrimary: Bool
+    let capabilities: [String]?
+
+    init(isPrimary: Bool, capabilities: [String]? = nil) {
+        self.isPrimary = isPrimary
+        self.capabilities = capabilities
+    }
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
+        case capabilities
     }
 }
 

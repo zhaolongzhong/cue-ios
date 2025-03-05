@@ -247,32 +247,33 @@ struct LocalProviderSettingsSection: View {
     }
 
     private var advancedSettingsView: some View {
-        CollapsibleSettingsSection(
-            title: "Advanced",
-            headerView: {
-                ProviderDetailSectionHeader(title: "Advanced")
-            },
-            content: {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Reset Settings")
-                                .foregroundColor(.primary)
-                            Text("Restore default server URL and other settings")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        Section {
+            GroupBox {
+                CollapsibleSettingsSection(
+                    title: "Advanced",
+                    content: {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Reset Settings")
+                                        .foregroundColor(.primary)
+                                    Text("Restore default server URL and other settings")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Reset") {
+                                    viewModel.resetBaseURLToDefault()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                            .padding(.vertical, 4)
                         }
-                        Spacer()
-                        Button("Reset") {
-                            viewModel.resetBaseURLToDefault()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
-                    .padding(.vertical, 4)
-                }
+                )
             }
-        )
+        }
     }
 
     private var serverSettingsView: some View {

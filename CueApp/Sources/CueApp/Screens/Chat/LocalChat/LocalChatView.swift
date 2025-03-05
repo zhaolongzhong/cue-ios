@@ -19,8 +19,8 @@ public struct LocalChatView: View {
 
     private let isCompanion: Bool
 
-    public init(_ viewModelFactory: @escaping () -> LocalChatViewModel, isCompanion: Bool = false) {
-        _viewModel = StateObject(wrappedValue: viewModelFactory())
+    public init(_ viewModelFactory: @escaping (String?) -> LocalChatViewModel, conversationId: String? = nil, isCompanion: Bool = false) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory(conversationId))
         self.isCompanion = isCompanion
     }
 

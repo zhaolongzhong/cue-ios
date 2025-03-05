@@ -86,6 +86,63 @@ public class ToolManager {
         return tools
     }
 
+    func getLocalCapabilities() -> [Capability] {
+        let tools = localTools.map { tool in
+            Tool(
+                function: .init(
+                    name: tool.name,
+                    description: tool.description,
+                    parameters: .init(
+                        properties: tool.parameterDefinition.schema,
+                        required: tool.parameterDefinition.required
+                    )
+                )
+            )
+        }
+        return tools.map { .tool($0) }
+    }
+
+    func getMCPCapabilities() -> [Capability] {
+        #if os(macOS)
+        return mcpManager?.servers.map { _, server in
+            .mcpServer(server)
+        } ?? []
+        #else
+        return []
+        #endif
+    }
+
+    func getAllAvailableCapabilities() -> [Capability] {
+        return getLocalCapabilities() + getMCPCapabilities()
+    }
+
+    func getJSONValues(_ capabilities: [Capability]) -> [JSONValue] {
+        return capabilities.flatMap { capability -> [JSONValue] in
+            switch capability {
+            case .tool(let tool):
+                do {
+                    return [try JSONValue(encodable: tool)]
+                } catch {
+                    // Log the error for debugging purposes
+                    print("Failed to encode tool: \(error)")
+                    return []
+                }
+            #if os(macOS)
+            case .mcpServer(let server):
+                let mcpTools = mcpManager?.serverTools[server.serverName] ?? []
+                return mcpTools.compactMap { tool in
+                    do {
+                        return try JSONValue(encodable: tool.toOpenAITool())
+                    } catch {
+                        print("Failed to encode MCP tool: \(error)")
+                        return nil
+                    }
+                }
+            #endif
+            }
+        }
+    }
+
     func getTools() -> [Tool] {
         var tools = localTools.map { tool in
             Tool(
@@ -199,18 +256,7 @@ public class ToolManager {
 
     func callToolUse(_ toolUseBlock: Anthropic.ToolUseBlock) async -> Anthropic.ToolResultMessage {
         do {
-            var arguments: [String: Any] = [:]
-            for (key, value) in toolUseBlock.input {
-                switch value {
-                case .string(let str): arguments[key] = str
-                case .int(let int): arguments[key] = int
-                case .number(let double): arguments[key] = double
-                case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
-                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
-                case .null: arguments[key] = NSNull()
-                }
-            }
+            let arguments = toolUseBlock.input.toNativeDictionary
             let toolResult = try await callTool(name: toolUseBlock.name, arguments: arguments)
             let result = Anthropic.ToolResultContent(
                 isError: false,
@@ -252,22 +298,10 @@ public class ToolManager {
         return results
     }
 
-    func handleToolUse(_ toolBlock: Anthropic.ToolUseBlock) async -> String {
+    func handleToolUse(_ toolUseBlock: Anthropic.ToolUseBlock) async -> String {
         do {
-            var arguments: [String: Any] = [:]
-            for (key, value) in toolBlock.input {
-                switch value {
-                case .string(let str): arguments[key] = str
-                case .int(let int): arguments[key] = int
-                case .number(let double): arguments[key] = double
-                case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
-                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
-                case .null: arguments[key] = NSNull()
-                }
-            }
-
-            let result = try await self.callTool(name: toolBlock.name, arguments: arguments)
+            let arguments = toolUseBlock.input.toNativeDictionary
+            let result = try await self.callTool(name: toolUseBlock.name, arguments: arguments)
             return result
 
         } catch {

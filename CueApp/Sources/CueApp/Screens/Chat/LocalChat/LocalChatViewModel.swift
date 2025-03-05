@@ -163,7 +163,7 @@ public final class LocalChatViewModel: BaseChatViewModel {
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
-        newMessage = ""
+        richTextFieldState.inputMessage = ""
         currentTurn = 0
 
         do {

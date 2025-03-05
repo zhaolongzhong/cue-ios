@@ -61,7 +61,7 @@ extension AnthropicChatViewModel {
             onEvent: onStreamEvent
         )
 
-        let (events, connectionState, cancel) = anthropic.messages.createStream(
+        let (events, _, cancel) = anthropic.messages.createStream(
             model: request.model,
             maxTokens: request.maxTokens,
             messages: messageParams,
@@ -69,12 +69,6 @@ extension AnthropicChatViewModel {
             toolChoice: request.toolChoice != nil ? ["type": request.toolChoice!] : nil,
             thinking: request.thinking
         )
-
-        let connectionTask = Task { await monitorConnectionState(connectionState) }
-
-        defer {
-            connectionTask.cancel()
-        }
 
         do {
             for try await event in events {
@@ -229,26 +223,6 @@ extension AnthropicChatViewModel {
         }
 
         return orderedParams
-    }
-}
-
-extension AnthropicChatViewModel {
-    /// Monitor the connection state changes
-    private func monitorConnectionState(_ connectionState: AsyncStream<ServerStreamingEvent.ConnectionState>) async {
-        for await state in connectionState {
-            switch state {
-            case .connecting:
-                logger.debug("Connecting to message stream")
-            case .connected:
-                logger.debug("Connected to message stream")
-            case .disconnected(let error):
-                if let error = error {
-                    logger.error("Disconnected from message stream with error: \(error.localizedDescription)")
-                } else {
-                    logger.debug("Disconnected from message stream")
-                }
-            }
-        }
     }
 }
 

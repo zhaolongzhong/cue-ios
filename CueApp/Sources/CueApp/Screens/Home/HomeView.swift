@@ -139,16 +139,16 @@ private extension HomeView {
                 HomeDefaultView(viewModel: homeViewModel, onNewSession: {
                     homeViewModel.navigateToDestination(.email)
                 })
-            case .anthropic:
-                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
-            case .gemini:
-                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel)
-            case .openai:
-                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
-            case .cue:
-                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
-            case .local:
-                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel)
+            case .anthropic(let conversationId):
+                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel, conversationId: conversationId)
+            case .gemini(let conversationId):
+                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel, conversationId: conversationId)
+            case .openai(let conversationId):
+                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel, conversationId: conversationId)
+            case .cue(let conversationId):
+                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel, conversationId: conversationId)
+            case .local(let conversationId):
+                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel, conversationId: conversationId)
             case .chat(let assistant):
                 AssistantChatView(
                     assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
@@ -162,6 +162,8 @@ private extension HomeView {
                 #endif
             case .providers:
                 ProvidersScreen(providersViewModel: ProvidersViewModel())
+            default:
+                EmptyView()
             }
         }
         .withCommonNavigationBar()

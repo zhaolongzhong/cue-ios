@@ -54,10 +54,10 @@ struct CollapsibleSettingsSection<Content: View, Header: View>: View {
                     .padding(.vertical, 8)
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(AppTheme.Colors.controlButtonBackground)
-        )
+//        .background(
+//            RoundedRectangle(cornerRadius: 8)
+//                .fill(AppTheme.Colors.controlButtonBackground)
+//        )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
     }
 }

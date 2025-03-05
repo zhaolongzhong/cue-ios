@@ -1,14 +1,16 @@
 import SwiftUI
 import GoogleSignIn
 import GoogleSignInSwift
+import Dependencies
 
 public struct AuthenticatedView: View {
     @EnvironmentObject private var dependencies: AppDependencies
+    @State var navigationPath: NavigationPath = NavigationPath()
 
     public init() {}
 
     public var body: some View {
-        AuthenticatedContent(viewModel: dependencies.appStateViewModel)
+        AuthenticatedContent(viewModel: dependencies.appStateViewModel, dependencies: dependencies, navigationPath: $navigationPath)
     }
 }
 
@@ -16,9 +18,15 @@ private struct AuthenticatedContent: View {
     @ObservedObject var viewModel: AppStateViewModel
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
+    @StateObject private var homeViewModel = HomeViewModel()
+    @StateObject var router: AppDestinationRouter
 
-    init(viewModel: AppStateViewModel) {
+    init(viewModel: AppStateViewModel, dependencies: AppDependencies, navigationPath: Binding<NavigationPath>) {
         self.viewModel = viewModel
+        self._router = StateObject(wrappedValue: AppDestinationRouter(
+            dependencies: dependencies
+        ))
         AppLog.log.debug("AuthenticatedContent initialized")
     }
 
@@ -29,7 +37,12 @@ private struct AuthenticatedContent: View {
                     .authWindowSize()
             } else {
                 #if os(iOS)
-                HomeView()
+                if featureFlags.enableTabView {
+                    AppTabView(router: router)
+                } else {
+                    HomeView()
+                }
+
                 #else
                 MainWindowView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
                 #endif
@@ -46,7 +59,8 @@ private struct AuthenticatedContent: View {
         }
         .sheet(isPresented: $coordinator.showSettings) {
             NavigationStack {
-                SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
+                SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel, router: router)
+                    .id("SettingsViewSheet")
                     .environmentObject(dependencies.providersViewModel)
             }
         }

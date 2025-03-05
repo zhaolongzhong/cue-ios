@@ -86,6 +86,7 @@ struct Sidebar: View {
                 assistantsViewModel: self.assistantsViewModel,
                 onUpdate: nil
             )
+            .sheetWidth(.medium)
             .presentationCompactAdaptation(.popover)
         }
         .sheet(isPresented: $isShowingNewAssistantSheet) {
@@ -127,7 +128,7 @@ struct Sidebar: View {
             title: "Cue",
             icon: .custom("~"),
             action: {
-                homeNavigationManager.navigateTo(.cue)
+                homeNavigationManager.navigateTo(.cue())
             }
         )
     }
@@ -153,7 +154,7 @@ struct Sidebar: View {
             title: "Providers",
             trailingIcon: .system("plus"),
             trailingAction: {
-                homeNavigationManager.navigateTo(.openai)
+                homeNavigationManager.navigateTo(.openai())
                 #if os(macOS)
                 openWindow(id: WindowId.providersManagement.rawValue)
                 #endif
@@ -172,19 +173,19 @@ struct Sidebar: View {
                     switch provider {
                     case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
                         ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.openai)
+                            homeNavigationManager.navigateTo(.openai())
                         }
                     case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
                         ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.anthropic)
+                            homeNavigationManager.navigateTo(.anthropic())
                         }
                     case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
                         ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.gemini)
+                            homeNavigationManager.navigateTo(.gemini())
                         }
                     case .local where featureFlags.enableLocal:
                         ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.local)
+                            homeNavigationManager.navigateTo(.local())
                         }
                     default:
                         AnyView(EmptyView())

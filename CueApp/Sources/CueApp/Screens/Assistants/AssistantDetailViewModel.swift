@@ -21,10 +21,10 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var tempMaxTurns = ""
 
     let availableModels = [
-        "claude-3-5-sonnet-20241022",
+        "claude-3-7-sonnet-20250219",
+        "o3-mini",
         "gpt-4o-mini",
-        "gpt-4o",
-        "o1-mini"
+        "gpt-4o"
     ]
 
     init(
@@ -59,14 +59,16 @@ final class AssistantDetailViewModel: ObservableObject {
         model: String? = nil,
         instruction: String? = nil,
         description: String? = nil,
-        maxTurns: Int? = nil
+        maxTurns: Int? = nil,
+        color: AppTheme.ColorPalette? = nil
     ) async {
         guard let updatedAssistant = await assistantsViewModel.updateMetadata(
             id: assistant.id,
             model: model,
             instruction: instruction,
             description: description,
-            maxTurns: maxTurns
+            maxTurns: maxTurns,
+            color: color?.hexString
         ) else {
             AppLog.log.error("Error when updating assistant metadata.")
             return

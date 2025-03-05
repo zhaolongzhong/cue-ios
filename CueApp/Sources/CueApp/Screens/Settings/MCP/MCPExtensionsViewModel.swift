@@ -1,12 +1,15 @@
 import Foundation
-import SwiftUI
 import Combine
 import CueOpenAI
 import CueAnthropic
 import CueMCP
 
+#if os(macOS)
+import AppKit
+#endif
+
 @MainActor
-class DeveloperViewModel: ObservableObject {
+class MCPExtensionsViewModel: ObservableObject {
     private let toolManager: ToolManager
     private var cancellables = Set<AnyCancellable>()
     @Published private(set) var configPath: String?
@@ -47,10 +50,7 @@ class DeveloperViewModel: ObservableObject {
             return
         }
 
-        // Create MCP directory URL
         let mcpFolderURL = documentsURL.appendingPathComponent("MCP", isDirectory: true)
-
-        // Create MCP directory if it doesn't exist
         do {
             try FileManager.default.createDirectory(at: mcpFolderURL,
                                                   withIntermediateDirectories: true,
@@ -60,7 +60,6 @@ class DeveloperViewModel: ObservableObject {
             return
         }
 
-        // Configure save panel
         let savePanel = NSSavePanel()
         savePanel.title = "Create MCP Config"
         savePanel.nameFieldStringValue = "mcp_config.json"
@@ -75,8 +74,60 @@ class DeveloperViewModel: ObservableObject {
         #endif
     }
 
+    func updateConfig(servers: [MCPServerEditorModel]) {
+        guard let configPath = configPath else { return }
+
+        var updatedConfig = MCPServersConfig(mcpServers: [:])
+
+        for server in servers {
+            updatedConfig.mcpServers[server.name] = server.toServerConfig()
+        }
+
+        ConfigManager.shared.saveConfig(updatedConfig, to: configPath)
+        refreshConfig()
+    }
+
+    func deleteServer(named serverName: String) {
+        guard let configPath = configPath, var config = self.config else { return }
+
+        // Remove server from config
+        config.mcpServers.removeValue(forKey: serverName)
+
+        // Save updated config
+        ConfigManager.shared.saveConfig(config, to: configPath)
+        refreshConfig()
+    }
+
+    func getServersAsEditorModels() -> [MCPServerEditorModel] {
+        guard let config = config else { return [] }
+
+        return config.mcpServers.map { name, serverConfig in
+            MCPServerEditorModel.from(name: name, config: serverConfig)
+        }
+    }
+
+    func refreshConfig() {
+        self.configPath = ConfigManager.shared.getConfigPath()
+        self.config = ConfigManager.shared.getConfig()
+    }
+
+    func getMCPCapabilities() -> [Capability] {
+        return toolManager.getMCPCapabilities()
+    }
+
+    func getMCPTools(by capability: Capability) -> [Tool] {
+        switch capability {
+        case .mcpServer(let serverContext):
+            let tools = toolManager.getMCPToolsBy(serverName: serverContext.serverName).map { $0.toOpenAITool() }
+            return tools
+        default:
+            return []
+        }
+    }
+
     #if os(macOS)
     func getMcpToolsBy(serverName: String) -> [Tool] {
+        let test = toolManager.getMCPToolsBy(serverName: serverName)
         let tools = toolManager.getMCPToolsBy(serverName: serverName).map { $0.toOpenAITool() }
         return tools
     }

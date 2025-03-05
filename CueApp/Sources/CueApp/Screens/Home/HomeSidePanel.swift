@@ -178,15 +178,15 @@ struct HomeSidePanel: View {
                     switch provider {
                     case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
                         ProviderSidebarRow(provider: provider) {
-                            navigate(to: .openai)
+                            navigate(to: .openai())
                         }
                     case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
                         ProviderSidebarRow(provider: provider) {
-                            navigate(to: .anthropic)
+                            navigate(to: .anthropic())
                         }
                     case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
                         ProviderSidebarRow(provider: provider) {
-                            navigate(to: .gemini)
+                            navigate(to: .gemini())
                         }
                     default:
                         AnyView(EmptyView())
@@ -247,7 +247,7 @@ struct HomeSidePanel: View {
             title: "Cue",
             icon: .custom("~"),
             action: {
-                navigate(to: HomeDestination.cue)
+                navigate(to: .cue())
             }
         )
     }

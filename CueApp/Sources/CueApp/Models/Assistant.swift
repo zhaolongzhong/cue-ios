@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import CueCommon
 
 struct AssistantCreate: Codable {
@@ -13,6 +14,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
     let maxTurns: Int?
     let context: JSONValue?
     let tools: [String]?
+    let color: String?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
@@ -22,6 +24,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
         case maxTurns = "max_turns"
         case context
         case tools
+        case color
     }
 }
 
@@ -33,6 +36,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
     let maxTurns: Int?
     let context: JSONValue?
     let tools: [String]?
+    let color: String?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
@@ -42,6 +46,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         case maxTurns = "max_turns"
         case context
         case tools
+        case color
     }
 
     // Initialize with all optional parameters
@@ -52,7 +57,8 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         description: String? = nil,
         maxTurns: Int? = nil,
         context: JSONValue? = nil,
-        tools: [String]? = nil
+        tools: [String]? = nil,
+        color: String? = nil
     ) {
         self.isPrimary = isPrimary
         self.model = model
@@ -61,6 +67,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         self.maxTurns = maxTurns
         self.context = context
         self.tools = tools
+        self.color = color
     }
 }
 
@@ -109,5 +116,15 @@ struct Assistant: Codable, Equatable, Identifiable, Hashable {
 extension Assistant {
     var isPrimary: Bool {
         return metadata?.isPrimary == true
+    }
+
+    var assistantColor: AppTheme.ColorPalette {
+        if let hexString = self.metadata?.color as? String {
+            if let matchedColor = AppTheme.ColorPalette.allColors.first(where: { $0.hexString.lowercased() == hexString.lowercased() }) {
+                return matchedColor
+            }
+            return .custom(Color(hex: hexString))
+        }
+        return .custom(Color.gray)
     }
 }

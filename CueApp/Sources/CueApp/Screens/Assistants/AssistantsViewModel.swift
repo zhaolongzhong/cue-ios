@@ -172,7 +172,8 @@ public final class AssistantsViewModel: ObservableObject {
         description: String? = nil,
         maxTurns: Int? = nil,
         context: JSONValue? = nil,
-        tools: [String]? = nil
+        tools: [String]? = nil,
+        color: String? = nil
     ) async -> Assistant? {
         let metadata = AssistantMetadataUpdate(
             isPrimary: isPrimary,
@@ -181,7 +182,8 @@ public final class AssistantsViewModel: ObservableObject {
             description: description,
             maxTurns: maxTurns,
             context: context,
-            tools: tools
+            tools: tools,
+            color: color
         )
 
         switch await assistantRepository.updateAssistant(id: id, name: nil, metadata: metadata) {

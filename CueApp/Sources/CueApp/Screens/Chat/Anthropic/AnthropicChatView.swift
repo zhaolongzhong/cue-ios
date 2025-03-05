@@ -13,8 +13,8 @@ public struct AnthropicChatView: View {
 
     private let isCompanion: Bool
 
-    public init(_ viewModelFactory: @escaping () -> AnthropicChatViewModel, isCompanion: Bool = false) {
-        _viewModel = StateObject(wrappedValue: viewModelFactory())
+    public init(_ viewModelFactory: @escaping (String?) -> AnthropicChatViewModel, conversationId: String? = nil, isCompanion: Bool = false) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory(conversationId))
         self.isCompanion = isCompanion
     }
 

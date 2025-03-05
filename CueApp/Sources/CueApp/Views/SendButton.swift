@@ -27,7 +27,7 @@ struct SendButton: View {
                         .frame(width: 32, height: 32)
                         .overlay(
                             Image(systemName: "stop.fill")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(Color.primary)
                                 .colorInvert()
                         )
@@ -40,7 +40,7 @@ struct SendButton: View {
                         .frame(width: 32, height: 32)
                         .overlay(
                             Image(systemName: "arrow.up")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(Color.primary)
                                 .colorInvert()
                         )

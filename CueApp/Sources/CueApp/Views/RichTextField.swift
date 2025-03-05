@@ -4,19 +4,16 @@ import Dependencies
 struct RichTextField: View {
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @Environment(\.colorScheme) private var colorScheme
-    @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
     @ObservedObject var richTextFieldState: RichTextFieldState
     private let richTextFieldDelegate: RichTextFieldDelegate
 
     init(
-        inputMessage: Binding<String>,
         isFocused: FocusState<Bool>.Binding,
         richTextFieldState: RichTextFieldState,
         richTextFieldDelegate: RichTextFieldDelegate
     ) {
-        self._inputMessage = inputMessage
         self._isFocused = isFocused
         self.richTextFieldState = richTextFieldState
         self.richTextFieldDelegate = richTextFieldDelegate
@@ -31,7 +28,7 @@ struct RichTextField: View {
             }
 
             if isTextFieldVisible {
-                TextField("Type a message...", text: $inputMessage, axis: .vertical)
+                TextField("Type a message...", text: $richTextFieldState.inputMessage, axis: .vertical)
                     .scrollContentBackground(.hidden)
                     .textFieldStyle(.plain)
                     .padding(.horizontal, 8)
@@ -40,7 +37,7 @@ struct RichTextField: View {
                     .focused($isFocused)
                     .background(.clear)
                     .onSubmit {
-                        if isMessageValid && !richTextFieldState.isRunning {
+                        if richTextFieldState.isMessageValid && !richTextFieldState.isRunning {
                             richTextFieldState.attachments.removeAll()
                             richTextFieldDelegate.onSend()
                         }
@@ -53,7 +50,7 @@ struct RichTextField: View {
         .padding(.all, 8)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(AppTheme.Colors.secondaryBackground.opacity(0.2))
+                .fill(AppTheme.Colors.secondaryBackground.opacity(0.1))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5)
@@ -68,17 +65,18 @@ struct RichTextField: View {
                 }
             }
         )
+        .padding(.horizontal)
+        .padding(.bottom)
         .onChange(of: isFocused) { _, newValue in
             if !newValue {
                 checkAndUpdateTextFieldVisibility()
             }
         }
-        .onChange(of: inputMessage) { _, newValue in
+        .onChange(of: richTextFieldState.inputMessage) { _, newValue in
             if !newValue.isEmpty && !isTextFieldVisible {
                 isTextFieldVisible = true
             }
         }
-        .padding()
     }
 
     private var controlButtons: some View {
@@ -93,11 +91,14 @@ struct RichTextField: View {
                 .foregroundColor(.secondary.opacity(0.6))
                 .opacity(isTextFieldVisible ? 0 : 1)
             Spacer()
-            if richTextFieldState.toolCount != 0 {
-                ToolButton(count: richTextFieldState.toolCount, action: {
-                    richTextFieldDelegate.onShowTools()
-                    checkAndUpdateTextFieldVisibility()
-                })
+            if richTextFieldState.availableCapabilities.count > 0 {
+                ToolSelectionMenu(
+                    availableCapabilities: richTextFieldState.availableCapabilities,
+                    selectedCapabilities: richTextFieldState.selectedCapabilities,
+                    onCapabilitiesSelected: { capabilities in
+                        richTextFieldDelegate.onUpdateSelectedCapabilities(capabilities)
+                    }
+                )
             }
             if richTextFieldState.showAXApp {
                 #if os(macOS)
@@ -111,7 +112,7 @@ struct RichTextField: View {
                 })
             }
             SendButton(
-                isEnabled: isMessageValid,
+                isEnabled: richTextFieldState.isMessageValid,
                 isRunning: richTextFieldState.isRunning,
                 onSend: {
                     richTextFieldState.attachments.removeAll()
@@ -132,12 +133,8 @@ struct RichTextField: View {
     }
 
     private func checkAndUpdateTextFieldVisibility() {
-        if inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if richTextFieldState.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             isTextFieldVisible = false
         }
-    }
-
-    private var isMessageValid: Bool {
-        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1 || !richTextFieldState.attachments.isEmpty
     }
 }

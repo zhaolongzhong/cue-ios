@@ -6,73 +6,40 @@ import Dependencies
 import os.log
 
 @MainActor
-public final class OpenAILiveChatViewModel: ObservableObject {
+public final class OpenAILiveChatViewModel: BaseChatViewModel {
     @Dependency(\.realtimeClient) public var realtimeClient
 
     private let openAI: OpenAI
-    private let toolManager: ToolManager
-    private let apiKey: String
-    private let model: String = ChatRealtimeModel.gpt4oMiniRealtimePreview.id
+    private let realtimeModel: String = ChatRealtimeModel.gpt4oMiniRealtimePreview.id
     private let logger = Logger(subsystem: "openai", category: "OpenAILiveChatViewModel")
-
-    @Published private(set) var messages: [OpenAI.ChatMessageParam] = []
-    @Published var newMessage: String = ""
 
     @Published private(set) var deltaMessage: String = ""
     private var deltaMessageItemId: String = ""
-    @Published private(set) var isLoading = false
-    @Published private(set) var chatError: ChatError?
     @Published private(set) var state: VoiceState = .idle {
         didSet {
             logger.debug("Voice state change to \(self.state.description)")
             switch state {
             case .error(let message):
-                chatError = .sessionError(message)
+                error = .sessionError(message)
             default:
                 break
             }
         }
     }
-    @Published var availableTools: [OpenAITool] = [] {
-        didSet {
-            updateTools()
-        }
-    }
-    private var tools: [JSONValue] = []
     private var handledEventIds: Set<String> = []
-    private var cancellables = Set<AnyCancellable>()
 
-    init(apiKey: String) {
-        self.apiKey = apiKey
+    init(conversationId: String?, apiKey: String) {
         self.openAI = OpenAI(apiKey: apiKey)
-        self.toolManager = ToolManager()
-        self.availableTools = toolManager.getTools()
+        super.init(
+            apiKey: apiKey,
+            provider: .openai,
+            model: .gpt4oMini,
+            conversationId: conversationId,
+            richTextFieldState: RichTextFieldState()
+        )
 
         self.state = realtimeClient.voiceChatState
         setupRealtimeSubscription()
-        #if os(macOS)
-        setupToolsSubscription()
-        #endif
-    }
-
-    private func setupToolsSubscription() {
-        toolManager.mcpToolsPublisher
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                self.availableTools = self.toolManager.getTools()
-            }
-            .store(in: &cancellables)
-    }
-
-    private func updateTools() {
-        tools = self.toolManager.getToolsJSONValue(model: self.model)
-    }
-
-    func startServer() async {
-        #if os(macOS)
-        await self.toolManager.startMcpServer()
-        #endif
     }
 
     private func setupRealtimeSubscription() {
@@ -126,10 +93,10 @@ public final class OpenAILiveChatViewModel: ObservableObject {
 
     public func startSession() async {
         do {
-            try await realtimeClient.startSession(apiKey: self.apiKey, model: self.model)
+            try await realtimeClient.startSession(apiKey: self.apiKey, model: self.realtimeModel)
             try await updateSession()
         } catch {
-            chatError = .sessionError(String(describing: error))
+            self.error = .sessionError(String(describing: error))
         }
     }
 
@@ -164,9 +131,9 @@ public final class OpenAILiveChatViewModel: ObservableObject {
         await realtimeClient.endChat()
     }
 
-    public func sendMessage() async {
-        await createConversationItem(text: newMessage)
-        newMessage = ""
+    override func sendMessage() async {
+        await createConversationItem(text: richTextFieldState.inputMessage)
+        richTextFieldState.inputMessage = ""
     }
 
     private func createConversationItem(text: String) async {
@@ -221,42 +188,7 @@ public final class OpenAILiveChatViewModel: ObservableObject {
     }
 
     private func handleFunctionCall(toolCall: ToolCall) async {
-        let toolMessages = await callTools([toolCall])
+        let toolMessages = await toolManager.callTools([toolCall])
         await createConversationItemWithOutput(toolMessages: toolMessages)
-    }
-
-    private func callTools(_ toolCalls: [ToolCall]) async -> [OpenAI.ToolMessage] {
-        var results: [OpenAI.ToolMessage] = []
-
-        for toolCall in toolCalls {
-            if let data = toolCall.function.arguments.data(using: .utf8),
-               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                do {
-                    let result = try await toolManager.callTool(
-                        name: toolCall.function.name,
-                        arguments: args
-                    )
-                    results.append(OpenAI.ToolMessage(
-                        role: "tool",
-                        content: result,
-                        toolCallId: toolCall.id
-                    ))
-                } catch {
-                    let toolError = ChatError.toolError(error.localizedDescription)
-                    ErrorLogger.log(toolError)
-                    results.append(OpenAI.ToolMessage(
-                        role: "tool",
-                        content: "Error: \(error.localizedDescription)",
-                        toolCallId: toolCall.id
-                    ))
-                }
-            }
-        }
-
-        return results
-    }
-
-    func clearError() {
-        chatError = nil
     }
 }

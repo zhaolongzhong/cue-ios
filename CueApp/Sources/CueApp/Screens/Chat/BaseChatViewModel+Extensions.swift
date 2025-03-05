@@ -22,8 +22,8 @@ extension BaseChatViewModel {
         var contentBlocks: [OpenAI.ContentBlock] = []
 
         // Add user's input message if not empty
-        if !newMessage.isEmpty {
-            contentBlocks.append(OpenAI.ContentBlock.text(newMessage))
+        if !richTextFieldState.inputMessage.isEmpty {
+            contentBlocks.append(OpenAI.ContentBlock.text(richTextFieldState.inputMessage))
         }
 
         // Add attachment content
@@ -122,7 +122,7 @@ extension BaseChatViewModel {
             Anthropic.MessageParam(role: "user", content: anthropicBlocks)
         )
 
-        return (userMessage, newMessage)
+        return (userMessage, richTextFieldState.inputMessage)
     }
 }
 
@@ -167,7 +167,7 @@ extension BaseChatViewModel {
 
         let newContent = ModelContent(role: "user", parts: parts)
         let userMessage = Gemini.ChatMessageParam.userMessage(newContent)
-        return (userMessage, newMessage)
+        return (userMessage, richTextFieldState.inputMessage)
     }
 }
 
@@ -193,7 +193,7 @@ extension BaseChatViewModel {
             )
         )
 
-        return (userMessage, newMessage)
+        return (userMessage, richTextFieldState.inputMessage)
     }
 }
 
@@ -225,6 +225,6 @@ extension BaseChatViewModel {
             OpenAI.MessageParam(role: "user", content: .string(userMessageString))
         )
 
-        return (simpleUserMessage, newMessage)
+        return (simpleUserMessage, richTextFieldState.inputMessage)
     }
 }
