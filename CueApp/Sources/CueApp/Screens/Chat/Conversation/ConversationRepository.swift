@@ -114,7 +114,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         if let existing = try await getPrimaryConversation() {
             var updatedConversation = existing
             // Create new metadata with isPrimary set to false
-            let newMetadata = ConversationMetadata(isPrimary: false)
+            let newMetadata = ConversationMetadata(isPrimary: false, capabilities: existing.metadata?.capabilities)
             // Use KeyPath assignment if your struct allows it, or create a new instance
             updatedConversation = ConversationModel(
                 id: existing.id,
@@ -130,7 +130,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         // Now set the new conversation as primary
         if var conversation = try await database.fetchConversation(id: conversationId) {
             // Create new metadata with isPrimary set to true
-            let newMetadata = ConversationMetadata(isPrimary: true)
+            let newMetadata = ConversationMetadata(isPrimary: true, capabilities: conversation.metadata?.capabilities)
             // Use KeyPath assignment if your struct allows it, or create a new instance
             conversation = ConversationModel(
                 id: conversation.id,

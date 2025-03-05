@@ -3,12 +3,18 @@ import SwiftUI
 struct InitialsAvatar: View {
     let text: String
     let size: CGFloat
+    let avatarColor: Color?
+    public init(text: String, size: CGFloat, avatarColor: Color? = nil) {
+        self.text = text
+        self.size = size
+        self.avatarColor = avatarColor
+    }
 
     private static let colors: [Color] = [
         .blue, .red, .purple, .cyan
     ]
 
-    private var avatarColor: Color {
+    private var avatarColorDefault: Color {
         var hash: UInt64 = 5381
         let text = text.lowercased() // Normalize the input
 
@@ -34,7 +40,7 @@ struct InitialsAvatar: View {
     }
 
     private var backgroundColor: Color {
-        avatarColor.opacity(0.2)
+        avatarColor ?? avatarColorDefault.opacity(0.2)
     }
 
     var body: some View {
@@ -43,7 +49,7 @@ struct InitialsAvatar: View {
             .overlay(
                 Text(avatarLetter)
                     .font(.system(size: size * 0.44, weight: .medium))
-                    .foregroundColor(avatarColor)
+                    .foregroundColor(.white)
             )
             .frame(width: size, height: size)
     }

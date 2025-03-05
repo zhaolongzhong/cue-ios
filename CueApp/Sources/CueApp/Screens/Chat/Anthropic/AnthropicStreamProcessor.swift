@@ -93,7 +93,6 @@ class AnthropicStreamProcessor {
 
         // Emit stream started event
         if let id = messageId {
-            logger.debug("Stream task started: \(id)")
             await onEvent(.streamTaskStarted(id))
         }
     }
@@ -166,7 +165,7 @@ class AnthropicStreamProcessor {
                 thinkingBlocks[event.index] = thinkingBlock
                 await onEvent(.thinkingSignature(id, false))
             }
-        case .toolUse(let delta):
+        case .toolUse:
             let toolUseBlocks = contentBlocks.compactMap { block -> Anthropic.ToolUseBlock? in
                 if case .toolUse(let toolUseBlock) = block {
                     return toolUseBlock

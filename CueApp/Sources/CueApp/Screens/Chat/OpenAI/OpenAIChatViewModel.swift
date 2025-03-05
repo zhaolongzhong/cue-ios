@@ -28,14 +28,14 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
     let logger = Logger(subsystem: "OpenAI", category: "OpenAIChatViewModel")
     private var enableStreaming: Bool = true
 
-    public init(apiKey: String, conversationId: String? = nil) {
+    public init(conversationId: String?, apiKey: String) {
         self.openai = OpenAI(apiKey: apiKey)
         super.init(
             apiKey: apiKey,
             provider: .openai,
             model: .gpt4oMini,
             conversationId: conversationId,
-            richTextFieldState: RichTextFieldState(showVoiceChat: true)
+            richTextFieldState: RichTextFieldState(showVoiceChat: true, showAXApp: true)
         )
     }
 
@@ -62,7 +62,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
 
         isLoading = true
         isRunning = true
-        newMessage = ""
+        richTextFieldState.inputMessage = ""
 
         if isStreamingEnabled {
             await startStreamingTask(messageParams)

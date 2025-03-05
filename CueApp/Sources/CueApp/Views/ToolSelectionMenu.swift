@@ -1,0 +1,124 @@
+//
+//  ToolSelectionMenu.swift
+//  CueApp
+//
+
+import SwiftUI
+import CueOpenAI
+
+struct ToolSelectionMenu: View {
+    @State private var searchText: String = ""
+    @State private var isPopoverShown: Bool = false
+    @State private var internalSelectedTools: Set<String> = []
+
+    let availableCapabilities: [Capability]
+    let selectedCapabilities: [Capability]
+    let onCapabilitiesSelected: (([Capability]) -> Void)?
+
+    var filteredCapabilities: [Capability] {
+        if searchText.isEmpty {
+            return availableCapabilities
+        } else {
+            return availableCapabilities.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+
+    var body: some View {
+        HoverButton {
+            Button {
+                isPopoverShown.toggle()
+            } label: {
+                Image(systemName: "hammer")
+            }
+            .buttonStyle(BorderlessButtonStyle())
+            .popover(isPresented: $isPopoverShown, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                            .frame(width: 16)
+
+                        TextField("Search", text: $searchText)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .frame(width: 204)
+
+                        if !searchText.isEmpty {
+                            Button {
+                                searchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            .frame(width: 16)
+                        } else {
+                            Spacer()
+                                .frame(width: 16)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+
+                    Divider()
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(filteredCapabilities, id: \.name) { tool in
+                                Button {
+                                    if internalSelectedTools.contains(tool.name) {
+                                        internalSelectedTools.remove(tool.name)
+                                    } else {
+                                        internalSelectedTools.insert(tool.name)
+                                    }
+
+                                    let selectedToolObjects = availableCapabilities.filter { internalSelectedTools.contains($0.name) }
+                                    onCapabilitiesSelected?(selectedToolObjects)
+                                } label: {
+                                    HStack {
+                                        Text(tool.name.capitalized)
+                                            .frame(width: 220, alignment: .leading)
+                                            .lineLimit(1)
+
+                                        Spacer()
+
+                                        Image(systemName: internalSelectedTools.contains(tool.name) ? "checkmark.square.fill" : "square")
+                                            .foregroundColor(internalSelectedTools.contains(tool.name) ? .accentColor : .secondary)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                            }
+                        }
+                    }
+                    .frame(minHeight: 200, maxHeight: 300)
+
+                    Divider()
+                    Button {
+                        isPopoverShown = false
+                    } label: {
+                        Text("Done")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                }
+                .padding(.bottom, 8)
+                .frame(width: 280)
+            }
+        }
+        .onAppear {
+            syncWithExternalState()
+        }
+        .onChange(of: selectedCapabilities) { _, _ in
+            syncWithExternalState()
+        }
+    }
+
+    // Helper method to sync internal state with external state
+    private func syncWithExternalState() {
+        internalSelectedTools = Set(selectedCapabilities.map { $0.name })
+    }
+}

@@ -6,20 +6,19 @@ public struct GeminiLiveChatView: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel: GeminiChatViewModel
     @FocusState private var isFocused: Bool
-    @State private var showingToolsList = false
     @State private var isHovering = false
-    @State private var richTextFieldState: RichTextFieldState
+
+    private var conversationId: String?
     private var forceShowHeader: Bool = false
 
-    public init(viewModelFactory: @escaping () -> GeminiChatViewModel) {
-        let viewModel = viewModelFactory()
-        _viewModel = StateObject(wrappedValue: viewModel)
+    public init(viewModelFactory: @escaping (String?) -> GeminiChatViewModel, conversationId: String? = nil) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory(conversationId))
+        self.conversationId = conversationId
         #if os(macOS)
         forceShowHeader = false
         #else
         forceShowHeader = true
         #endif
-        richTextFieldState = RichTextFieldState(toolCount: viewModel.availableTools.count)
     }
 
     public var body: some View {
@@ -76,9 +75,6 @@ public struct GeminiLiveChatView: View {
                 viewModel.clearError()
             }
         }
-        .sheet(isPresented: $showingToolsList) {
-            ToolsListView(tools: viewModel.availableTools)
-        }
         #if os(macOS)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering }
@@ -100,9 +96,8 @@ public struct GeminiLiveChatView: View {
 
     private var messageInputView: some View {
         RichTextField(
-            inputMessage: $viewModel.newMessage,
             isFocused: $isFocused,
-            richTextFieldState: richTextFieldState,
+            richTextFieldState: viewModel.richTextFieldState,
             richTextFieldDelegate: richTextFieldDelegate
         )
     }
@@ -111,9 +106,6 @@ public struct GeminiLiveChatView: View {
     private var richTextFieldDelegate: RichTextFieldDelegate {
         ChatViewDelegate(
             chatViewModel: viewModel,
-            showToolsAction: {
-                showingToolsList = true
-            },
             sendAction: {
                 Task {
                     await viewModel.sendMessage()

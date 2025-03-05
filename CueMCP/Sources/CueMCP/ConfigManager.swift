@@ -11,6 +11,9 @@ public class ConfigManager {
         return ""
     }
 
+    // Track user-defined config path
+    private var userConfigPath: String?
+
     public init() {
         print("📱 Initializing MCP ConfigManager")
         validateBundleConfig()
@@ -35,11 +38,22 @@ public class ConfigManager {
     }
 
     public func getConfigPath() -> String? {
-        return bundleConfigPath.isEmpty ? nil : bundleConfigPath
+        // Return user config path if available, otherwise bundle path
+        return userConfigPath ?? (bundleConfigPath.isEmpty ? nil : bundleConfigPath)
     }
 
     public func getConfig() -> MCPServersConfig {
-        // If we have a valid bundle config, try to use it
+        // Try to read from user config path first
+        if let userPath = userConfigPath {
+            do {
+                let data = try Data(contentsOf: URL(fileURLWithPath: userPath))
+                return try JSONDecoder().decode(MCPServersConfig.self, from: data)
+            } catch {
+                print("❌ Failed to read user config: \(error)")
+            }
+        }
+
+        // Fall back to bundle config
         if !bundleConfigPath.isEmpty {
             do {
                 let data = try Data(contentsOf: URL(fileURLWithPath: bundleConfigPath))
@@ -49,16 +63,36 @@ public class ConfigManager {
             }
         }
 
-        // Return empty config if no bundle config or on error
+        // Return empty config if no config or on error
         print("📱 Creating empty config")
         return MCPServersConfig(mcpServers: [:])
     }
 
     public func createDefaultConfig(at url: URL) {
         let config = MCPServersConfig(mcpServers: [:])
-        if let data = try? JSONEncoder().encode(config) {
-            try? data.write(to: url)
-            print("📱 Created default config file")
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(config)
+            try data.write(to: url)
+            userConfigPath = url.path
+            print("📱 Created default config file at \(url.path)")
+        } catch {
+            print("❌ Failed to create default config: \(error)")
+        }
+    }
+
+    public func saveConfig(_ config: MCPServersConfig, to path: String) {
+        do {
+            let url = URL(fileURLWithPath: path)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(config)
+            try data.write(to: url)
+            userConfigPath = path
+            print("📱 Saved config to \(path)")
+        } catch {
+            print("❌ Failed to save config: \(error)")
         }
     }
 }

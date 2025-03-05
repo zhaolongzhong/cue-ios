@@ -17,10 +17,10 @@ final class AssistantChatViewModel: ObservableObject {
     @Published private(set) var currentConnectionState: ConnectionState = .disconnected
     @Published private(set) var clientStatus: ClientStatus?
     @Published var errorAlert: ErrorAlert?
-    @Published var newMessage: String = ""
     @Published var showAssistantDetails = false
     @Published var isInputEnabled = true
     @Published var isLoadingMore = false
+    @Published var richTextFieldState: RichTextFieldState
 
     private var primaryConversation: ConversationModel?
     private var cancellables = Set<AnyCancellable>()
@@ -33,6 +33,7 @@ final class AssistantChatViewModel: ObservableObject {
 
     init(assistant: Assistant) {
         self.assistant = assistant
+        self.richTextFieldState =  RichTextFieldState()
         setupConnectionStateSubscription()
         setupMessageHandler()
     }
@@ -103,7 +104,7 @@ final class AssistantChatViewModel: ObservableObject {
         Task {
             switch await messageRepository.saveMessage(messageModel: messageModel) {
             case .success:
-                newMessage = ""
+                richTextFieldState.inputMessage = ""
             case .failure(let error):
                 handleError(error, context: "Failed to send message")
             }
@@ -200,12 +201,14 @@ final class AssistantChatViewModel: ObservableObject {
 
     // MARK: - Message Handling
     func sendMessage() async {
-        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard richTextFieldState.isMessageValid else {
+            return
+        }
         if self.clientStatus == nil {
             self.clientStatus = clientStatusService.getClientStatus(for: self.assistant.id)
         }
 
-        let messageToSend = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let messageToSend = richTextFieldState.inputMessage
         guard let userId = authRepository.currentUser?.id else {
             return
         }
@@ -231,7 +234,7 @@ final class AssistantChatViewModel: ObservableObject {
 
         do {
             try webSocketService.send(event: clientEvent)
-            newMessage = ""
+            richTextFieldState.inputMessage = ""
         } catch {
             errorAlert = ErrorAlert(
                 title: "Error",

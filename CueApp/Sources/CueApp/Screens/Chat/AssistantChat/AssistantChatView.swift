@@ -3,6 +3,7 @@ import SwiftUI
 struct AssistantChatView: View {
     @EnvironmentObject private var windowManager: CompanionWindowManager
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel: AssistantChatViewModel
     @SceneStorage("shouldAutoScroll") private var shouldAutoScroll = true
     @FocusState private var isFocused: Bool
@@ -10,9 +11,10 @@ struct AssistantChatView: View {
     @State private var selectedMessage: CueChatMessage?
     @State private var chatViewState: ChatViewState
     @State private var shouldScroll: Bool = false
-    let assistantsViewModel: AssistantsViewModel
     @State var shouldScrollToBottom = false
     @State var shouldScrollToUserMessage: Bool = false
+
+    private let assistantsViewModel: AssistantsViewModel
 
     init(assistantChatViewModel: AssistantChatViewModel,
          assistantsViewModel: AssistantsViewModel,
@@ -20,20 +22,20 @@ struct AssistantChatView: View {
     ) {
         self.assistantsViewModel = assistantsViewModel
         self._viewModel = StateObject(wrappedValue: assistantChatViewModel)
-        self.chatViewState = ChatViewState(isCompanion: isCompanion, isHovering: false, showingToolsList: false)
+        self.chatViewState = ChatViewState(isCompanion: isCompanion)
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            VStack(spacing: 16) {
+            VStack(spacing: 4) {
                 messageList
                 RichTextField(
-                    inputMessage: $viewModel.newMessage,
                     isFocused: $isFocused,
-                    richTextFieldState: RichTextFieldState(),
+                    richTextFieldState: viewModel.richTextFieldState,
                     richTextFieldDelegate: richTextFieldDelegate
                 )
             }
+            .background(colorScheme == .light ? Color.white .opacity(0.9): AppTheme.Colors.background.opacity(0.9))
             if chatViewState.isCompanion {
                 CompanionHeaderView(title: viewModel.assistant.name, isHovering: $chatViewState.isHovering)
             }
@@ -136,7 +138,6 @@ struct AssistantChatView: View {
             onShowMore: { message in
                 selectedMessage = message
             },
-            shouldScrollToUserMessage: $shouldScrollToUserMessage,
             shouldScrollToBottom: $shouldScrollToBottom,
             isLoadingMore: $viewModel.isLoadingMore
         )
@@ -160,9 +161,6 @@ struct AssistantChatView: View {
     @MainActor
     private var richTextFieldDelegate: RichTextFieldDelegate {
         ChatViewDelegate(
-            showToolsAction: {
-                chatViewState.showingToolsList = true
-            },
             sendAction: {
                 Task {
                     await viewModel.sendMessage()

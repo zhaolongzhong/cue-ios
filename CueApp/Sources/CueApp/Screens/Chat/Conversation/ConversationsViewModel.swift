@@ -195,7 +195,7 @@ public class ConversationsViewModel: ObservableObject {
             createdAt: conversation.createdAt,
             updatedAt: Date(),
             assistantId: nil,
-            metadata: ConversationMetadata(isPrimary: false)
+            metadata: ConversationMetadata(isPrimary: false, capabilities: conversation.metadata?.capabilities)
         )
 
         do {

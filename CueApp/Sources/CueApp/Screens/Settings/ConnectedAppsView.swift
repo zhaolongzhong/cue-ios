@@ -1,9 +1,4 @@
 import SwiftUI
-import GoogleSignIn
-
-#if os(macOS)
-import AppKit
-#endif
 
 struct ConnectedAppsView: View {
     @State private var gmailGranted = false
@@ -12,7 +7,7 @@ struct ConnectedAppsView: View {
     @State private var showingRemoveAlert = false
 
     var body: some View {
-        ScrollView {
+        CenteredScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 gmailRow
             }
@@ -28,9 +23,6 @@ struct ConnectedAppsView: View {
                 Text("Are you sure you want to remove Gmail access? You'll need to grant access again to use Gmail features.")
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 500, minHeight: 300)
-        #endif
         .defaultNavigationBar(title: "Connected Apps")
         .onAppear(perform: checkGmailAccess)
     }

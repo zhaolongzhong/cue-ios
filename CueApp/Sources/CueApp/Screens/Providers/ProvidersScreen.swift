@@ -10,44 +10,40 @@ public struct ProvidersScreen: View {
     }
 
     public var body: some View {
-        ScrollView {
-            HStack {
-                Spacer()
-                LazyVStack {
-                    ForEach(Provider.allCases) { provider in
-                        NavigationLink(
-                            destination: ProviderDetailView(provider: provider),
-                            label: {
-                                ProviderRow(
-                                    provider: provider,
-                                    viewModel: viewModel
-                                )
-                                .listRowSeparator(.hidden)
-                            }
-                        )
-                        .buttonStyle(.plain)
-                    }
+        CenteredScrollView {
+            LazyVStack {
+                ForEach(Provider.allCases) { provider in
+                    NavigationLink(
+                        destination: ProviderDetailView(provider: provider),
+                        label: {
+                            ProviderRow(
+                                provider: provider,
+                                viewModel: viewModel
+                            )
+                            .listRowSeparator(.hidden)
+                        }
+                    )
+                    .buttonStyle(.plain)
                 }
-                .padding()
-                .scrollContentBackground(.hidden)
-                .frame(maxWidth: 600)
-                Spacer()
             }
-            .alert("Edit Key", isPresented: $viewModel.isAlertPresented) {
-                TextField("Enter API Key", text: $viewModel.tempAPIKey)
-                    .autocorrectionDisabled()
+            .padding()
+            .scrollContentBackground(.hidden)
+        }
+        .defaultNavigationBar(title: "Providers")
+        .alert("Edit Key", isPresented: $viewModel.isAlertPresented) {
+            TextField("Enter API Key", text: $viewModel.tempAPIKey)
+                .autocorrectionDisabled()
 
-                Button("Cancel", role: .cancel) {
-                    viewModel.cancelEditing()
-                }
+            Button("Cancel", role: .cancel) {
+                viewModel.cancelEditing()
+            }
 
-                Button("Save") {
-                    viewModel.saveKey()
-                }
+            Button("Save") {
+                viewModel.saveKey()
             }
-            message: {
-                EmptyView()
-            }
+        }
+        message: {
+            EmptyView()
         }
     }
 }

@@ -82,14 +82,9 @@ struct MessageBubbleContent: View {
         return Group {
             if message.isUser {
                 UserMessageView(segments: segments)
+                    .padding(.top, 4)
             } else if message.isTool {
                 VStack(alignment: .leading) {
-                    if let segment = segments.filter({ $0.isThinking }).first {
-                        ThinkingBlockView(
-                            text: segment.text,
-                            message: message
-                        )
-                    }
                     ToolMessageView(message: message)
                 }
             } else if message.isToolMessage {

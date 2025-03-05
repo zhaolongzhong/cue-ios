@@ -139,7 +139,6 @@ extension OpenAIHTTPClient {
                     }
 
                     if jsonLine.trimmingCharacters(in: .whitespacesAndNewlines) == "[DONE]" {
-                        log.debug("Received [DONE], stream completed")
                         continue
                     }
 

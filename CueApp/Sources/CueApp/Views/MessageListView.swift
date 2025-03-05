@@ -1,37 +1,45 @@
 import SwiftUI
+import Combine
 
 struct MessageListView: View {
     let messages: [CueChatMessage]
     let onLoadMore: (() async -> Void)?
     let onShowMore: ((CueChatMessage) -> Void)?
 
-    @Binding var shouldScrollToUserMessage: Bool
     @Binding var shouldScrollToBottom: Bool
     @Binding var isLoadingMore: Bool
 
-    @State private var expandScrollViewForUserMessage: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var scrollState = ScrollState()
+    @State private var currentMessages: [CueChatMessage] = []
+    @State private var rawVisibility: [ViewVisibility] = []
+    @State private var visibilitySubject = PassthroughSubject<[ViewVisibility], Never>()
+    @State private var cancellable: AnyCancellable?
+    @State private var expandScrollViewForUserMessage: Bool
     @State private var showScrollButton = false
     @State private var scrollProxy: ScrollViewProxy?
-    @StateObject private var scrollState = ScrollState()
     @State private var previousVisibleIndices: [Double] = []
     @State private var loadMoreThreshold = 2
     @State private var preventLoadMoreAfterScroll = false
     @State private var oldFirstVisibleMessageId: String?
+    @State private var lastUserMessageId: String?
+    @State private var bottomSpacerHeight: CGFloat = 0
+    @State private var lastVisibilityUpdate: Date?
+    @State private var throttleInterval: TimeInterval = 0.1
 
     public init(
         messages: [CueChatMessage],
         onLoadMore: (() async -> Void)? = nil,
         onShowMore: ((CueChatMessage) -> Void)? = nil,
-        shouldScrollToUserMessage: Binding<Bool>,
         shouldScrollToBottom: Binding<Bool>,
         isLoadingMore: Binding<Bool>
     ) {
         self.messages = messages
         self.onLoadMore = onLoadMore
         self.onShowMore = onShowMore
-        self._shouldScrollToUserMessage = shouldScrollToUserMessage
         self._shouldScrollToBottom = shouldScrollToBottom
         self._isLoadingMore = isLoadingMore
+        self.expandScrollViewForUserMessage = false
     }
 
     var body: some View {
@@ -48,33 +56,38 @@ struct MessageListView: View {
                                             .frame(height: 1)
                                     )
                             }
-                            if !messages.isEmpty {
-                                Spacer()
-                                    .frame(minHeight: geometry.size.height * (expandScrollViewForUserMessage ? 0.75 : 0))
-                                    .id("bottomSpace")
-                            }
+
+                            Spacer()
+                                .frame(minHeight: geometry.size.height * (expandScrollViewForUserMessage ? 1 : 0))
+                                .id("bottomSpace")
+
                             Color.clear
                                 .frame(height: 1)
                                 .id("absoluteBottom")
                         }
                         .padding(.vertical)
-                        .frame(minHeight: geometry.size.height)
+                        .frame(maxHeight: .infinity, alignment: .top)
                         .animation(.easeInOut(duration: 0.2), value: messages.count)
                     }
+                    .scrollContentBackground(.hidden)
                     .onAppear {
                         self.scrollProxy = scrollProxy
                         scrollToBottom()
+                        cancellable = visibilitySubject
+                            .removeDuplicates { $0 == $1 }
+                            .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
+                            .sink { debouncedVisibility in
+                                handleOnPreferenceChange(visibility: debouncedVisibility)
+                            }
                     }
                     .refreshable {
                         await onLoadMore?()
-                    }
-                    .onChange(of: shouldScrollToUserMessage) { _, value in
-                        handleScrollToUserMessage(scrollProxy, shouldScrollToUserMessage: value)
                     }
                     .onChange(of: shouldScrollToBottom) { _, value in
                         handleShouldScrollToBottom(scrollProxy, shouldScrollToBottom: value)
                     }
                     .onChange(of: messages) { oldMessages, newMessages in
+                        currentMessages = newMessages
                         handleScrollOnMessagesChange(scrollProxy, oldMessages: oldMessages, newMessages: newMessages)
                     }
                     .onChange(of: isLoadingMore) { wasLoading, isNowLoading in
@@ -101,13 +114,21 @@ struct MessageListView: View {
                     }
                     #endif
                     .onPreferenceChange(ViewVisibilityKey.self) { visibility in
+                        // Using a Transaction without animation and checking time since last update
                         Task { @MainActor in
-                            handleOnPreferenceChange(visibility: visibility)
+                            let now = Date()
+                            if lastVisibilityUpdate == nil || now.timeIntervalSince(lastVisibilityUpdate!) > throttleInterval {
+                                lastVisibilityUpdate = now
+                                withTransaction(Transaction(animation: nil)) {
+                                    visibilitySubject.send(visibility)
+                                }
+                            }
                         }
                     }
+                    .padding(.horizontal)
                 }
 
-                VStack {
+                VStack(alignment: .center) {
                     if isLoadingMore && !messages.isEmpty {
                         ProgressView()
                             .frame(height: 40)
@@ -119,28 +140,25 @@ struct MessageListView: View {
 
                     if showScrollButton {
                         ScrollButton {
+                            expandScrollViewForUserMessage = false
                             self.scrollProxy?.scrollTo("absoluteBottom", anchor: .bottom)
                         }
-                        .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
             }
         }
     }
 
-    private func handleScrollToUserMessage(_ scrollProxy: ScrollViewProxy, shouldScrollToUserMessage: Bool) {
-        if shouldScrollToUserMessage && self.messages.count >= 2 {
-            expandScrollViewForUserMessage = true
-            if let lastUserMessageIndex = self.messages.lastIndex(where: { $0.isUser }) {
-                scrollState.isProgrammaticScroll = true
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                    scrollProxy.scrollTo(lastUserMessageIndex, anchor: .top)
-                }
+    private func handleScrollToUserMessage(_ scrollProxy: ScrollViewProxy, newMessages: [CueChatMessage]) {
+        expandScrollViewForUserMessage = true
+        if let lastUserMessageIndex = newMessages.lastIndex(where: { $0.isUser }) {
+            scrollState.isProgrammaticScroll = true
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                scrollProxy.scrollTo(lastUserMessageIndex, anchor: .top)
             }
         }
 
         DispatchQueue.main.async {
-            self.shouldScrollToUserMessage = false
             scrollState.isProgrammaticScroll = false
         }
     }
@@ -152,9 +170,21 @@ struct MessageListView: View {
     }
 
     private func handleScrollOnMessagesChange(_ proxy: ScrollViewProxy, oldMessages: [CueChatMessage], newMessages: [CueChatMessage]) {
+        let hasNewMessage =  newMessages.count > oldMessages.count
+
+        // Handle new user message
+        if hasNewMessage, let lastMessage = newMessages.last,
+            lastMessage.isUser,
+            lastMessage.id != lastUserMessageId {
+            lastUserMessageId = lastMessage.id
+            handleScrollToUserMessage(proxy, newMessages: newMessages)
+            return
+        }
+
+        // Handle other messages, either new messages or new content of latest message
         if scrollState.userHasManuallyScrolled && !scrollState.isAtBottom {
             // Check if this is a load more operation (new messages added at the beginning)
-            if newMessages.count > oldMessages.count && oldMessages.count > 0 {
+            if hasNewMessage {
                 // Check if first message of old messages is still in new messages
                 if let oldFirstMessageId = oldMessages.first?.id,
                    let newIndex = newMessages.firstIndex(where: { $0.id == oldFirstMessageId }) {
@@ -189,6 +219,7 @@ struct MessageListView: View {
 
         DispatchQueue.main.async {
             self.shouldScrollToBottom = false
+            expandScrollViewForUserMessage = false
             scrollState.isAtBottom = true
             scrollState.isProgrammaticScroll = false
             scrollState.userHasManuallyScrolled = false
@@ -212,30 +243,34 @@ struct MessageListView: View {
 
     @MainActor
     private func handleOnPreferenceChange(visibility: [ViewVisibility]) {
-        let currentVisibleIndices = visibility.map { $0.index }
+        if visibility.isEmpty {
+            return
+        }
+        // Filter visibility items by checking if they're in a reasonable viewport range
+        let visibleItems = visibility.filter { item in
+            // Items with negative max Y or extremely large values are likely out of view
+            // This is a simple heuristic that works across platforms
+            return item.rect.maxY > 0 && item.rect.minY < 1000
+        }
+
+        if visibleItems.isEmpty {
+            return
+        }
+
+        let currentVisibleIndices = visibleItems.map { $0.index }
 
         // Detect scroll direction by comparing with previous indices
         if !currentVisibleIndices.isEmpty && !previousVisibleIndices.isEmpty {
             let currentAvg = currentVisibleIndices.reduce(0, +) / Double(currentVisibleIndices.count)
             let prevAvg = previousVisibleIndices.reduce(0, +) / Double(previousVisibleIndices.count)
-
-            let scrollingUp = currentAvg < prevAvg
-
-            if scrollingUp && !currentVisibleIndices.isEmpty {
-                // Get the highest visible index (closest to bottom of content)
-                if let highestVisibleIndex = currentVisibleIndices.max(),
-                   // Check if the bottom of content is not visible
-                   highestVisibleIndex < Double(messages.count - 2) {
-                    showScrollButton = true
-                }
-            }
+            scrollState.scrollingUp = currentAvg < prevAvg
         }
 
         previousVisibleIndices = currentVisibleIndices
 
         // Check if we should load more messages (only when scrolling manually)
-        if !visibility.isEmpty && !messages.isEmpty && !scrollState.isProgrammaticScroll {
-            let minVisibleIndex = visibility.map { $0.index }.min() ?? Double.infinity
+        if !messages.isEmpty && !scrollState.isProgrammaticScroll {
+            let minVisibleIndex = currentVisibleIndices.min() ?? Double.infinity
 
             // If we're seeing messages near the top, trigger load more
             if minVisibleIndex <= Double(loadMoreThreshold) && !isLoadingMore && !preventLoadMoreAfterScroll {
@@ -246,33 +281,26 @@ struct MessageListView: View {
         }
 
         // Check if last items are visible to determine if we're at the bottom
-        if !visibility.isEmpty {
-            let maxIndex = visibility.map { $0.index }.max() ?? 0
+        let maxIndex = visibility.map { $0.index }.max() ?? 0
+        let isNearBottom = maxIndex >= Double(currentMessages.count - 1)
+        scrollState.isNearBottom = isNearBottom
 
-            // Determine if we're at the bottom
-            let isNearBottom = maxIndex >= Double(messages.count - 2)
-
-            // Show button whenever we're not at the bottom
+        withAnimation {
             showScrollButton = !isNearBottom
+        }
 
-            // If we're significantly away from the bottom (scrolled up a lot)
-            if maxIndex < Double(messages.count - 3) {
-                showScrollButton = true
-            }
-
-            // Handle bottom state tracking
-            if isNearBottom {
-                scrollState.isAtBottom = true
-                if maxIndex >= Double(messages.count - 1) {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        if scrollState.isAtBottom {
-                            scrollState.userHasManuallyScrolled = false
-                        }
+        // Handle bottom state tracking
+        if isNearBottom {
+            scrollState.isAtBottom = true
+            if maxIndex >= Double(currentMessages.count - 1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    if scrollState.isAtBottom {
+                        scrollState.userHasManuallyScrolled = false
                     }
                 }
-            } else {
-                scrollState.isAtBottom = false
             }
+        } else {
+            scrollState.isAtBottom = false
         }
     }
 }
@@ -283,6 +311,8 @@ class ScrollState: ObservableObject {
     @Published var isProgrammaticScroll = false
     @Published var scrollChangeIsUserInitiated = false
     @Published var isAtBottom = false
+    @Published var isNearBottom = false
+    @Published var scrollingUp = false
 
     // Timer to detect manual scrolling
     var scrollTimer: Timer?

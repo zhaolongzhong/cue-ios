@@ -126,15 +126,15 @@ public struct MainWindowView: View {
                 )
                 .id(assistant.id)
             case .anthropic:
-                ChatViewFactory.createChatView(for: .anthropic, appDependencies: dependencies)
+                ChatViewFactory.createChatView(provider: .anthropic, appDependencies: dependencies)
             case .gemini:
-                ChatViewFactory.createChatView(for: .gemini, appDependencies: dependencies)
+                ChatViewFactory.createChatView(provider: .gemini, appDependencies: dependencies)
             case .openai:
-                ChatViewFactory.createChatView(for: .openai, appDependencies: dependencies)
+                ChatViewFactory.createChatView(provider: .openai, appDependencies: dependencies)
             case .cue:
-                ChatViewFactory.createChatView(for: .cue, appDependencies: dependencies)
+                ChatViewFactory.createChatView(provider: .cue, appDependencies: dependencies)
             case .local:
-                ChatViewFactory.createChatView(for: .local, appDependencies: dependencies)
+                ChatViewFactory.createChatView(provider: .local, appDependencies: dependencies)
             case .providers:
                 EmptyView()
             }

@@ -13,8 +13,8 @@ public struct OpenAIChatView: View {
 
     private let isCompanion: Bool
 
-    public init(_ viewModelFactory: @escaping () -> OpenAIChatViewModel, isCompanion: Bool = false) {
-        _viewModel = StateObject(wrappedValue: viewModelFactory())
+    public init(_ viewModelFactory: @escaping (String?) -> OpenAIChatViewModel, conversationId: String? = nil, isCompanion: Bool = false) {
+        _viewModel = StateObject(wrappedValue: viewModelFactory(conversationId))
         self.isCompanion = isCompanion
     }
 

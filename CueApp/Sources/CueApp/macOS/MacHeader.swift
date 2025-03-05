@@ -3,8 +3,12 @@ import SwiftUI
 #if os(macOS)
 struct MacHeader: View {
     let title: String
-    let onDismiss: () -> Void
-    var showDismiss: Bool = true
+    let onDismiss: (() -> Void)?
+
+    init(title: String, onDismiss: (() -> Void)? = nil) {
+        self.title = title
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         HStack {
@@ -12,11 +16,12 @@ struct MacHeader: View {
             Text(title)
                 .font(.headline)
             Spacer()
-            if showDismiss {
+            if let onDismiss = onDismiss {
                 DismissButton(action: onDismiss)
             }
         }
-        .frame(maxWidth: .infinity, idealHeight: Layout.Elements.headerHeight)
+        .frame(maxWidth: .infinity)
+        .frame(height: Layout.Elements.headerSmallHeight)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }

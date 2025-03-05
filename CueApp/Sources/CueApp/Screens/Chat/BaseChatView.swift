@@ -13,17 +13,17 @@ protocol ChatViewModel: ObservableObject {
     var cueChatMessages: [CueChatMessage] { get set }
     var isLoadingMore: Bool { get set }
     var richTextFieldState: RichTextFieldState { get set }
-    var shouldScrollToUserMessage: Bool { get set }
-    var newMessage: String { get set }
     var error: ChatError? { get }
     var observedApp: AccessibleApplication? { get }
     var focusedLines: String? { get }
     var selectedConversationId: String? { get set }
-    var availableTools: [Tool] { get }
+    var availableCapabilities: [Capability] { get }
+    var selectedCapabilities: [Capability] { get }
     var model: ChatModel { get set }
     var isStreamingEnabled: Bool { get set }
     var isToolEnabled: Bool { get set }
 
+    func updateSelectedCapabilities(_ capabilities: [Capability]) async
     func startServer() async
     func updateObservedApplication(to app: AccessibleApplication?)
     func stopObserveApp()
@@ -40,6 +40,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var windowManager: CompanionWindowManager
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.colorScheme) private var colorScheme
 
     @ObservedObject var viewModel: ViewModel
     @StateObject private var conversationsViewModel: ConversationsViewModel
@@ -94,11 +95,13 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            VStack {
+            VStack(spacing: 4) {
                 messageList
                 observedAppView
                 richTextField
             }
+            .background(colorScheme == .light ? Color.white .opacity(0.9): AppTheme.Colors.background.opacity(0.9))
+
             if chatViewState.isCompanion {
                 CompanionHeaderView(isHovering: $chatViewState.isHovering)
             }
@@ -136,9 +139,6 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
                 viewModel.clearError()
             }
         }
-        .sheet(isPresented: $chatViewState.showingToolsList) {
-            ToolsListView(tools: viewModel.availableTools)
-        }
         .sheet(
             isPresented: $chatViewState.isShowingProviderDetails,
             onDismiss: {
@@ -172,7 +172,6 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
             messages: viewModel.cueChatMessages,
             onLoadMore: {},
             onShowMore: { _ in },
-            shouldScrollToUserMessage: $viewModel.shouldScrollToUserMessage,
             shouldScrollToBottom: $shouldScrollToBottom,
             isLoadingMore: $viewModel.isLoadingMore
         )
@@ -196,14 +195,11 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
     // MARK: - Rich Text Field
     private var richTextField: some View {
         RichTextField(
-            inputMessage: Binding(
-                get: { viewModel.newMessage },
-                set: { viewModel.newMessage = $0 }
-            ),
             isFocused: $isFocused,
             richTextFieldState: viewModel.richTextFieldState,
             richTextFieldDelegate: richTextFieldDelegate
         )
+        .id(viewModel.selectedConversationId)
     }
 
     // MARK: - Observed App View
@@ -246,68 +242,36 @@ extension BaseChatView {
     private var richTextFieldDelegate: RichTextFieldDelegate {
         ChatViewDelegate(
             chatViewModel: viewModel,
-            showToolsAction: {
-                $chatViewState.showingToolsList.wrappedValue = true
-            },
             openLiveChatAction: {
-                self.openLiveChat()
-            },
-            scrollToBottomAction: {
-                withAnimation {
-//                    scrollProxy?.scrollTo(viewModel.cueChatMessages.last?.id, anchor: .bottom)
-                }
+                openCompanionChat(isLive: true)
             },
             sendAction: {
-                print("🚀 SEND MESSAGE ACTION")
                 Task {
-                    // Store the message to be sent - it will be the latest one after sending
-                    let messageToSend = viewModel.newMessage
-                    print("Message to send: \(messageToSend)")
-
-                    // Send the message
                     await viewModel.sendMessage()
-                    withAnimation {
-                        viewModel.shouldScrollToUserMessage = true
-                    }
-
                 }
-            },
-            stopAction: {
             }
         )
     }
 
     // MARK: - Companion Chat
-    func openCompanionChat(_ model: ChatModel) {
+    func openCompanionChat(isLive: Bool = false) {
         let config = CompanionWindowConfig(
-            model: model.rawValue,
+            model: viewModel.model.rawValue,
             provider: provider,
+            conversationId: viewModel.selectedConversationId,
             additionalSettings: [:]
         )
-        let windowId = windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
-        openWindow(id: WindowId.compainionChatWindow.rawValue, value: windowId.id)
-    }
-
-    // MARK: - Live Chat
-    func openLiveChat() {
-        var windowId: String?
-        switch provider {
-        case .openai:
-            windowId = WindowId.openaiLiveChatWindow.rawValue
-        case .gemini:
-            windowId = WindowId.geminiLiveChatWindow.rawValue
-        default:
-            break
+        if !isLive {
+            let windowId = windowManager.openCompanionWindow(id: UUID().uuidString, config: config)
+            openWindow(id: WindowId.compainionChatWindow.rawValue, value: windowId.id)
+        } else {
+            #if os(iOS)
+            coordinator.showLiveChatSheet(config)
+            #else
+            windowManager.activeLiveChatWindow = config
+            openWindow(id: WindowId.liveChatWindow.rawValue, value: WindowId.liveChatWindow.rawValue)
+            #endif
         }
-
-        #if os(iOS)
-        coordinator.showLiveChatSheet(.openai)
-        #endif
-        #if os(macOS)
-        if let windowId = windowId {
-            openWindow(id: windowId, value: windowId)
-        }
-        #endif
     }
 }
 
@@ -354,7 +318,7 @@ extension BaseChatView {
             .help("Open Sessions")
             Menu {
                 Button("Open companion chat") {
-                    openCompanionChat(viewModel.model)
+                    openCompanionChat(isLive: false)
                 }
                 Button("Provider Details") {
                     $chatViewState.isShowingProviderDetails.wrappedValue = true

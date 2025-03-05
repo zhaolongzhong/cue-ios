@@ -31,17 +31,16 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
     let anthropic: Anthropic
     var streamingTask: Task<Void, Error>?
 
-    public init(apiKey: String) {
+    public init(conversationId: String?, apiKey: String) {
         self.anthropic = Anthropic(apiKey: apiKey)
 
         super.init(
             apiKey: apiKey,
             provider: .anthropic,
             model: .claude37Sonnet,
-            conversationId: nil
+            conversationId: conversationId,
+            richTextFieldState: RichTextFieldState(showAXApp: true)
         )
-        self.availableTools = toolManager.getTools()
-        updateTools()
     }
 
     override func sendMessage() async {
@@ -56,7 +55,7 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
 
         isLoading = true
         isRunning = true
-        newMessage = ""
+        richTextFieldState.inputMessage = ""
 
         await startStreamingTask(messageParams)
     }
@@ -95,8 +94,8 @@ extension AnthropicChatViewModel {
             model: model.id,
             messages: messageParams,
             maxTokens: 5000,
-            tools: tools,
-            toolChoice: "auto",
+            tools: tools.isEmpty ? nil : tools,
+            toolChoice: tools.isEmpty ? nil : "auto",
             maxTurns: maxTurns,
             thinking: thinking,
             stream: true

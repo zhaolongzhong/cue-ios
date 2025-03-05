@@ -3,6 +3,7 @@ import SwiftUI
 struct AssistantDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: AssistantDetailViewModel
+    @State private var showColorPicker = false
 
     init(
         assistant: Assistant,
@@ -26,9 +27,6 @@ struct AssistantDetailView: View {
                 assistantSettingsSection
             }
             .padding()
-            #if os(macOS)
-            .frame(maxWidth: 600)
-            #endif
         }
         .navigationTitle("\(viewModel.assistant.name) Details")
         .defaultNavigationBar(title: "\(viewModel.assistant.name) Details")
@@ -77,22 +75,36 @@ struct AssistantDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showColorPicker) {
+            ColorPickerSheetV2(
+                colorPalette: viewModel.assistant.assistantColor,
+                onColorSelected: { color in
+                    Task {
+                        await viewModel.updateMetadata(color: color)
+                    }
+                }
+            )
+        }
     }
 
     private var assistantDetailsHeader: some View {
         HStack(spacing: 12) {
-            Image(systemName: "person.circle")
-                .font(.system(size: 24))
-                .foregroundColor(.blue)
-                .frame(width: 40, height: 40)
+            Button {
+                showColorPicker = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(viewModel.assistant.assistantColor.color)
+                        .frame(width: 40, height: 40)
+
+                    InitialsAvatar(text: viewModel.assistant.name.prefix(1).uppercased(), size: 36)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
 
             VStack(alignment: .leading) {
                 Text(viewModel.assistant.name)
                     .font(.headline)
-
-                Text(viewModel.description.isEmpty ? "No description" : viewModel.description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
             }
         }
     }
@@ -109,7 +121,6 @@ struct AssistantDetailView: View {
                         viewModel.prepareNameEdit()
                     }
                     .padding(.all, 4)
-
                     Divider()
                         .padding(.all, 4)
 
