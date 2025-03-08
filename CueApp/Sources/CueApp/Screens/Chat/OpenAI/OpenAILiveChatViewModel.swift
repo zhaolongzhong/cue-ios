@@ -35,7 +35,7 @@ public final class OpenAILiveChatViewModel: BaseChatViewModel {
             provider: .openai,
             model: .gpt4oMini,
             conversationId: conversationId,
-            richTextFieldState: RichTextFieldState()
+            richTextFieldState: RichTextFieldState(conversationId: conversationId)
         )
 
         self.state = realtimeClient.voiceChatState
@@ -133,7 +133,7 @@ public final class OpenAILiveChatViewModel: BaseChatViewModel {
 
     override func sendMessage() async {
         await createConversationItem(text: richTextFieldState.inputMessage)
-        richTextFieldState.inputMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
     }
 
     private func createConversationItem(text: String) async {

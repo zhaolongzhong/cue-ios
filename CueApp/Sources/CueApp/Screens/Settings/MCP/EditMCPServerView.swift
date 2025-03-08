@@ -15,7 +15,6 @@ struct EditMCPServerView: View {
     @State private var envText = ""
     @State private var showEnvSection = false
     @State private var envVariables: [EnvVariable] = []
-    @State private var editorStyle: EnvironmentVariablesSection.EditorStyle = .grid
 
     var body: some View {
         VStack {
@@ -42,7 +41,6 @@ struct EditMCPServerView: View {
                     // Environment variables section
                     EnvironmentVariablesSection(
                         title: "Environment Variables",
-                        style: editorStyle,
                         envVariables: $envVariables,
                         envText: $envText,
                         showSection: $showEnvSection,
@@ -68,6 +66,8 @@ struct EditMCPServerView: View {
             .onAppear {
                 // Initialize the view state
                 argsText = server.args.joined(separator: "\n")
+                print("inx server.args: \(server.args)")
+                print("inx argsText: \(argsText)")
                 envText = MCPServerUtils.envDictToText(server.env)
                 envVariables = MCPServerUtils.dictToEnvVariables(server.env)
                 showEnvSection = !server.env.isEmpty
@@ -76,13 +76,7 @@ struct EditMCPServerView: View {
 }
 
     private func saveServer() {
-        // In case the text editor is active, make sure to update the model
-        if editorStyle == .text {
-            server.env = MCPServerUtils.parseEnvVariables(envText)
-        } else {
-            // In case the grid editor is active
-            server.env = MCPServerUtils.envVariablesToDict(envVariables)
-        }
+        server.env = MCPServerUtils.envVariablesToDict(envVariables)
 
         // Make sure arguments are updated
         server.args = MCPServerUtils.parseArguments(argsText)

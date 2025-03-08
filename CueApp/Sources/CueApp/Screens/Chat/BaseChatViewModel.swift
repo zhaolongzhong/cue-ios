@@ -1,8 +1,3 @@
-//
-//  BaseChatViewModel.swift
-//  CueApp
-//
-
 import Foundation
 import Combine
 import Dependencies
@@ -10,7 +5,7 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public class BaseChatViewModel: ObservableObject, ChatViewModel {
+public class BaseChatViewModel: ObservableObject, ChatViewModelProtocol {
     @Dependency(\.conversationRepository) var conversationRepository
     @Dependency(\.messageRepository) var messageRepository
 
@@ -28,7 +23,11 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     @Published var isLoadingMore = false
     @Published var shouldScrollToUserMessage: Bool = false
     @Published var initialRichTextFieldState: RichTextFieldState
-    @Published var richTextFieldState: RichTextFieldState
+    @Published var richTextFieldState: RichTextFieldState {
+        didSet {
+            AppLog.log.debug("Update richTextFieldState: \(self.richTextFieldState.conversationId ?? "")")
+        }
+    }
 
     @Published var model: ChatModel
     @Published var availableCapabilities: [Capability] = [] {
@@ -37,10 +36,12 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     @Published var selectedCapabilities: [Capability] = []
     @Published var attachments: [Attachment] = []
     @Published var isStreamingEnabled: Bool = true
+    @Published var showLiveChat: Bool = false
     @Published var isToolEnabled: Bool = true
     @Published var isRunning: Bool = false {
         didSet {
-            richTextFieldState.isRunning = isRunning
+            // Update the immutable state with the new running status
+            richTextFieldState = richTextFieldState.copy(isRunning: isRunning)
         }
     }
     @Published var maxMessages: Int = 10
@@ -64,7 +65,12 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     var cancellables = Set<AnyCancellable>()
     let provider: Provider
 
-    init(apiKey: String, provider: Provider, model: ChatModel, conversationId: String? = nil, richTextFieldState: RichTextFieldState? = nil) {
+    init(
+        apiKey: String,
+        provider: Provider,
+        model: ChatModel, conversationId: String? = nil,
+        richTextFieldState: RichTextFieldState? = nil
+    ) {
         self.apiKey = apiKey
         self.provider = provider
         self.model = model
@@ -76,9 +82,9 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
 
         self.availableCapabilities = toolManager.getAllAvailableCapabilities()
         self.selectedConversationId = conversationId
-        let richTextFieldState = richTextFieldState ?? RichTextFieldState()
+        let richTextFieldState = richTextFieldState ?? RichTextFieldState(conversationId: conversationId)
         self.initialRichTextFieldState = richTextFieldState
-        self.richTextFieldState = richTextFieldState
+        self.richTextFieldState = richTextFieldState.copy()
 
         #if os(macOS)
         setupToolsSubscription()
@@ -96,11 +102,18 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
 
     @MainActor
     private func handleConversationChange(to conversationId: String) async {
+        AppLog.log.debug("Conversation change to \(conversationId)")
         // Clear current state
-        cueChatMessages.removeAll()
-        selectedCapabilities.removeAll()
+        cueChatMessages = []
+        print("clear cueChatMessages")
+        selectedCapabilities = []
         tools.removeAll()
-        self.richTextFieldState = initialRichTextFieldState
+
+        // Create a new immutable state with the updated conversation ID
+        // and reset message-related fields
+        self.richTextFieldState = initialRichTextFieldState.copyForNewConversation(
+            conversationId: conversationId
+        )
 
         do {
             self.selectedConversation = try await conversationRepository.getConversation(id: conversationId)
@@ -111,9 +124,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         }
     }
 
-    // MARK: - Common Functionality for Chat View Models
-
-    // Tools management
+    // MARK: - Tools management
     func updateTools() {
         var capabilityNames = self.selectedConversation?.metadata?.capabilities ?? []
         capabilityNames = capabilityNames.map { $0.lowercased() }
@@ -129,10 +140,15 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
                 }
             }
         self.selectedCapabilities = self.availableCapabilities.filter(predicateBlock)
-        richTextFieldState.availableCapabilities = availableCapabilities
-        richTextFieldState.selectedCapabilities = selectedCapabilities
+
+        // Update the immutable state with new capabilities
+        richTextFieldState = richTextFieldState.copy(
+            availableCapabilities: availableCapabilities,
+            selectedCapabilities: selectedCapabilities
+        )
+
         tools = toolManager.getJSONValues(selectedCapabilities, model: model.id)
-        AppLog.log.debug("Update capabilities, selected capabilities: \(self.selectedCapabilities.map {$0.name})")
+        AppLog.log.debug("Update capabilities, selected capabilities: \(self.selectedCapabilities.map {$0.name}), tools: \(self.tools.count)")
     }
 
     private func setupToolsSubscription() {
@@ -162,6 +178,11 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
             )
             try await conversationRepository.update(newConversation)
             self.selectedConversation = newConversation
+
+            // Update the immutable state with new selected capabilities
+            richTextFieldState = richTextFieldState.copy(selectedCapabilities: capabilities)
+            self.selectedCapabilities = capabilities
+
             updateTools()
         } catch {
             AppLog.log.error("Error getting conversation: \(error)")
@@ -174,7 +195,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         #endif
     }
 
-    // Observed app functionality
+    // MARK: - Observed app functionality
     func updateObservedApplication(to app: AccessibleApplication?) {
         guard let app = app else { return }
         #if os(macOS)
@@ -203,7 +224,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         #endif
     }
 
-    // Message management
+    // MARK: - Message management
     func addAttachment(_ attachment: Attachment) {
         attachments.append(attachment)
     }
@@ -286,7 +307,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         }
     }
 
-    // This method must be implemented by subclasses
+    // These methods must be implemented by subclasses
     func sendMessage() async {
         fatalError("sendMessage() must be implemented by subclasses")
     }

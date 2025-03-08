@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 
 struct MessageListView: View {
+    let conversationId: String?
     let messages: [CueChatMessage]
     let onLoadMore: (() async -> Void)?
     let onShowMore: ((CueChatMessage) -> Void)?
@@ -28,12 +29,14 @@ struct MessageListView: View {
     @State private var throttleInterval: TimeInterval = 0.1
 
     public init(
+        conversatonId: String? = nil,
         messages: [CueChatMessage],
         onLoadMore: (() async -> Void)? = nil,
         onShowMore: ((CueChatMessage) -> Void)? = nil,
         shouldScrollToBottom: Binding<Bool>,
         isLoadingMore: Binding<Bool>
     ) {
+        self.conversationId = conversatonId
         self.messages = messages
         self.onLoadMore = onLoadMore
         self.onShowMore = onShowMore
@@ -48,6 +51,7 @@ struct MessageListView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                         LazyVStack {
+                            Text("debug conversationId: \(conversationId)")
                             ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                                 MessageBubble(message: message)
                                     .id(index)
@@ -89,6 +93,8 @@ struct MessageListView: View {
                     .onChange(of: messages) { oldMessages, newMessages in
                         currentMessages = newMessages
                         handleScrollOnMessagesChange(scrollProxy, oldMessages: oldMessages, newMessages: newMessages)
+                        print("inx conversationid: \(conversationId)")
+
                     }
                     .onChange(of: isLoadingMore) { wasLoading, isNowLoading in
                         // When loading completes

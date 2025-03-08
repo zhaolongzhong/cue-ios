@@ -6,36 +6,9 @@
 import SwiftUI
 import CueOpenAI
 
-// MARK: - Chat View Model Protocol
-@MainActor
-protocol ChatViewModel: ObservableObject {
-    var attachments: [Attachment] { get set }
-    var cueChatMessages: [CueChatMessage] { get set }
-    var isLoadingMore: Bool { get set }
-    var richTextFieldState: RichTextFieldState { get set }
-    var error: ChatError? { get }
-    var observedApp: AccessibleApplication? { get }
-    var focusedLines: String? { get }
-    var selectedConversationId: String? { get set }
-    var availableCapabilities: [Capability] { get }
-    var selectedCapabilities: [Capability] { get }
-    var model: ChatModel { get set }
-    var isStreamingEnabled: Bool { get set }
-    var isToolEnabled: Bool { get set }
-
-    func updateSelectedCapabilities(_ capabilities: [Capability]) async
-    func startServer() async
-    func updateObservedApplication(to app: AccessibleApplication?)
-    func stopObserveApp()
-    func addAttachment(_ attachment: Attachment)
-    func sendMessage() async
-    func stopAction() async
-    func deleteMessage(_ message: CueChatMessage) async
-    func clearError()
-}
 
 // MARK: - Base Chat View
-struct BaseChatView<ViewModel: ChatViewModel>: View {
+struct BaseChatView<ViewModel: ChatViewModelProtocol>: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var windowManager: CompanionWindowManager
@@ -139,6 +112,12 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
                 viewModel.clearError()
             }
         }
+        .onChange(of: viewModel.showLiveChat) { oldValue, newValue in
+            if newValue {
+                openCompanionChat(isLive: true)
+                viewModel.showLiveChat = false
+            }
+        }
         .sheet(
             isPresented: $chatViewState.isShowingProviderDetails,
             onDismiss: {
@@ -169,6 +148,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
     // MARK: - Message List
     private var messageList: some View {
         MessageListView(
+            conversatonId: viewModel.selectedConversationId,
             messages: viewModel.cueChatMessages,
             onLoadMore: {},
             onShowMore: { _ in },
@@ -176,7 +156,6 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
             isLoadingMore: $viewModel.isLoadingMore
         )
         .scrollDismissesKeyboard(.never)
-        .id(viewModel.selectedConversationId)
         #if os(macOS)
         .safeAreaInset(edge: .top) {
             if chatViewState.isCompanion {
@@ -197,7 +176,7 @@ struct BaseChatView<ViewModel: ChatViewModel>: View {
         RichTextField(
             isFocused: $isFocused,
             richTextFieldState: viewModel.richTextFieldState,
-            richTextFieldDelegate: richTextFieldDelegate
+            richTextFieldDelegate: viewModel
         )
         .id(viewModel.selectedConversationId)
     }

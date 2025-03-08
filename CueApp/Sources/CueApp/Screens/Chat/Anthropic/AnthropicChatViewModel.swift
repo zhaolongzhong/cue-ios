@@ -39,7 +39,7 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
             provider: .anthropic,
             model: .claude37Sonnet,
             conversationId: conversationId,
-            richTextFieldState: RichTextFieldState(showAXApp: true)
+            richTextFieldState: RichTextFieldState(conversationId: conversationId, showAXApp: true)
         )
     }
 
@@ -55,14 +55,16 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
 
         isLoading = true
         isRunning = true
-        richTextFieldState.inputMessage = ""
+        print("inx richTextFieldState.inputMessage: \(richTextFieldState.inputMessage)")
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
 
         await startStreamingTask(messageParams)
     }
 
-    func cancelStreaming() {
+    override func stopAction() async {
         streamingTask?.cancel()
         streamingTask = nil
+        isRunning = false
         isLoading = false
     }
 
@@ -180,6 +182,7 @@ extension AnthropicChatViewModel {
         }
         self.error = chatError
         ErrorLogger.log(chatError)
+        self.isRunning = false
     }
 }
 

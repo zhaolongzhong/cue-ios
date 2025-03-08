@@ -42,7 +42,6 @@ struct AddMCPServerView: View {
                     // Environment variables section
                     EnvironmentVariablesSection(
                         title: "Environment Variables",
-                        style: .grid,
                         envVariables: $envVariables,
                         envText: .constant(""),
                         showSection: $showEnvSection,

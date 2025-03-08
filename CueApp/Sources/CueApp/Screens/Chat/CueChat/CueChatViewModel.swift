@@ -35,7 +35,7 @@ public final class CueChatViewModel: BaseChatViewModel {
         messageParams.append(userMessage)
 
         isLoading = true
-        richTextFieldState.inputMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
 
         do {
             let agent = AgentLoop(chatClient: cueClient, toolManager: toolManager, model: model.rawValue)
@@ -46,10 +46,20 @@ public final class CueChatViewModel: BaseChatViewModel {
                 addOrUpdateMessage(message)
             }
         } catch {
-            self.error = ChatError.unknownError(error.localizedDescription)
-            ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
+            self.handleError(error)
         }
 
+        isLoading = false
+    }
+
+    private func handleError(_ error: Error) {
+        self.error = ChatError.unknownError(error.localizedDescription)
+        ErrorLogger.log(ChatError.unknownError(error.localizedDescription))
+        self.isRunning = false
+    }
+
+    override func stopAction() async {
+        isRunning = false
         isLoading = false
     }
 }

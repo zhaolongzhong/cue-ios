@@ -54,7 +54,7 @@ public class GeminiChatViewModel: BaseChatViewModel {
             provider: .gemini,
             model: .gemini20FlashExp,
             conversationId: conversationId,
-            richTextFieldState: RichTextFieldState(showVoiceChat: true, showAXApp: true)
+            richTextFieldState: RichTextFieldState(conversationId: conversationId, showVoiceChat: true, showAXApp: true)
         )
 
         setupLiveAPISubscription()
@@ -146,6 +146,7 @@ public class GeminiChatViewModel: BaseChatViewModel {
         }
 
         self.error = .sessionError(errorMessage)
+        self.isRunning = false
         AppLog.log.error("Generate content error: \(error)")
     }
 
@@ -161,12 +162,17 @@ public class GeminiChatViewModel: BaseChatViewModel {
         }
     }
 
+    override func stopAction() async {
+        isRunning = false
+        isLoading = false
+    }
+
     public func sendMessageWithAsyncClient() async throws {
         guard richTextFieldState.isMessageValid else { return }
         let (userMessage, _) = await prepareGeminiMessage()
         AppLog.log.debug("Send message with async client. New message: \(self.richTextFieldState.inputMessage)")
         addOrUpdateMessage(.gemini(userMessage, stableId: UUID().uuidString), persistInCache: true)
-        richTextFieldState.inputMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
         try await generateContent()
     }
 
@@ -197,7 +203,7 @@ public class GeminiChatViewModel: BaseChatViewModel {
         let part = ModelContent.Part.text(text)
         AppLog.log.debug("Send live text: \(text)")
         try await sendLiveText([part])
-        richTextFieldState.inputMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
     }
 
     func interrupt() async {

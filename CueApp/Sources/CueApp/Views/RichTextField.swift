@@ -6,7 +6,10 @@ struct RichTextField: View {
     @Environment(\.colorScheme) private var colorScheme
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
-    @ObservedObject var richTextFieldState: RichTextFieldState
+    @State private var inputMessage: String
+
+    // The ViewModel state is passed by reference, not copied locally
+    private let richTextFieldState: RichTextFieldState
     private let richTextFieldDelegate: RichTextFieldDelegate
 
     init(
@@ -16,6 +19,7 @@ struct RichTextField: View {
     ) {
         self._isFocused = isFocused
         self.richTextFieldState = richTextFieldState
+        self._inputMessage = State(initialValue: richTextFieldState.inputMessage)
         self.richTextFieldDelegate = richTextFieldDelegate
     }
 
@@ -23,12 +27,12 @@ struct RichTextField: View {
         VStack {
             if !richTextFieldState.attachments.isEmpty {
                 AttachmentsListView(attachments: richTextFieldState.attachments, onRemove: { index in
-                    richTextFieldState.attachments.remove(at: index)
+                    richTextFieldDelegate.onRemoveAttachment(at: index)
                 })
             }
 
             if isTextFieldVisible {
-                TextField("Type a message...", text: $richTextFieldState.inputMessage, axis: .vertical)
+                TextField("Type a message...", text: $inputMessage, axis: .vertical)
                     .scrollContentBackground(.hidden)
                     .textFieldStyle(.plain)
                     .padding(.horizontal, 8)
@@ -36,14 +40,17 @@ struct RichTextField: View {
                     .lineLimit(1...5)
                     .focused($isFocused)
                     .background(.clear)
+                    .onChange(of: inputMessage) { newValue in
+                        // Delegate the change to the ViewModel
+                        richTextFieldDelegate.onUpdateInputMessage(newValue)
+                    }
                     .onSubmit {
                         if richTextFieldState.isMessageValid && !richTextFieldState.isRunning {
-                            richTextFieldState.attachments.removeAll()
+                            richTextFieldDelegate.onClearAttachments()
                             richTextFieldDelegate.onSend()
                         }
                     }
                     .submitLabel(.return)
-
             }
             controlButtons
         }
@@ -73,9 +80,17 @@ struct RichTextField: View {
             }
         }
         .onChange(of: richTextFieldState.inputMessage) { _, newValue in
+            // Keep local inputMessage in sync with ViewModel state
+            if inputMessage != newValue {
+                inputMessage = newValue
+            }
+
             if !newValue.isEmpty && !isTextFieldVisible {
                 isTextFieldVisible = true
             }
+        }
+        .onAppear {
+            isTextFieldVisible = richTextFieldState.isTextFieldVisible
         }
     }
 
@@ -83,8 +98,7 @@ struct RichTextField: View {
         HStack {
             if featureFlags.enableMediaOptions {
                 AttachmentPickerMenu { attachment in
-                    richTextFieldState.attachments.append(attachment)
-                    richTextFieldDelegate.onPickAttachment(attachment)
+                    richTextFieldDelegate.onAddAttachment(attachment)
                 }
             }
             Text("Type a message ...")
@@ -115,7 +129,8 @@ struct RichTextField: View {
                 isEnabled: richTextFieldState.isMessageValid,
                 isRunning: richTextFieldState.isRunning,
                 onSend: {
-                    richTextFieldState.attachments.removeAll()
+                    print("inx send richTextFieldState: \(richTextFieldState.conversationId), message: \(richTextFieldState.inputMessage)")
+                    richTextFieldDelegate.onClearAttachments()
                     richTextFieldDelegate.onSend()
                 },
                 onStop: richTextFieldDelegate.onStop
@@ -138,3 +153,4 @@ struct RichTextField: View {
         }
     }
 }
+

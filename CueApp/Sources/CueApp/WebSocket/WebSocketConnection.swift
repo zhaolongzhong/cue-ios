@@ -106,8 +106,6 @@ public final class WebSocketConnection: NSObject, WebSocketConnectionProtocol, S
         updateState(.disconnected)
         messagesContinuation.finish()
         stateStream.finish()
-
-        AppLog.websocket.debug("WebSocket connection closed")
     }
 
     private func sendPing() async {

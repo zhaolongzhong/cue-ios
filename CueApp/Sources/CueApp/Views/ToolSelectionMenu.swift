@@ -84,7 +84,7 @@ struct ToolSelectionMenu: View {
                                         Spacer()
 
                                         Image(systemName: internalSelectedTools.contains(tool.name) ? "checkmark.square.fill" : "square")
-                                            .foregroundColor(internalSelectedTools.contains(tool.name) ? .accentColor : .secondary)
+                                            .foregroundColor(internalSelectedTools.contains(tool.name) ? .primary : .secondary)
                                     }
                                 }
                                 .buttonStyle(PlainButtonStyle())

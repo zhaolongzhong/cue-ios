@@ -7,13 +7,7 @@ import SwiftUI
 
 /// Environment variables editor with two different styles - grid or text
 struct EnvironmentVariablesSection: View {
-    enum EditorStyle {
-        case grid   // Key-value pairs in grid style
-        case text   // Text editor with KEY=VALUE format
-    }
-
     let title: String
-    let style: EditorStyle
 
     @Binding var envVariables: [EnvVariable]
     @Binding var envText: String
@@ -29,7 +23,7 @@ struct EnvironmentVariablesSection: View {
                 Button {
                     showSection.toggle()
                     // If opening the section and no variables exist yet, add an empty one
-                    if showSection && style == .grid && envVariables.isEmpty {
+                    if showSection && envVariables.isEmpty {
                         envVariables.append(EnvVariable())
                     }
                 } label: {
@@ -40,16 +34,12 @@ struct EnvironmentVariablesSection: View {
             .padding(.bottom, 2)
 
             if showSection {
-                if style == .grid {
-                    gridEditor
-                } else {
-                    textEditor
-                }
+                gridEditor
             } else {
                 Button {
                     showSection.toggle()
                     // If opening the section and no variables exist yet, add an empty one
-                    if style == .grid && envVariables.isEmpty {
+                    if envVariables.isEmpty {
                         envVariables.append(EnvVariable())
                     }
                 } label: {
@@ -83,25 +73,6 @@ struct EnvironmentVariablesSection: View {
         .onChange(of: envVariables) { _, newValue in
             // Update dictionary when array changes
             envDict = MCPServerUtils.envVariablesToDict(newValue)
-        }
-    }
-
-    // Text editor (KEY=VALUE format)
-    private var textEditor: some View {
-        VStack(alignment: .leading) {
-            Text("Environment Variables (KEY=VALUE format, one per line)")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            TextEditor(text: $envText)
-                .frame(minHeight: 100)
-                .border(Color.secondary.opacity(0.2))
-                .font(.system(.body, design: .monospaced))
-                .onChange(of: envText) { _, newValue in
-                    // Update dictionary when text changes
-                    envDict = MCPServerUtils.parseEnvVariables(newValue)
-                    // Update array when text changes
-                    envVariables = MCPServerUtils.dictToEnvVariables(envDict)
-                }
         }
     }
 

@@ -104,7 +104,7 @@ final class AssistantChatViewModel: ObservableObject {
         Task {
             switch await messageRepository.saveMessage(messageModel: messageModel) {
             case .success:
-                richTextFieldState.inputMessage = ""
+                richTextFieldState = richTextFieldState.copy(inputMessage: "")
             case .failure(let error):
                 handleError(error, context: "Failed to send message")
             }
@@ -234,7 +234,7 @@ final class AssistantChatViewModel: ObservableObject {
 
         do {
             try webSocketService.send(event: clientEvent)
-            richTextFieldState.inputMessage = ""
+            richTextFieldState = richTextFieldState.copy(inputMessage: "")
         } catch {
             errorAlert = ErrorAlert(
                 title: "Error",

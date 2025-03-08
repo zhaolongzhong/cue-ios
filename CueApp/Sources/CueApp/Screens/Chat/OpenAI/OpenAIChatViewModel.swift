@@ -35,7 +35,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
             provider: .openai,
             model: .gpt4oMini,
             conversationId: conversationId,
-            richTextFieldState: RichTextFieldState(showVoiceChat: true, showAXApp: true)
+            richTextFieldState: RichTextFieldState(conversationId: conversationId, showVoiceChat: true, showAXApp: true)
         )
     }
 
@@ -62,7 +62,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
 
         isLoading = true
         isRunning = true
-        richTextFieldState.inputMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
 
         if isStreamingEnabled {
             await startStreamingTask(messageParams)
@@ -221,5 +221,6 @@ extension OpenAIChatViewModel {
         }
         self.error = chatError
         ErrorLogger.log(chatError)
+        self.isRunning = false
     }
 }
