@@ -42,6 +42,8 @@ public class ViewModelFactory {
     private var assistantsViewModel: AssistantsViewModel?
     private var homeViewModel: HomeViewModel?
     private var chatViewModels: [String: AssistantChatViewModel] = [:]
+    private var baseChatViewModels: [String: BaseChatViewModel] = [:]
+    private var conversationViewModels: [String: ConversationsViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
     private var openAILiveChatViewModel: OpenAILiveChatViewModel?
     private var geminiChatViewModel: GeminiChatViewModel?
@@ -101,6 +103,42 @@ public class ViewModelFactory {
         }
     }
 
+    func makeBaseChatViewModel(
+        _ conversationId: String,
+        provider: Provider,
+        richTextFieldState: RichTextFieldState? = nil
+    ) -> BaseChatViewModel {
+        if let existing = baseChatViewModels[conversationId] {
+            return existing
+        } else {
+            switch provider {
+            case .openai:
+                print("inx makeBaseChatViewModel openai conversationId")
+                let newViewModel = self.makeOpenAIChatViewModel(conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            case .anthropic:
+                let newViewModel = self.makeAnthropicChatViewModel(conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            default:
+                let newViewModel = BaseChatViewModel(apiKey: "", provider: provider, model: .gpt4oMini, conversationId: conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            }
+        }
+    }
+
+    func makeConversationViewModel(provider: Provider) -> ConversationsViewModel {
+        if let existing = conversationViewModels[provider.id] {
+            return existing
+        } else {
+            let newViewModel = ConversationsViewModel(provider: provider)
+            conversationViewModels[provider.id] = newViewModel
+            return newViewModel
+        }
+    }
+
     public func makeSettingsViewModel() -> SettingsViewModel {
         if let settingsViewModel = self.settingsViewModel {
             return settingsViewModel
@@ -122,13 +160,9 @@ public class ViewModelFactory {
     }
 
     public func makeOpenAIChatViewModel(_ conversationId: String? = nil) -> OpenAIChatViewModel {
-        if let openAIChatViewModel = self.openAIChatViewModel {
-            return openAIChatViewModel
-        } else {
-            let openAIChatViewModel = OpenAIChatViewModel(conversationId: conversationId, apiKey: providersViewModel.openAIKey)
-            self.openAIChatViewModel = openAIChatViewModel
-            return openAIChatViewModel
-        }
+        let openAIChatViewModel = OpenAIChatViewModel(conversationId: conversationId, apiKey: providersViewModel.openAIKey)
+        self.openAIChatViewModel = openAIChatViewModel
+        return openAIChatViewModel
     }
 
     public func makeGeminiChatViewModel(_ conversationId: String? = nil) -> GeminiChatViewModel {
@@ -141,7 +175,7 @@ public class ViewModelFactory {
         }
     }
 
-    public func makeAnthropicChatViewModel(conversationId: String? = nil) -> AnthropicChatViewModel {
+    public func makeAnthropicChatViewModel(_ conversationId: String? = nil) -> AnthropicChatViewModel {
         let anthropicChatViewModel = AnthropicChatViewModel(conversationId: conversationId, apiKey: providersViewModel.anthropicKey)
         self.anthropicChatViewModel = anthropicChatViewModel
         return anthropicChatViewModel

@@ -15,65 +15,53 @@ struct AttachmentPickerMenu: View {
 
     var body: some View {
         #if os(macOS)
-        // macOS implementation with Menu
-        HoverButton {
-            Menu {
-                Button {
-                    Task {
-                        if let attachment = try? await attachmentService.pickFile(of: .document) {
-                            onAttachmentPicked?(attachment)
-                        }
+        Menu {
+            Button {
+                Task {
+                    if let attachment = try? await attachmentService.pickFile(of: .document) {
+                        onAttachmentPicked?(attachment)
                     }
-                } label: {
-                    Label("Upload File", systemImage: "folder")
-                }
-
-                Button {
-                    Task {
-                        if let attachment = try? await attachmentService.pickImage(from: .photoLibrary) {
-                            onAttachmentPicked?(attachment)
-                        }
-                    }
-                } label: {
-                    Label("Upload Photo", systemImage: "photo")
                 }
             } label: {
-                Label("", systemImage: "plus")
-                    .imageScale(.large)
-                    .background(
-                        Circle()
-                            .strokeBorder(
-                                Color.primary.opacity(0.2),
-                                lineWidth: 0.8
-                            )
-                    )
+                Label("Upload File", systemImage: "folder")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+
+            Button {
+                Task {
+                    if let attachment = try? await attachmentService.pickImage(from: .photoLibrary) {
+                        onAttachmentPicked?(attachment)
+                    }
+                }
+            } label: {
+                Label("Upload Photo", systemImage: "photo")
+            }
+        } label: {
+            Image(systemName: "plus")
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .withIconHover()
         #else
         // iOS implementation with separate buttons
-        HoverButton {
-            Menu {
-                Button {
-                    showPhotoPicker = true
-                } label: {
-                    Label("Upload Photo", systemImage: "photo")
-                }
-                Button {
-                    showDocumentPicker = true
-                } label: {
-                    Label("Upload File", systemImage: "folder")
-                }
+        Menu {
+            Button {
+                showPhotoPicker = true
             } label: {
-                Label("", systemImage: "plus")
-                    .imageScale(.large)
+                Label("Upload Photo", systemImage: "photo")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+            Button {
+                showDocumentPicker = true
+            } label: {
+                Label("Upload File", systemImage: "folder")
+            }
+        } label: {
+            Label("", systemImage: "plus")
+                .imageScale(.large)
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
         // Direct photo picker for iOS
         .photosPicker(
             isPresented: $showPhotoPicker,

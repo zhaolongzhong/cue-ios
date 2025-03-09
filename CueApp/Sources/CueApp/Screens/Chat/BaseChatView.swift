@@ -23,9 +23,16 @@ struct BaseChatView<ViewModel: ChatViewModelProtocol>: View {
     @FocusState private var isFocused: Bool
     @State private var scrollThrottleWorkItem: DispatchWorkItem?
 
-    @State private var chatViewState: ChatViewState
+    @State var chatViewState: ChatViewState
     @State var shouldScrollToBottom = false
     @State var isScrolledToBottom = true
+    @State var selectedConversationId: String? {
+        didSet {
+            if let conversationId = selectedConversationId, conversationId != oldValue {
+
+            }
+        }
+    }
 
     var provider: Provider
     var availableModels: [ChatModel]
@@ -60,157 +67,82 @@ struct BaseChatView<ViewModel: ChatViewModelProtocol>: View {
 
         self._conversationsViewModel = StateObject(
             wrappedValue: ConversationsViewModel(
-                selectedConversationId: storedConversationId ?? viewModel.selectedConversationId,
                 provider: provider
             )
         )
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            VStack(spacing: 4) {
-                messageList
-                observedAppView
-                richTextField
+        if let conversationId = viewModel.selectedConversationId {
+            SingleChatView(
+                conversationId: conversationId,
+                provider: provider,
+//                viewModel: dependencies.viewModelFactory.makeBaseChatViewModel(conversationId, provider: provider),
+                isCompanion: chatViewState.isCompanion,
+                isHovering: $chatViewState.isHovering,
+                dependencies: dependencies
+            )
+            .id(conversationId)
+            .withCoordinatorAlert(isCompanion: chatViewState.isCompanion)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                toolbarContent
+                #if os(macOS)
+                macToolbarContent
+                #endif
             }
-            .background(colorScheme == .light ? Color.white .opacity(0.9): AppTheme.Colors.background.opacity(0.9))
-
-            if chatViewState.isCompanion {
-                CompanionHeaderView(isHovering: $chatViewState.isHovering)
+            .onChange(of: viewModel.showLiveChat) { oldValue, newValue in
+                if newValue {
+                    openCompanionChat(isLive: true)
+                    viewModel.showLiveChat = false
+                }
             }
-        }
-        .slidingSidebar(
-            isShowing: $chatViewState.showingSidebar,
-            width: 280,
-            edge: .trailing,
-            sidebarOpacity: 0.95
-        ) {
-            ConversationsView(
-                viewModel: conversationsViewModel,
+            .sheet(
+                isPresented: $chatViewState.isShowingProviderDetails,
+                onDismiss: {
+                    onReloadProviderSettings?()
+                },
+                content: {
+                    ProviderDetailView(provider: provider)
+                        .environmentObject(dependencies)
+                }
+            )
+            .slidingSidebar(
                 isShowing: $chatViewState.showingSidebar,
-                provider: provider
-            ) { conversationId in
-                viewModel.selectedConversationId = conversationId
-            }
-        }
-        .withCoordinatorAlert(isCompanion: chatViewState.isCompanion)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            toolbarContent
-            #if os(macOS)
-            macToolbarContent
-            #endif
-        }
-        .onChange(of: viewModel.cueChatMessages.count) { _, _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isFocused = true
-            }
-        }
-        .onChange(of: viewModel.error) { _, error in
-            if let error = error {
-                coordinator.showError(error.message)
-                viewModel.clearError()
-            }
-        }
-        .onChange(of: viewModel.showLiveChat) { oldValue, newValue in
-            if newValue {
-                openCompanionChat(isLive: true)
-                viewModel.showLiveChat = false
-            }
-        }
-        .sheet(
-            isPresented: $chatViewState.isShowingProviderDetails,
-            onDismiss: {
-                onReloadProviderSettings?()
-            },
-            content: {
-                ProviderDetailView(provider: provider)
-                    .environmentObject(dependencies)
-            }
-        )
-        #if os(iOS)
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    if isFocused {
-                        isFocused = false
-                    }
+                width: 280,
+                edge: .trailing,
+                sidebarOpacity: 0.95
+            ) {
+                ConversationsView(
+                    viewModel: conversationsViewModel,
+//                    isShowing: $chatViewState.showingSidebar,
+                    provider: provider
+                ) { conversationId in
+                    viewModel.selectedConversationId = conversationId
                 }
-        )
-        #endif
-        #if os(macOS)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) { $chatViewState.isHovering.wrappedValue = hovering }
-        }
-        #endif
-    }
-
-    // MARK: - Message List
-    private var messageList: some View {
-        MessageListView(
-            conversatonId: viewModel.selectedConversationId,
-            messages: viewModel.cueChatMessages,
-            onLoadMore: {},
-            onShowMore: { _ in },
-            shouldScrollToBottom: $shouldScrollToBottom,
-            isLoadingMore: $viewModel.isLoadingMore
-        )
-        .scrollDismissesKeyboard(.never)
-        #if os(macOS)
-        .safeAreaInset(edge: .top) {
-            if chatViewState.isCompanion {
-                Color.clear.frame(height: 36)
             }
-        }
-        #endif
-        #if os(iOS)
-        .simultaneousGesture(DragGesture().onChanged { _ in
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                          to: nil, from: nil, for: nil)
-        })
-        #endif
-    }
-
-    // MARK: - Rich Text Field
-    private var richTextField: some View {
-        RichTextField(
-            isFocused: $isFocused,
-            richTextFieldState: viewModel.richTextFieldState,
-            richTextFieldDelegate: viewModel
-        )
-        .id(viewModel.selectedConversationId)
-    }
-
-    // MARK: - Observed App View
-    private var observedAppView: some View {
-        Group {
-            if let observedApp = viewModel.observedApp {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Observed app: \(observedApp.name)")
-                        if let focusedLines = viewModel.focusedLines {
-                            Text(focusedLines)
-                        }
-                    }
-                    Button("Stop") {
-                        viewModel.stopObserveApp()
-                    }
+        } else {
+            // No conversation selected - show a placeholder or empty state
+            VStack {
+                Text("No conversation selected")
+                Button("Create New Conversation") {
+                    createNewConversation()
                 }
-                .padding(.all, 12)
-                .background(RoundedRectangle(cornerRadius: 8)
-                    .fill(AppTheme.Colors.separator))
+                .buttonStyle(.borderedProminent)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
+
 
 // MARK: - Navigation and Actions
 
 extension BaseChatView {
     func createNewConversation() {
         Task {
-            if let newId = await conversationsViewModel.createConversation(provider: provider) {
-                viewModel.selectedConversationId = newId
+            if let newItem = await conversationsViewModel.createConversation(provider: provider) {
+                viewModel.selectedConversationId = newItem.id
                 withAnimation(.easeInOut(duration: 0.3)) {
                     $chatViewState.showingSidebar.wrappedValue = false
                 }
@@ -252,69 +184,4 @@ extension BaseChatView {
             #endif
         }
     }
-}
-
-extension BaseChatView {
-    // MARK: Toolbar
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ModelSelectorToolbar(
-            currentModel: viewModel.model,
-            models: ChatModel.models(for: provider),
-            iconView: AnyView(Provider.local.iconView),
-            getModelName: { $0.displayName },
-            onModelSelected: { model in
-                storedModel.wrappedValue = model
-                viewModel.model = model
-            },
-            isStreamingEnabled: $viewModel.isStreamingEnabled,
-            isToolEnabled: $viewModel.isToolEnabled
-        )
-    }
-
-    #if os(macOS)
-    @ToolbarContentBuilder
-    private var macToolbarContent: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Spacer()
-            Button {
-                createNewConversation()
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .modifier(ToolbarIconStyle())
-                    .foregroundStyle(.primary)
-            }
-            .help("Create New Session")
-            Button {
-                withAnimation(.easeInOut) {
-                    $chatViewState.showingSidebar.wrappedValue.toggle()
-                }
-            } label: {
-                Image(systemName: "list.bullet")
-                    .modifier(ToolbarIconStyle())
-                    .foregroundStyle(.primary)
-            }
-            .help("Open Sessions")
-            Menu {
-                Button("Open companion chat") {
-                    openCompanionChat(isLive: false)
-                }
-                Button("Provider Details") {
-                    $chatViewState.isShowingProviderDetails.wrappedValue = true
-                }
-                Button("Clear Messages") {
-                    if let localVM = viewModel as? LocalChatViewModel {
-                       localVM.resetMessages()
-                   }
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .modifier(ToolbarIconStyle())
-                    .foregroundStyle(.primary)
-            }
-            .help("More Options")
-            .menuIndicator(.hidden)
-        }
-    }
-    #endif
 }

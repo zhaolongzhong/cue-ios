@@ -57,6 +57,7 @@ struct HomeSidePanel: View {
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var navigationPath: NavigationPath
     private let onSelectAssistant: (Assistant?) -> Void
+    @State private var selectedProvider: Provider?
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
 
@@ -177,16 +178,16 @@ struct HomeSidePanel: View {
                 ForEach(providersViewModel.enabledProviders, id: \.self) { provider in
                     switch provider {
                     case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
-                        ProviderSidebarRow(provider: provider) {
-                            navigate(to: .openai())
+                        ProviderSidebarRow(provider: provider, isSelected: selectedProvider == .openai) {
+                            selectedProvider = .openai
                         }
                     case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
-                        ProviderSidebarRow(provider: provider) {
-                            navigate(to: .anthropic())
+                        ProviderSidebarRow(provider: provider, isSelected: selectedProvider == .anthropic) {
+                            selectedProvider = .anthropic
                         }
                     case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
-                        ProviderSidebarRow(provider: provider) {
-                            navigate(to: .gemini())
+                        ProviderSidebarRow(provider: provider, isSelected: selectedProvider == .gemini) {
+                            selectedProvider = .gemini
                         }
                     default:
                         AnyView(EmptyView())
@@ -247,7 +248,7 @@ struct HomeSidePanel: View {
             title: "Cue",
             icon: .custom("~"),
             action: {
-                navigate(to: .cue())
+                navigate(to: .cue(""))
             }
         )
     }

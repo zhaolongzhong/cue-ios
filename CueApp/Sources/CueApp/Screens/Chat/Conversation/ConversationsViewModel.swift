@@ -7,7 +7,6 @@ import Combine
 @MainActor
 public class ConversationsViewModel: ObservableObject {
     @Dependency(\.conversationRepository) private var conversationRepository
-
     // Main conversation state
     @Published var conversations: [ConversationModel] = []
     @Published var selectedConversationId: String?
@@ -36,17 +35,57 @@ public class ConversationsViewModel: ObservableObject {
         case titleDesc
     }
 
-    public init(selectedConversationId: String? = nil, provider: Provider? = nil) {
-        self.selectedConversationId = selectedConversationId
-        self.currentProvider = provider
+    public init(provider: Provider? = nil) {
+         self.currentProvider = provider
 
-        setupSearchDebounce()
+         setupSearchDebounce()
 
-        if let provider = provider {
-            Task {
-                await fetchConversations(provider: provider)
+         if let provider = provider {
+             Task {
+                 await loadSelectedConversation(provider: provider)
+             }
+         }
+     }
+
+    private func lastSelectedConversationKey(for providerId: String) -> String {
+        return "lastSelectedConversationId_\(providerId)"
+    }
+
+    private func loadSelectedConversation(provider: Provider) async {
+        // First try to get the last selected conversation ID from UserDefaults
+        let key = lastSelectedConversationKey(for: provider.id)
+        if let savedId = UserDefaults.standard.string(forKey: key) {
+            self.selectedConversationId = savedId
+            AppLog.log.debug("Restored selected conversation for provider \(provider.id): \(savedId)")
+        }
+
+        // Fetch conversations regardless
+        await fetchConversations(provider: provider)
+
+        // After fetching, check if the selected ID exists in the conversations
+        if let selectedId = selectedConversationId,
+           !conversations.contains(where: { $0.id == selectedId }) {
+            // If the saved ID doesn't exist in fetched conversations, clear it
+            selectedConversationId = nil
+        }
+
+        // If we still don't have a valid selected conversation, select the first one
+        if selectedConversationId == nil, let firstId = conversations.first?.id {
+            selectedConversationId = firstId
+            saveSelectedConversation(id: firstId, providerId: provider.id)
+            AppLog.log.debug("Selected first conversation for provider \(provider.id): \(firstId)")
+        } else if conversations.isEmpty {
+            // If there are no conversations at all, create a default one
+            if let newConversation = await createConversation(provider: provider) {
+                selectedConversationId = newConversation.id
+                saveSelectedConversation(id: newConversation.id, providerId: provider.id)
             }
         }
+    }
+
+    private func saveSelectedConversation(id: String, providerId: String) {
+        let key = lastSelectedConversationKey(for: providerId)
+        UserDefaults.standard.set(id, forKey: key)
     }
 
     private func setupSearchDebounce() {
@@ -161,7 +200,7 @@ public class ConversationsViewModel: ObservableObject {
     // MARK: - CRUD Operations
 
     /// Creates a new conversation
-    public func createConversation(title: String = "New Conversation", provider: Provider) async -> String? {
+    public func createConversation(title: String = "New Conversation", provider: Provider) async -> ConversationModel? {
         isLoading = true
         defer { isLoading = false }
 
@@ -175,7 +214,7 @@ public class ConversationsViewModel: ObservableObject {
             // Add to local arrays
             self.allConversations.insert(result, at: 0)
             applyFiltersAndUpdateConversations()
-            return result.id
+            return result
         } catch {
             self.error = error
             AppLog.log.error("Failed to create conversation: \(error)")

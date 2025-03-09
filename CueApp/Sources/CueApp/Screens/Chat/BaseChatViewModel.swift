@@ -65,12 +65,16 @@ public class BaseChatViewModel: ObservableObject, ChatViewModelProtocol {
     var cancellables = Set<AnyCancellable>()
     let provider: Provider
 
+
     init(
         apiKey: String,
         provider: Provider,
-        model: ChatModel, conversationId: String? = nil,
+        model: ChatModel,
+        conversationId: String? = nil,
         richTextFieldState: RichTextFieldState? = nil
     ) {
+        let id = UUID().uuidString
+        print("inx init id: \(id), conversationId: \(conversationId)")
         self.apiKey = apiKey
         self.provider = provider
         self.model = model

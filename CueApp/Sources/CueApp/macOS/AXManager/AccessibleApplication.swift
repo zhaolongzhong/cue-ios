@@ -60,29 +60,28 @@ struct AXAppSelectionMenu: View {
     let onStartAXApp: ((AccessibleApplication) -> Void)?
 
     var body: some View {
-        HoverButton {
-            Menu {
-                ForEach(AccessibleApplication.allCases, id: \.self) { app in
-                    Button {
-                        selectedApp = app
-                        onStartAXApp?(selectedApp)
-                    } label: {
-                        HStack {
-                            app.icon
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                            Text(app.name)
-                                .frame(minWidth: 200, alignment: .leading)
-                        }
+        Menu {
+            ForEach(AccessibleApplication.allCases, id: \.self) { app in
+                Button {
+                    selectedApp = app
+                    onStartAXApp?(selectedApp)
+                } label: {
+                    HStack {
+                        app.icon
+                            .resizable()
+                            .frame(width: 16, height: 16)
+                        Text(app.name)
+                            .frame(minWidth: 200, alignment: .leading)
                     }
                 }
-            } label: {
-                Image(systemName: "link.badge.plus")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+        } label: {
+            Image(systemName: "link.badge.plus")
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .withIconHover()
     }
 }
 #endif

@@ -31,11 +31,11 @@ public enum WindowId: String {
 enum HomeDestination: Hashable {
     case home
     case email
-    case cue(String? = nil)
-    case openai(String? = nil)
-    case anthropic(String? = nil)
-    case gemini(String? = nil)
-    case local(String? = nil)
+    case cue(String)
+    case openai(String)
+    case anthropic(String)
+    case gemini(String)
+    case local(String)
     case chat(Assistant)
     case providers
 }
@@ -44,6 +44,7 @@ enum HomeDestination: Hashable {
 final class HomeNavigationManager: ObservableObject {
     @Published var currentView: HomeDestination = .home
     @Published private(set) var selectedAssistant: Assistant?
+    @Published private(set) var selectedProvider: Provider?
     private let userDefaults: UserDefaults
     @Published var isEmailViewPresented = false
     @Environment(\.openWindow) private var openWindow

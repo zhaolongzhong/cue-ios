@@ -85,7 +85,7 @@ struct CompanionWindowContent: View {
                 case .compainionChatWindow:
                     if let windowConfig = windowConfig {
                         if let provider = windowConfig.provider {
-                            ChatViewFactory.createChatView(conversationId: windowConfig.conversationId, provider: provider, isCompanion: true, appDependencies: dependencies)
+                            ChatViewFactory.createChatView(conversationId: windowConfig.conversationId ?? "", provider: provider, isCompanion: true, appDependencies: dependencies)
                         } else if let assistantId = windowConfig.assistantId, let chatViewModel = dependencies.viewModelFactory.makeAssistantChatViewModelBy(id: assistantId) {
                             AssistantChatView(assistantChatViewModel: chatViewModel, assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(), isCompanion: true)
                         }

@@ -22,19 +22,18 @@ struct SectionHeader: View {
     var body: some View {
         HStack(spacing: spacing) {
             Text(title)
-                .font(fontStyle)
-                .fontWeight(fontWeight)
-                .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
-                .foregroundColor(textColor)
+                .withSideBarTitle()
 
             if let trailingIcon {
                 if let trailingAction {
                     Button(action: trailingAction) {
                         iconView(for: trailingIcon)
+                            .withIconHover()
                     }
                     .buttonStyle(.plain)
                 } else {
                     iconView(for: trailingIcon)
+                        .withIconHover()
                 }
             }
         }

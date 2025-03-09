@@ -192,7 +192,7 @@ extension BaseChatViewModel {
                 contentBlocks: contentBlocks
             )
         )
-
+        print("inx richTextFieldState.inputMessage: \(richTextFieldState.inputMessage)")
         return (userMessage, richTextFieldState.inputMessage)
     }
 }

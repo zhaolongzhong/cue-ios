@@ -39,32 +39,31 @@ struct MCPServersList: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    HoverButton {
-                        Button {
-                            #if os(macOS)
-                            NSWorkspace.shared.open(mcpServersRepository)
-                            #else
-                            UIApplication.shared.open(mcpServersRepository)
-                            #endif
-                        } label: {
-                            Label("Browse", systemImage: "globe")
-                                .labelStyle(.iconOnly)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Browse more MCP servers")
+                    Button {
+                        #if os(macOS)
+                        NSWorkspace.shared.open(mcpServersRepository)
+                        #else
+                        UIApplication.shared.open(mcpServersRepository)
+                        #endif
+                    } label: {
+                        Label("Browse", systemImage: "globe")
+                            .labelStyle(.iconOnly)
+                            .contentShape(Rectangle())
                     }
-                    HoverButton {
-                        Button {
-                            activeSheet = .addServer
-                        } label: {
-                            Label("Add Server", systemImage: "plus")
-                                .labelStyle(.iconOnly)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Add a new MCP server")
+                    .buttonStyle(.plain)
+                    .help("Browse more MCP servers")
+                    .withIconHover()
+
+                    Button {
+                        activeSheet = .addServer
+                    } label: {
+                        Label("Add Server", systemImage: "plus")
+                            .labelStyle(.iconOnly)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .help("Add a new MCP server")
+                    .withIconHover()
                 }
             }
         }

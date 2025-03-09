@@ -4,11 +4,11 @@ struct ConversationCreate: Codable {
     let title: String
 }
 
-struct ConversationMetadata: Codable, Equatable {
+public struct ConversationMetadata: Codable, Equatable, Sendable {
     let isPrimary: Bool
     let capabilities: [String]?
 
-    init(isPrimary: Bool, capabilities: [String]? = nil) {
+    public init(isPrimary: Bool, capabilities: [String]? = nil) {
         self.isPrimary = isPrimary
         self.capabilities = capabilities
     }
@@ -19,8 +19,8 @@ struct ConversationMetadata: Codable, Equatable {
     }
 }
 
-struct ConversationModel: Codable, Equatable, Identifiable {
-    let id: String
+public struct ConversationModel: Codable, Equatable, Identifiable, Sendable {
+    public let id: String
     let title: String
     let createdAt: Date
     let updatedAt: Date
@@ -36,7 +36,7 @@ struct ConversationModel: Codable, Equatable, Identifiable {
         case metadata
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         id = try container.decode(String.self, forKey: .id)

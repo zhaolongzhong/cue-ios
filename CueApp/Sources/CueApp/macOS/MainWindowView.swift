@@ -125,16 +125,22 @@ public struct MainWindowView: View {
                     assistantsViewModel: assistantsViewModel
                 )
                 .id(assistant.id)
-            case .anthropic:
-                ChatViewFactory.createChatView(provider: .anthropic, appDependencies: dependencies)
-            case .gemini:
-                ChatViewFactory.createChatView(provider: .gemini, appDependencies: dependencies)
-            case .openai:
-                ChatViewFactory.createChatView(provider: .openai, appDependencies: dependencies)
-            case .cue:
-                ChatViewFactory.createChatView(provider: .cue, appDependencies: dependencies)
-            case .local:
-                ChatViewFactory.createChatView(provider: .local, appDependencies: dependencies)
+            case .anthropic(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .anthropic, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .gemini(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .gemini, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .openai(let conversationId):
+//                let _ = print("inx mainNavigationContent conversationId \(conversationId)")
+                SingleChatView(conversationId: conversationId, provider: .openai, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .cue(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .cue, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .local(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .local, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
             case .providers:
                 EmptyView()
             }

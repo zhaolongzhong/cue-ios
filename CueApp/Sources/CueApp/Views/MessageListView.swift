@@ -51,7 +51,7 @@ struct MessageListView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                         LazyVStack {
-                            Text("debug conversationId: \(conversationId)")
+//                            Text("debug conversationId: \(conversationId)")
                             ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                                 MessageBubble(message: message)
                                     .id(index)
@@ -93,8 +93,6 @@ struct MessageListView: View {
                     .onChange(of: messages) { oldMessages, newMessages in
                         currentMessages = newMessages
                         handleScrollOnMessagesChange(scrollProxy, oldMessages: oldMessages, newMessages: newMessages)
-                        print("inx conversationid: \(conversationId)")
-
                     }
                     .onChange(of: isLoadingMore) { wasLoading, isNowLoading in
                         // When loading completes

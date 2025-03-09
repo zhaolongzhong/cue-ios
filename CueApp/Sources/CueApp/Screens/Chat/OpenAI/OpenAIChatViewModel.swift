@@ -51,6 +51,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
     }
 
     override func sendMessage() async {
+        print("inx openaichatview model sendNewMessage")
         let (userMessage, _) = await prepareOpenAIMessage()
 
         // Add user message to chat
