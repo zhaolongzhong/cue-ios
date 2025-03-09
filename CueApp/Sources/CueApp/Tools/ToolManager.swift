@@ -21,6 +21,7 @@ public class ToolManager {
         self.localTools.append(ScreenshotTool())
         self.localTools.append(BashTool())
         self.localTools.append(EditTool())
+        self.localTools.append(CalendarTool())
         #endif
         self.localTools.append(contentsOf: enabledTools)
     }
