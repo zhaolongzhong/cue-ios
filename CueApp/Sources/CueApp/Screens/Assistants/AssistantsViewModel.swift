@@ -171,6 +171,7 @@ public final class AssistantsViewModel: ObservableObject {
         instruction: String? = nil,
         description: String? = nil,
         maxTurns: Int? = nil,
+        useCueClient: Bool? = nil,
         context: JSONValue? = nil,
         tools: [String]? = nil,
         color: String? = nil
@@ -183,7 +184,8 @@ public final class AssistantsViewModel: ObservableObject {
             maxTurns: maxTurns,
             context: context,
             tools: tools,
-            color: color
+            color: color,
+            useCueClient: useCueClient
         )
 
         switch await assistantRepository.updateAssistant(id: id, name: nil, metadata: metadata) {

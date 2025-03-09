@@ -175,6 +175,28 @@ struct AssistantDetailView: View {
                         viewModel.prepareMaxTurnsEdit()
                     }
                     .padding(.all, 4)
+                    
+                    Divider()
+                        .padding(.all, 4)
+                    
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Use CueClient")
+                                .font(.body)
+                            Text("Use direct API integration instead of WebSocket")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $viewModel.useCueClient)
+                            .labelsHidden()
+                            .onChange(of: viewModel.useCueClient) { _, newValue in
+                                Task {
+                                    await viewModel.updateMetadata(useCueClient: newValue)
+                                }
+                            }
+                    }
+                    .padding(.all, 4)
                 }
             } header: {
                 AssistantDetailSectionHeader(title: "Model Settings")

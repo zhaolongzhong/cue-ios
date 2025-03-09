@@ -15,6 +15,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
     let context: JSONValue?
     let tools: [String]?
     let color: String?
+    let useCueClient: Bool?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
@@ -25,6 +26,7 @@ struct AssistantMetadata: Codable, Equatable, Hashable {
         case context
         case tools
         case color
+        case useCueClient = "use_cue_client"
     }
 }
 
@@ -37,6 +39,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
     let context: JSONValue?
     let tools: [String]?
     let color: String?
+    let useCueClient: Bool?
 
     enum CodingKeys: String, CodingKey {
         case isPrimary = "is_primary"
@@ -47,6 +50,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         case context
         case tools
         case color
+        case useCueClient = "use_cue_client"
     }
 
     // Initialize with all optional parameters
@@ -58,7 +62,8 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         maxTurns: Int? = nil,
         context: JSONValue? = nil,
         tools: [String]? = nil,
-        color: String? = nil
+        color: String? = nil,
+        useCueClient: Bool? = nil
     ) {
         self.isPrimary = isPrimary
         self.model = model
@@ -68,6 +73,7 @@ struct AssistantMetadataUpdate: Codable, Sendable {
         self.context = context
         self.tools = tools
         self.color = color
+        self.useCueClient = useCueClient
     }
 }
 
@@ -116,6 +122,10 @@ struct Assistant: Codable, Equatable, Identifiable, Hashable {
 extension Assistant {
     var isPrimary: Bool {
         return metadata?.isPrimary == true
+    }
+    
+    var shouldUseCueClient: Bool {
+        return metadata?.useCueClient == true
     }
 
     var assistantColor: AppTheme.ColorPalette {

@@ -19,6 +19,7 @@ final class AssistantDetailViewModel: ObservableObject {
     @Published var description = ""
     @Published var maxTurns = 30
     @Published var tempMaxTurns = ""
+    @Published var useCueClient = false
 
     let availableModels = [
         "claude-3-7-sonnet-20250219",
@@ -41,6 +42,7 @@ final class AssistantDetailViewModel: ObservableObject {
         self.instruction = assistant.metadata?.instruction ?? ""
         self.description = assistant.metadata?.description ?? ""
         self.maxTurns = assistant.metadata?.maxTurns ?? 30
+        self.useCueClient = assistant.metadata?.useCueClient ?? false
     }
 
     func updateName() async {
@@ -60,6 +62,7 @@ final class AssistantDetailViewModel: ObservableObject {
         instruction: String? = nil,
         description: String? = nil,
         maxTurns: Int? = nil,
+        useCueClient: Bool? = nil,
         color: AppTheme.ColorPalette? = nil
     ) async {
         guard let updatedAssistant = await assistantsViewModel.updateMetadata(
@@ -68,6 +71,7 @@ final class AssistantDetailViewModel: ObservableObject {
             instruction: instruction,
             description: description,
             maxTurns: maxTurns,
+            useCueClient: useCueClient,
             color: color?.hexString
         ) else {
             AppLog.log.error("Error when updating assistant metadata.")
