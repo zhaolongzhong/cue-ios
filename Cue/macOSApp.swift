@@ -49,14 +49,7 @@ struct macOSApp: App {
         )
 
         CompanionWindows(
-            windowId: WindowId.openaiLiveChatWindow,
-            dependencies: dependencies,
-            configStore: windowConfigStore,
-            windowManager: windowManager
-        )
-
-        CompanionWindows(
-            windowId: WindowId.geminiLiveChatWindow,
+            windowId: WindowId.liveChatWindow,
             dependencies: dependencies,
             configStore: windowConfigStore,
             windowManager: windowManager
@@ -118,7 +111,7 @@ struct SettingsWindowView: View {
     @EnvironmentObject var dependencies: AppDependencies
 
     var body: some View {
-        SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
+        SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel, router: AppDestinationRouter(dependencies: dependencies))
             .environmentObject(coordinator)
             .frame(minHeight: 400)
             .frame(minWidth: 600)

@@ -6,7 +6,6 @@
 import SwiftUI
 
 struct ConversationsView: View {
-    @Binding var isShowing: Bool
     @ObservedObject var viewModel: ConversationsViewModel
     @State private var editingConversationId: String?
     @State private var editedTitle: String = ""
@@ -17,17 +16,17 @@ struct ConversationsView: View {
     @FocusState private var isTextFieldFocused: Bool
 
     private let animationDuration: Double = 0.2
+    private let provider: Provider
 
     var onSelectConversation: (String) -> Void
 
     init(
         viewModel: ConversationsViewModel,
-        isShowing: Binding<Bool>,
         provider: Provider,
         onSelectConversation: @escaping (String) -> Void
     ) {
+        self.provider = provider
         self.viewModel = viewModel
-        self._isShowing = isShowing
         self.onSelectConversation = onSelectConversation
     }
 
@@ -45,7 +44,6 @@ struct ConversationsView: View {
                 conversationListView
             }
         }
-        .frame(width: 280)
         #if os(iOS)
         .edgesIgnoringSafeArea(.vertical)
         #endif
@@ -93,24 +91,29 @@ struct ConversationsView: View {
 
     private var headerView: some View {
         HStack {
-            Text("Sessions")
-                .font(.headline)
-                .foregroundColor(.almostPrimary)
-                .padding(.all)
+            Text("Chats")
+                .withSideBarTitle()
 
-            Spacer()
-
-            Button {
-                viewModel.toggleSelectMode()
+            Menu {
+                Button("New chat") {
+                    Task {
+                        await viewModel.createConversation(provider: provider)
+                    }
+                }
+                Button("Select") {
+                    viewModel.toggleSelectMode()
+                }
             } label: {
-                Text(viewModel.isSelectMode ? "Done" : "Select")
-                    .font(.subheadline)
-                    .foregroundColor(.accentColor)
+                Image(systemName: "ellipsis")
+                    .asIcon()
             }
-            .buttonStyle(.plain)
-            .padding(.trailing)
+            .help("More Options")
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .withIconHover()
         }
-        .padding(.top)
+        .padding()
     }
 
     private var selectModeToolbar: some View {
@@ -122,16 +125,19 @@ struct ConversationsView: View {
                     .font(.subheadline)
             }
             .buttonStyle(.plain)
+            .withHoverEffect()
 
             Spacer()
 
             Button {
                 viewModel.deselectAllConversations()
+                viewModel.toggleSelectMode()
             } label: {
                 Text("Cancel")
                     .font(.subheadline)
             }
             .buttonStyle(.plain)
+            .withHoverEffect()
 
             Button {
                 if !viewModel.selectedConversationIds.isEmpty {
@@ -156,7 +162,7 @@ struct ConversationsView: View {
                 .foregroundColor(.gray)
                 .padding(.leading, 8)
 
-            TextField("Search sessions", text: $viewModel.searchText)
+            TextField("Search", text: $viewModel.searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .padding(.vertical, 8)
 
@@ -199,9 +205,6 @@ struct ConversationsView: View {
                                     onSelect: {
                                         viewModel.selectConversation(conversation.id)
                                         onSelectConversation(conversation.id)
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            isShowing = false
-                                        }
                                     },
                                     onToggleSelection: {
                                         viewModel.toggleConversationSelection(conversation.id)
@@ -216,6 +219,7 @@ struct ConversationsView: View {
                                         isRenaming = true
                                     }
                                 )
+                                .padding(.horizontal, 8)
                             }
                         }
                         .transition(.asymmetric(

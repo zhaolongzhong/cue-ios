@@ -139,16 +139,21 @@ private extension HomeView {
                 HomeDefaultView(viewModel: homeViewModel, onNewSession: {
                     homeViewModel.navigateToDestination(.email)
                 })
-            case .anthropic:
-                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
-            case .gemini:
-                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel)
-            case .openai:
-                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
-            case .cue:
-                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
-            case .local:
-                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel)
+            case .anthropic(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .anthropic, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .gemini(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .gemini, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .openai(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .openai, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .local(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .local, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .cue(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .local, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
             case .chat(let assistant):
                 AssistantChatView(
                     assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),

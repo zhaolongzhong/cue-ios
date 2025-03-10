@@ -4,30 +4,10 @@ import OSLog
 public struct MCP {}
 
 #if os(macOS)
-// MARK: - Server Context
-@MainActor
-public class ServerContext {
-    let process: Process
-    let serverName: String
-    let inputPipe: Pipe
-    let outputPipe: Pipe
-    let errorPipe: Pipe
-    var isRunning: Bool
-    var outputBuffer: String
-
-    init(process: Process, serverName: String, inputPipe: Pipe, outputPipe: Pipe, errorPipe: Pipe) {
-        self.process = process
-        self.serverName = serverName
-        self.inputPipe = inputPipe
-        self.outputPipe = outputPipe
-        self.errorPipe = errorPipe
-        self.isRunning = false
-        self.outputBuffer = ""
-    }
-}
-
 // MARK: - Server Manager
 @MainActor @Observable public class MCPServerManager {
+    public static let shared = MCPServerManager()
+    
     public var serverTools: [String: [MCPTool]] = [:]
     public private(set) var servers: [String: ServerContext] = [:]
     public private(set) var serverStatuses: [String: Bool] = [:]
@@ -131,7 +111,7 @@ public class ServerContext {
                 // Keep pipe open
             }
 
-            let context = ServerContext(
+            var context = ServerContext(
                 process: process,
                 serverName: serverName,
                 inputPipe: inputPipe,
@@ -146,12 +126,12 @@ public class ServerContext {
             Task {
                 do {
                     try await initializeServer(context)
-                    context.isRunning = true
+                    context = context.copy(isRunning: true)
                     serverStatuses[serverName] = true
                     print("✅ Server \(serverName) initialized successfully")
                 } catch {
                     print("❌ Failed to initialize server \(serverName): \(error)")
-                    context.isRunning = false
+                    context = context.copy(isRunning: false)
                     serverStatuses[serverName] = false
                 }
             }
@@ -164,7 +144,7 @@ public class ServerContext {
                 if !data.isEmpty {
                     if let output = String(data: data, encoding: .utf8) {
                         Task { @MainActor in
-                            context.outputBuffer += output
+                            context = context.appendingOutput(output)
                             print("🔵 \(serverName) output: \(output)")
                         }
                     }
@@ -187,9 +167,13 @@ public class ServerContext {
 
             process.terminationHandler = { [weak self] process in
                 Task { @MainActor [weak self] in
+                    guard let self = self else { return }
                     print("⚠️ Server \(serverName) terminated with status: \(process.terminationStatus)")
-                    self?.servers[serverName]?.isRunning = false
-                    self?.serverStatuses[serverName] = false
+                    if var context = self.servers[serverName] {
+                        context = context.copy(isRunning: false)
+                        self.servers[serverName] = context
+                    }
+                    self.serverStatuses[serverName] = false
                 }
             }
 
@@ -201,10 +185,14 @@ public class ServerContext {
         }
     }
 
-    public func startAll() async throws {
+    public func startAll(forceRestart: Bool = false) async throws {
         print("\n📱 Starting all servers...")
 
         if isInitialized {
+            if !forceRestart {
+                logger.info("Servers already initialized, skipping startup")
+                return
+            }
             print("⚠️ Servers already initialized, stopping first")
             stopAll()
         }

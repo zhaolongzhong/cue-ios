@@ -4,7 +4,7 @@ import os
 public struct SyntaxHighlighter {
     static let log = Logger(subsystem: "SyntaxHighlighter", category: "SyntaxHighlighter")
 
-    public static func syntaxColors(_ colorScheme: ColorScheme) -> [String: Color] {
+    public static func syntaxColors(_ colorScheme: ColorScheme, markdownMessage: Bool = false) -> [String: Color] {
         var colors = colorScheme == .light ? [
             "default": Color.black,
             "keyword": Color(red: 0.607, green: 0.156, blue: 0.560),
@@ -54,7 +54,37 @@ public struct SyntaxHighlighter {
             "nested-code": Color(hex: "#F47067")
         ]
 
-        colors.merge(markdownColors) { current, _ in current }
+        let markdownColorsMessage: [String: Color] = colorScheme == .light ? [
+            "header": Color(white: 0.3),
+            "bold": Color(white: 0.3),
+            "italic": Color(white: 0.3),
+            "link": Color(hex: "#0969DA"),
+            "image": Color(hex: "#0969DA"),
+            "blockquote": Color(white: 0.3),
+            "list": Color(white: 0.3),
+            "orderedlist": Color(white: 0.3),
+            "hr": Color(white: 0.3),
+            "code": Color(white: 0.3),
+            "nested-code": Color(red: 0.800, green: 0.063, blue: 0.063)
+        ] : [
+            "header": Color(white: 0.8),
+            "bold": Color(white: 0.8),
+            "italic": Color(white: 0.8),
+            "link": Color(hex: "#539BF5"),
+            "image": Color(hex: "#539BF5"),
+            "blockquote": Color(white: 0.8),
+            "list": Color(white: 0.8),
+            "orderedlist": Color(white: 0.8),
+            "hr": Color(white: 0.8),
+            "code": Color(white: 0.8),
+            "nested-code": Color(hex: "#F47067")
+        ]
+
+        if markdownMessage {
+            colors.merge(markdownColorsMessage) { current, _ in current }
+        } else {
+            colors.merge(markdownColors) { current, _ in current }
+        }
         return colors
     }
 

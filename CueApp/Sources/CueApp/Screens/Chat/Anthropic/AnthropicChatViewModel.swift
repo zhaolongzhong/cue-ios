@@ -31,17 +31,16 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
     let anthropic: Anthropic
     var streamingTask: Task<Void, Error>?
 
-    public init(apiKey: String) {
+    public init(conversationId: String, apiKey: String) {
         self.anthropic = Anthropic(apiKey: apiKey)
 
         super.init(
             apiKey: apiKey,
             provider: .anthropic,
             model: .claude37Sonnet,
-            conversationId: nil
+            conversationId: conversationId,
+            richTextFieldState: RichTextFieldState(conversationId: conversationId, showAXApp: true)
         )
-        self.availableTools = toolManager.getTools()
-        updateTools()
     }
 
     override func sendMessage() async {
@@ -56,14 +55,15 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
 
         isLoading = true
         isRunning = true
-        newMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
 
         await startStreamingTask(messageParams)
     }
 
-    func cancelStreaming() {
+    override func stopAction() async {
         streamingTask?.cancel()
         streamingTask = nil
+        isRunning = false
         isLoading = false
     }
 
@@ -88,15 +88,15 @@ public final class AnthropicChatViewModel: BaseChatViewModel {
 
 extension AnthropicChatViewModel {
     func startStreamingTask(_ messageParams: [CueChatMessage]) async {
-        AppLog.log.debug("Starting streaming conversation: \(String(describing: self.selectedConversationId))")
+        AppLog.log.debug("Starting streaming conversation: \(String(describing: self.conversationId))")
 
         let thinking = Anthropic.Thinking(type: "enabled", budgetTokens: 1024)
         let request = CompletionRequest(
             model: model.id,
             messages: messageParams,
             maxTokens: 5000,
-            tools: tools,
-            toolChoice: "auto",
+            tools: tools.isEmpty ? nil : tools,
+            toolChoice: tools.isEmpty ? nil : "auto",
             maxTurns: maxTurns,
             thinking: thinking,
             stream: true
@@ -181,6 +181,7 @@ extension AnthropicChatViewModel {
         }
         self.error = chatError
         ErrorLogger.log(chatError)
+        self.isRunning = false
     }
 }
 

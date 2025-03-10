@@ -1,13 +1,15 @@
 import Foundation
 
 #if os(macOS)
-struct TextAreaContent {
+struct TextAreaContent: Identifiable, Hashable, Sendable {
     let id: Int
     let content: String
     let size: CGSize
     let selectionRange: NSRange?
     let selectionLines: [String]
     let selectionLinesRange: LineRange?
+    let fileName: String?
+    let filePath: String?
 }
 
 extension TextAreaContent {
@@ -22,9 +24,9 @@ extension TextAreaContent {
     var focusedLines: String? {
         guard let lineRange = selectionLinesRange else { return nil }
         if lineRange.startLine == lineRange.endLine {
-            return "Focused on line \(lineRange.startLine)"
+            return "(\(lineRange.startLine))"
         } else {
-            return "Focused on lines \(lineRange.startLine)-\(lineRange.endLine)"
+            return "(\(lineRange.startLine)-\(lineRange.endLine))"
         }
     }
 }

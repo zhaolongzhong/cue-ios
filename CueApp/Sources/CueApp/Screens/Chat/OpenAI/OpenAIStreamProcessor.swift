@@ -100,7 +100,6 @@ class OpenAIStreamProcessor {
 
             // Emit stream started event
             if let id = messageId {
-                logger.debug("Stream task started: \(id)")
                 await onEvent(.streamTaskStarted(id))
             }
         }

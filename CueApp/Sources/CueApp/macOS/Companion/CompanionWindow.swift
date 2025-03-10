@@ -47,7 +47,7 @@ struct WindowRouter: View {
                 CompanionWindowContent(
                     id: id,
                     dependencies: dependencies,
-                    windowConfig: configStore.getConfig(for: id)
+                    windowConfig: configStore.getConfig(for: id) ?? windowManager.activeLiveChatWindow
                 )
                 .environmentObject(windowManager)
             } else {
@@ -84,30 +84,34 @@ struct CompanionWindowContent: View {
                 switch windowId {
                 case .compainionChatWindow:
                     if let windowConfig = windowConfig {
-                        if let provider = windowConfig.provider {
-                            ChatViewFactory.createChatView(for: provider, isCompanion: true, appDependencies: dependencies)
+                        if let provider = windowConfig.provider, let conversationId = windowConfig.conversationId {
+                            SingleChatView(conversationId: conversationId, provider: provider, isCompanion: true, dependencies: dependencies)
                         } else if let assistantId = windowConfig.assistantId, let chatViewModel = dependencies.viewModelFactory.makeAssistantChatViewModelBy(id: assistantId) {
                             AssistantChatView(assistantChatViewModel: chatViewModel, assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel(), isCompanion: true)
                         }
-                    } else {
-                        EmptyView()
                     }
-                case .openaiLiveChatWindow:
-                    OpenAILiveChatView(
-                        viewModelFactory: dependencies.viewModelFactory.makeOpenAILiveChatViewModel
-                    )
-                    .id(id)
-                case .geminiLiveChatWindow:
-                    GeminiLiveChatView(viewModelFactory: dependencies.viewModelFactory.makeGeminiChatViewModel)
-                        .id(id)
+                case .liveChatWindow:
+                    if let config = windowConfig, let conversationId = config.conversationId {
+                        if config.provider == .openai {
+                            OpenAILiveChatView(
+                                viewModelFactory: dependencies.viewModelFactory.makeOpenAILiveChatViewModel,
+                                conversationId: conversationId
+                            )
+                            .id(config.conversationId)
+                        } else {
+                            GeminiLiveChatView(viewModelFactory: dependencies.viewModelFactory.makeGeminiChatViewModel,
+                                conversationId: conversationId
+                            )
+                            .id(config.conversationId)
+                        }
+                    }
                 default:
                     EmptyView()
                 }
             }
             .environmentObject(dependencies)
             .environmentObject(appCoordinator)
-
-            .frame(minWidth: WindowSize.Companion.minWidth, maxWidth: .infinity, minHeight: WindowSize.Companion.minHeight, maxHeight: .infinity)
+            .frame(minWidth: WindowSize.Companion.minWidth, idealWidth: WindowSize.Companion.width, maxWidth: .infinity, minHeight: WindowSize.Companion.minHeight, maxHeight: .infinity)
         }
         .background(
             ZStack {

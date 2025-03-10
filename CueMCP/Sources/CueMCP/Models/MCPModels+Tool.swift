@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Tool Models
 
-public struct MCPTool: Codable, Sendable {
+public struct MCPTool: Codable, Equatable, Sendable {
     public let name: String
     public let description: String
     public let inputSchema: InputSchema
@@ -14,7 +14,7 @@ public struct MCPTool: Codable, Sendable {
     }
 }
 
-public struct InputSchema: Codable, Sendable {
+public struct InputSchema: Codable, Equatable, Sendable {
     public let type: String
     public let properties: [String: PropertyDetails]?
     public let required: [String]?
@@ -103,8 +103,8 @@ public enum DefaultValue: Codable, Equatable, Sendable {
     }
 }
 
-public struct PropertyDetails: Codable, Sendable {
-    public let type: String?  // Made optional because it might be missing when anyOf is present
+public struct PropertyDetails: Codable, Equatable, Sendable {
+    public let type: String?
     public let title: String?
     public let items: Items?
     public let anyOf: [TypeDefinition]?
@@ -131,11 +131,11 @@ public struct PropertyDetails: Codable, Sendable {
     }
 }
 
-public struct TypeDefinition: Codable, Sendable {
+public struct TypeDefinition: Codable, Equatable, Sendable {
     public let type: String
 }
 
-public struct Items: Codable, Sendable {
+public struct Items: Codable, Equatable, Sendable {
     public let type: String
 
     public init(type: String) {

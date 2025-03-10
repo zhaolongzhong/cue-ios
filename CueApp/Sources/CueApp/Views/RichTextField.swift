@@ -4,21 +4,21 @@ import Dependencies
 struct RichTextField: View {
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @Environment(\.colorScheme) private var colorScheme
-    @Binding var inputMessage: String
     @FocusState.Binding var isFocused: Bool
     @State private var isTextFieldVisible = false
-    @ObservedObject var richTextFieldState: RichTextFieldState
+    @State private var inputMessage: String
+
+    private let richTextFieldState: RichTextFieldState
     private let richTextFieldDelegate: RichTextFieldDelegate
 
     init(
-        inputMessage: Binding<String>,
         isFocused: FocusState<Bool>.Binding,
         richTextFieldState: RichTextFieldState,
         richTextFieldDelegate: RichTextFieldDelegate
     ) {
-        self._inputMessage = inputMessage
         self._isFocused = isFocused
         self.richTextFieldState = richTextFieldState
+        self._inputMessage = State(initialValue: richTextFieldState.inputMessage)
         self.richTextFieldDelegate = richTextFieldDelegate
     }
 
@@ -26,7 +26,13 @@ struct RichTextField: View {
         VStack {
             if !richTextFieldState.attachments.isEmpty {
                 AttachmentsListView(attachments: richTextFieldState.attachments, onRemove: { index in
-                    richTextFieldState.attachments.remove(at: index)
+                    richTextFieldDelegate.onRemoveAttachment(at: index)
+                })
+            }
+
+            if let observedApp = richTextFieldState.observedApp {
+                ObservedAppView(observedApp: observedApp, textAreaContents: richTextFieldState.textAreaContents, onStopTapped: {
+                    richTextFieldDelegate.onStopAXApp()
                 })
             }
 
@@ -39,21 +45,19 @@ struct RichTextField: View {
                     .lineLimit(1...5)
                     .focused($isFocused)
                     .background(.clear)
-                    .onSubmit {
-                        if isMessageValid && !richTextFieldState.isRunning {
-                            richTextFieldState.attachments.removeAll()
-                            richTextFieldDelegate.onSend()
-                        }
+                    .onChange(of: inputMessage) { _, newValue in
+                        richTextFieldDelegate.onUpdateInputMessage(newValue)
                     }
-                    .submitLabel(.return)
-
+                    .onKeyPress(.return) {
+                        handleEnterKeyPress()
+                    }
             }
             controlButtons
         }
         .padding(.all, 8)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(AppTheme.Colors.secondaryBackground.opacity(0.2))
+                .fill(AppTheme.Colors.secondaryBackground.opacity(0.1))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(AppTheme.Colors.separator, lineWidth: 0.5)
@@ -68,36 +72,47 @@ struct RichTextField: View {
                 }
             }
         )
+        .padding(.horizontal)
+        .padding(.bottom)
         .onChange(of: isFocused) { _, newValue in
             if !newValue {
                 checkAndUpdateTextFieldVisibility()
             }
         }
-        .onChange(of: inputMessage) { _, newValue in
+        .onChange(of: richTextFieldState.inputMessage) { _, newValue in
+            // Keep local inputMessage in sync with ViewModel state
+            if inputMessage != newValue {
+                inputMessage = newValue
+            }
+
             if !newValue.isEmpty && !isTextFieldVisible {
                 isTextFieldVisible = true
             }
         }
-        .padding()
+        .onAppear {
+            isTextFieldVisible = richTextFieldState.isTextFieldVisible
+        }
     }
 
     private var controlButtons: some View {
         HStack {
             if featureFlags.enableMediaOptions {
                 AttachmentPickerMenu { attachment in
-                    richTextFieldState.attachments.append(attachment)
-                    richTextFieldDelegate.onPickAttachment(attachment)
+                    richTextFieldDelegate.onAddAttachment(attachment)
                 }
             }
             Text("Type a message ...")
                 .foregroundColor(.secondary.opacity(0.6))
                 .opacity(isTextFieldVisible ? 0 : 1)
             Spacer()
-            if richTextFieldState.toolCount != 0 {
-                ToolButton(count: richTextFieldState.toolCount, action: {
-                    richTextFieldDelegate.onShowTools()
-                    checkAndUpdateTextFieldVisibility()
-                })
+            if richTextFieldState.availableCapabilities.count > 0 {
+                ToolSelectionMenu(
+                    availableCapabilities: richTextFieldState.availableCapabilities,
+                    selectedCapabilities: richTextFieldState.selectedCapabilities,
+                    onCapabilitiesSelected: { capabilities in
+                        richTextFieldDelegate.onUpdateSelectedCapabilities(capabilities)
+                    }
+                )
             }
             if richTextFieldState.showAXApp {
                 #if os(macOS)
@@ -111,11 +126,10 @@ struct RichTextField: View {
                 })
             }
             SendButton(
-                isEnabled: isMessageValid,
+                isEnabled: richTextFieldState.isMessageValid,
                 isRunning: richTextFieldState.isRunning,
                 onSend: {
-                    richTextFieldState.attachments.removeAll()
-                    richTextFieldDelegate.onSend()
+                    handleSendAction()
                 },
                 onStop: richTextFieldDelegate.onStop
             )
@@ -132,12 +146,26 @@ struct RichTextField: View {
     }
 
     private func checkAndUpdateTextFieldVisibility() {
-        if inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if richTextFieldState.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             isTextFieldVisible = false
         }
     }
 
-    private var isMessageValid: Bool {
-        inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1 || !richTextFieldState.attachments.isEmpty
+    private func handleSendAction() {
+        guard richTextFieldState.isMessageValid && !richTextFieldState.isRunning  else {
+            return
+        }
+        richTextFieldDelegate.onClearAttachments()
+        richTextFieldDelegate.onSend()
+    }
+
+    private func handleEnterKeyPress() -> KeyPress.Result {
+        if richTextFieldState.isMessageValid && !richTextFieldState.isRunning {
+            DispatchQueue.main.async {
+                handleSendAction()
+            }
+            return .handled
+        }
+        return .ignored
     }
 }

@@ -25,23 +25,15 @@ public final class LocalChatViewModel: BaseChatViewModel {
     private var currentTurn: Int = 0
     public let logger = Logger(subsystem: "Local", category: "LocalChatViewModel")
 
-    public init(apiKey: String = "") {
+    public init(conversationId: String, apiKey: String = "") {
         self.localClient = LocalClient()
 
         super.init(
             apiKey: apiKey,
             provider: .local,
-            model: .deepSeekR17B
+            model: .deepSeekR17B,
+            conversationId: conversationId
         )
-    }
-
-    func resetMessages() {
-        self.cueChatMessages.removeAll()
-        guard let conversationId = selectedConversationId else { return }
-
-        Task {
-            await messageRepository.deleteAllCachedMessages(forConversation: conversationId)
-        }
     }
 
     func prepareForMessageParams(_ messageParams: [CueChatMessage]) -> [OpenAI.ChatMessageParam] {
@@ -163,7 +155,7 @@ public final class LocalChatViewModel: BaseChatViewModel {
         let messageParams = Array(self.cueChatMessages.suffix(maxMessages))
 
         isLoading = true
-        newMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
         currentTurn = 0
 
         do {

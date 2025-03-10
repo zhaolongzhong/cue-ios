@@ -9,12 +9,12 @@ enum ColorSchemeOption: String, CaseIterable {
 }
 
 struct SettingsListIOS: View {
+    @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var coordinator: AppCoordinator
     @Dependency(\.featureFlagsViewModel) private var featureFlags
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
-    @Binding var navigationPath: NavigationPath
     @State private var showingLogoutConfirmation = false
     let dismiss: DismissAction
 
@@ -31,34 +31,45 @@ struct SettingsListIOS: View {
             .listSectionSpacing(.compact)
             Section {
                 if featureFlags.enableProviders {
-                    SettingsRow(systemIcon: "key.viewfinder", title: "Providers", showChevron: true) {
-                        navigationPath.append(SettingsRoute.providers)
-                    }
+                    NavigationLink(
+                        destination: ProvidersScreen(providersViewModel: dependencies.providersViewModel),
+                        label: {
+                            SettingsRow(systemIcon: "key.viewfinder", title: "Providers")
+                        }
+                    )
+                    .buttonStyle(.plain)
                 }
+
                 if featureFlags.enableAssistants {
-                    SettingsRow(systemIcon: "key", title: "API Keys", showChevron: true) {
-                        navigationPath.append(SettingsRoute.assistantAPIKeys)
+                    NavigationLink(
+                        destination: APIKeysView(),
+                        label: {
+                            SettingsRow(systemIcon: "key", title: "API Keys")
+                        }
+                    )
+                    .buttonStyle(.plain)
+                }
+                NavigationLink(
+                    destination: ConnectedAppsView(),
+                    label: {
+                        SettingsRow(
+                            systemIcon: "app.connected.to.app.below.fill",
+                            title: "Connected Apps"
+                        )
                     }
-                }
-                SettingsRow(
-                    systemIcon: "app.connected.to.app.below.fill",
-                    title: "Connected Apps",
-                    showChevron: true
-                ) {
-                    navigationPath.append(SettingsRoute.connectedApps)
-                }
+                )
+                .buttonStyle(.plain)
             } header: {
                 SettingsHeader(title: "Services")
             }
             Section {
-                SettingsRow(
-                    systemIcon: "flag",
-                    title: "Feature Flags",
-                    value: "",
-                    showChevron: true
-                ) {
-                    navigationPath.append(SettingsRoute.featureFlags)
-                }
+                NavigationLink(
+                    destination: FeatureFlagsView(),
+                    label: {
+                        SettingsRow(systemIcon: "flag", title: "Feature Flags")
+                    }
+                )
+                .buttonStyle(.plain)
             } header: {
                 SettingsHeader(title: "Developer")
             }

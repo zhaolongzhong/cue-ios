@@ -4,8 +4,7 @@ public enum WindowId: String {
     case settings = "settings-window"
     case providersManagement = "providers-management-window"
     case compainionChatWindow = "companion-chat-window"
-    case openaiLiveChatWindow = "live-chat-window-openai"
-    case geminiLiveChatWindow = "live-chat-window-gemini"
+    case liveChatWindow = "live-chat-window"
 
     public static func companionChatWindowId(_ id: String) -> String {
         return "companion-chat-window-\(id)"
@@ -16,16 +15,14 @@ public enum WindowId: String {
     }
 
     public static func isLiveChatWindowId(_ id: String) -> Bool {
-        return id.contains("live-chat-window-")
+        return id.contains("live-chat-window")
     }
 
     public static func fromRawValue(_ rawValue: String) -> WindowId? {
         if rawValue.contains(WindowId.compainionChatWindow.rawValue) {
             return WindowId.compainionChatWindow
-        } else if rawValue.contains(WindowId.openaiLiveChatWindow.rawValue) {
-            return .openaiLiveChatWindow
-        } else if rawValue.contains(WindowId.geminiLiveChatWindow.rawValue) {
-            return .geminiLiveChatWindow
+        } else if rawValue.contains(WindowId.liveChatWindow.rawValue) {
+            return WindowId.liveChatWindow
         }
         return WindowId(rawValue: rawValue)
     }
@@ -33,12 +30,12 @@ public enum WindowId: String {
 
 enum HomeDestination: Hashable {
     case home
-    case cue
     case email
-    case openai
-    case anthropic
-    case gemini
-    case local
+    case cue(String)
+    case openai(String)
+    case anthropic(String)
+    case gemini(String)
+    case local(String)
     case chat(Assistant)
     case providers
 }
@@ -47,6 +44,7 @@ enum HomeDestination: Hashable {
 final class HomeNavigationManager: ObservableObject {
     @Published var currentView: HomeDestination = .home
     @Published private(set) var selectedAssistant: Assistant?
+    @Published private(set) var selectedProvider: Provider?
     private let userDefaults: UserDefaults
     @Published var isEmailViewPresented = false
     @Environment(\.openWindow) private var openWindow
@@ -68,16 +66,8 @@ final class HomeNavigationManager: ObservableObject {
         case .email:
             currentView = .email
             isEmailViewPresented = true
-        case .cue:
-            currentView = .cue
-        case .anthropic:
-            currentView = .anthropic
-        case .gemini:
-            currentView = .gemini
-        case .openai:
-            currentView = .openai
-        case .local:
-            currentView = .local
+        case .cue, .anthropic, .gemini, .openai, .local:
+            currentView = detailType
         case .providers:
             #if os(macOS)
             openMacOSWindow(WindowId.providersManagement)
@@ -86,6 +76,22 @@ final class HomeNavigationManager: ObservableObject {
             #endif
         }
     }
+
+    func navigateToConversation(provider: Provider, conversationId: String) {
+        switch provider {
+        case .openai:
+            navigateTo(.openai(conversationId))
+        case .anthropic:
+            navigateTo(.anthropic(conversationId))
+        case .gemini:
+            navigateTo(.gemini(conversationId))
+        case .local:
+            navigateTo(.local(conversationId))
+        case .cue:
+            navigateTo(.cue(conversationId))
+        }
+    }
+
     func openMacOSWindow(_ id: WindowId) {
         #if os(macOS)
         openWindow(id: id.rawValue)

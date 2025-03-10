@@ -44,16 +44,16 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
         case .openai: return "openai-icon"
         case .anthropic: return "anthropic"
         case .gemini: return "sparkle"
-        case .cue: return ""
-        case .local: return "lock.laptopcomputer"
+        case .cue: return "lasso.badge.sparkles"
+        case .local: return "desktopcomputer.and.macbook"
         }
     }
 
     var isSystemIcon: Bool {
         switch self {
-        case .openai, .anthropic, .cue:
+        case .openai, .anthropic:
             return false
-        case .gemini, .local:
+        case .gemini, .local, .cue:
             return true
         }
     }

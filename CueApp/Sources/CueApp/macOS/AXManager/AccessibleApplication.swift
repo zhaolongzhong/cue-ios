@@ -6,6 +6,7 @@ import AppKit
 
 public enum AccessibleApplication: CaseIterable {
     case xcode
+    case androidStudio
     case terminal
     case visualStudioCode
     case textEdit
@@ -17,6 +18,8 @@ extension AccessibleApplication {
         switch self {
         case .xcode:
             return "com.apple.dt.Xcode"
+        case .androidStudio:
+            return "com.google.android.studio"
         case .terminal:
             return "com.apple.Terminal"
         case .textEdit:
@@ -31,14 +34,16 @@ extension AccessibleApplication {
         switch self {
         case .xcode:
             return "Xcode"
+        case .androidStudio:
+            return "Android Studio"
+        case .visualStudioCode:
+            return "Visual Studio Code"
         case .terminal:
             return "Terminal"
         case .textEdit:
             return "TextEdit"
         case .notes:
             return "Notes"
-        case .visualStudioCode:
-            return "Visual Studio Code"
         }
     }
 
@@ -60,29 +65,28 @@ struct AXAppSelectionMenu: View {
     let onStartAXApp: ((AccessibleApplication) -> Void)?
 
     var body: some View {
-        HoverButton {
-            Menu {
-                ForEach(AccessibleApplication.allCases, id: \.self) { app in
-                    Button {
-                        selectedApp = app
-                        onStartAXApp?(selectedApp)
-                    } label: {
-                        HStack {
-                            app.icon
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                            Text(app.name)
-                                .frame(minWidth: 200, alignment: .leading)
-                        }
+        Menu {
+            ForEach(AccessibleApplication.allCases, id: \.self) { app in
+                Button {
+                    selectedApp = app
+                    onStartAXApp?(selectedApp)
+                } label: {
+                    HStack {
+                        app.icon
+                            .resizable()
+                            .frame(width: 16, height: 16)
+                        Text(app.name)
+                            .frame(minWidth: 200, alignment: .leading)
                     }
                 }
-            } label: {
-                Image(systemName: "link.badge.plus")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+        } label: {
+            Image(systemName: "link.badge.plus")
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .withIconHover()
     }
 }
 #endif

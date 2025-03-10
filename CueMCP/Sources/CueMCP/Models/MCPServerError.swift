@@ -1,17 +1,5 @@
 import Foundation
 
-// MARK: - Models
-public struct MCPServerConfig: Codable, Sendable {
-    public let command: String
-    public let args: [String]
-    public let env: [String: String]?
-}
-
-public struct MCPServersConfig: Codable, Sendable {
-    public let mcpServers: [String: MCPServerConfig]
-}
-
-// MARK: - Error Types
 public enum MCPServerError: LocalizedError, Sendable {
     case configNotFound(String)
     case invalidConfig(String)

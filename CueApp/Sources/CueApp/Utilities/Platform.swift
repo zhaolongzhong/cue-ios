@@ -8,3 +8,13 @@ func copyToPasteboard(_ content: String) {
     UIPasteboard.general.string = content
     #endif
 }
+
+extension Color {
+    var native: Any {
+        #if os(macOS)
+        return NSColor(self)
+        #else
+        return UIColor(self)
+        #endif
+    }
+}

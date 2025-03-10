@@ -26,9 +26,11 @@ struct SidebarAssistantActions: AssistantActions {
 struct Sidebar: View {
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
+    @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
+    @State private var selectedProvider: Provider?
     @State private var isShowingNewAssistantSheet = false
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
@@ -86,6 +88,7 @@ struct Sidebar: View {
                 assistantsViewModel: self.assistantsViewModel,
                 onUpdate: nil
             )
+            .sheetWidth(.medium)
             .presentationCompactAdaptation(.popover)
         }
         .sheet(isPresented: $isShowingNewAssistantSheet) {
@@ -102,34 +105,42 @@ struct Sidebar: View {
         ScrollView {
             LazyVStack {
                 Group {
-                    if featureFlags.enableCue {
-                        cueRow
+                    if featureFlags.enableAssistants {
+                        assistantsRow
                     }
                     emailRow
                     if featureFlags.enableProviders {
                         if !providersViewModel.enabledProviders.isEmpty {
-                            Divider()
-                                .opacity(0.5)
                             providersSection
                         }
                     }
                 }
                 .padding(.horizontal, 16)
-                if featureFlags.enableAssistants {
-                    assistantsSection
+
+                if selectedProvider != nil {
+                    conversationsSection
+                } else {
+                    if featureFlags.enableAssistants {
+                        Divider()
+                            .opacity(0.2)
+                            .padding(.horizontal, 16)
+                        assistantsSection
+                    }
                 }
             }
         }
     }
 
-    private var cueRow: some View {
+    private var assistantsRow: some View {
         SidebarRowButton(
-            title: "Cue",
-            icon: .custom("~"),
+            title: "Assistants",
+            icon: .system("bubbles.and.sparkles"),
             action: {
-                homeNavigationManager.navigateTo(.cue)
+                selectedProvider = nil
+                homeNavigationManager.navigateTo(.cue(""))
             }
         )
+        .withHoverEffect()
     }
 
     private var emailRow: some View {
@@ -140,6 +151,7 @@ struct Sidebar: View {
                 homeNavigationManager.navigateTo(.home)
             }
         )
+        .withHoverEffect()
     }
 
     private var emptyProvidersStateView: some View {
@@ -148,59 +160,43 @@ struct Sidebar: View {
             .font(.caption)
     }
 
-    private var providersHeader: some View {
-        SectionHeader(
-            title: "Providers",
-            trailingIcon: .system("plus"),
-            trailingAction: {
-                homeNavigationManager.navigateTo(.openai)
-                #if os(macOS)
-                openWindow(id: WindowId.providersManagement.rawValue)
-                #endif
-            }
-        )
-    }
-
     private var providersSection: some View {
-        VStack(spacing: 0) {
-            providersHeader
+        VStack {
+            SectionHeader(title: "Providers")
 
             if providersViewModel.enabledProviders.isEmpty {
                 emptyProvidersStateView
             } else {
-                ForEach(providersViewModel.enabledProviders, id: \.self) { provider in
-                    switch provider {
-                    case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.openai)
-                        }
-                    case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.anthropic)
-                        }
-                    case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.gemini)
-                        }
-                    case .local where featureFlags.enableLocal:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.local)
-                        }
-                    default:
-                        AnyView(EmptyView())
-                    }
+                ProviderSelectionMenu(
+                    selectedProvider: $selectedProvider,
+                    providersViewModel: providersViewModel,
+                    featureFlags: featureFlags
+                )
+            }
+        }
+    }
+
+    private var conversationsSection: some View {
+        Group {
+            if let selectedProvider = selectedProvider {
+                ConversationsView(
+                    viewModel: dependencies.viewModelFactory.makeConversationViewModel(provider: selectedProvider),
+                    provider: selectedProvider
+                ) { conversationId in
+                    homeNavigationManager.navigateToConversation(provider: selectedProvider, conversationId: conversationId)
                 }
             }
         }
-        #if os(iOS)
-        .listSectionSpacing(.compact)
-        #endif
     }
 
     private var assistantsSection: some View {
         VStack {
-            assistantsSectionHeader
-                .padding(.horizontal, 16)
+            SectionHeader(
+                title: "Assistants",
+                trailingIcon: .system("plus"),
+                trailingAction: { isShowingNewAssistantSheet = true }
+            )
+            .padding(.horizontal, 16)
             ForEach(assistantsViewModel.assistants) { assistant in
                 AssistantRow(
                     assistant: assistant,
@@ -216,6 +212,7 @@ struct Sidebar: View {
                     )
                 )
                 .padding(.horizontal, 8)
+                .withHoverEffect()
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
@@ -228,34 +225,5 @@ struct Sidebar: View {
             }
             .scrollContentBackground(.hidden)
         }
-    }
-
-    private var assistantsSectionHeader: some View {
-        SectionHeader(
-            title: "Assistants",
-            trailingIcon: .system("plus"),
-            trailingAction: { isShowingNewAssistantSheet = true }
-        )
-    }
-}
-
-struct ProviderSidebarRow: View {
-    let provider: Provider
-    let action: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                ProviderAvatar(
-                    iconName: provider.iconName,
-                    isSystemImage: provider.isSystemIcon
-                )
-
-                Text(provider.displayName)
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
     }
 }

@@ -11,6 +11,8 @@ extension FeatureFlagsViewModel {
         case enableLocal
         case enableMediaOptions
         case enableAssistants
+        case enableEmail
+        case enableTabView
 
         var key: String { rawValue }
     }
@@ -55,6 +57,12 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
     @Published var enableAssistants: Bool {
         didSet { UserDefaults.standard.set(enableAssistants, forKey: Keys.enableAssistants.key) }
     }
+    @Published var enableEmail: Bool {
+        didSet { UserDefaults.standard.set(enableEmail, forKey: Keys.enableEmail.key) }
+    }
+    @Published var enableTabView: Bool {
+        didSet { UserDefaults.standard.set(enableTabView, forKey: Keys.enableTabView.key) }
+    }
 
     init() {
         enableProviders = UserDefaults.standard.bool(forKey: Keys.enableProviders.key)
@@ -65,5 +73,7 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
         enableLocal = UserDefaults.standard.bool(forKey: Keys.enableLocal.key)
         enableMediaOptions = UserDefaults.standard.bool(forKey: Keys.enableMediaOptions.key)
         enableAssistants = UserDefaults.standard.bool(forKey: Keys.enableAssistants.key)
+        enableEmail = UserDefaults.standard.bool(forKey: Keys.enableEmail.key)
+        enableTabView = UserDefaults.standard.bool(forKey: Keys.enableTabView.key)
     }
 }

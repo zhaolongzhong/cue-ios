@@ -89,9 +89,7 @@ actor NetworkClient: NetworkClientProtocol {
     private func handleHTTPStatusCode(_ statusCode: Int, data: Data) throws {
         switch statusCode {
         case 200...299:
-            #if DEBUG
-            logRawResponse(data)
-            #endif
+            break
         case 401:
             logger.error("Unauthorized error: \(statusCode)")
             throw NetworkError.unauthorized
@@ -138,12 +136,6 @@ actor NetworkClient: NetworkClientProtocol {
         }
     }
 
-    private func logRawResponse(_ data: Data) {
-        if let raw = String(data: data, encoding: .utf8) {
-//            logger.debug("Raw response: \(raw)")
-        }
-    }
-
     private func refreshTokens() async throws -> TokenResponse {
         if let existingTask = refreshTask {
             return try await existingTask.value
@@ -171,23 +163,6 @@ actor NetworkClient: NetworkClientProtocol {
         defer { refreshTask = nil }
 
         return try await task.value
-    }
-}
-
-protocol DebugPrintable: Encodable {
-    func debugJSON() -> String
-}
-
-extension DebugPrintable {
-    func debugJSON() -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        do {
-            let data = try encoder.encode(self)
-            return String(data: data, encoding: .utf8) ?? "Failed to encode"
-        } catch {
-            return "Failed to encode: \(error)"
-        }
     }
 }
 
@@ -227,6 +202,21 @@ extension NetworkClient {
                 }
 
                 buffer = ""
+            }
+        }
+    }
+}
+
+extension NetworkClient {
+    private func logRawResponse(_ data: Data) {
+        if let jsonObject = try? JSONSerialization.jsonObject(with: data),
+           let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted),
+           let prettyString = String(data: prettyData, encoding: .utf8) {
+            logger.debug("Response: \n\(prettyString)")
+        } else {
+            // Fall back to regular string if not valid JSON
+            if let raw = String(data: data, encoding: .utf8) {
+                logger.debug("Raw response: \(raw)")
             }
         }
     }

@@ -1,8 +1,3 @@
-//
-//  BaseChatViewModel.swift
-//  CueApp
-//
-
 import Foundation
 import Combine
 import Dependencies
@@ -10,65 +5,62 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public class BaseChatViewModel: ObservableObject, ChatViewModel {
+public class BaseChatViewModel: ObservableObject, ChatViewModelProtocol {
     @Dependency(\.conversationRepository) var conversationRepository
     @Dependency(\.messageRepository) var messageRepository
 
-    // Common published properties
-    @Published var selectedConversationId: String? {
-        didSet {
-            if oldValue != selectedConversationId && selectedConversationId != nil {
-                Task { await loadMessages() }
-            }
-        }
-    }
+    @Published var conversationId: String
     @Published var conversations: [ConversationModel] = []
     @Published var cueChatMessages: [CueChatMessage] = []
     @Published var isLoadingMore = false
-    @Published var newMessage: String = ""
     @Published var shouldScrollToUserMessage: Bool = false
+    @Published var initialRichTextFieldState: RichTextFieldState
     @Published var richTextFieldState: RichTextFieldState
 
-    // Configuration
     @Published var model: ChatModel
-    @Published var availableTools: [Tool] = [] {
-        didSet {
-            richTextFieldState.toolCount = availableTools.count
-        }
+    @Published var availableCapabilities: [Capability] = [] {
+        didSet { updateTools() }
     }
+    @Published var selectedCapabilities: [Capability] = []
     @Published var attachments: [Attachment] = []
     @Published var isStreamingEnabled: Bool = true
+    @Published var showLiveChat: Bool = false
     @Published var isToolEnabled: Bool = true
     @Published var isRunning: Bool = false {
         didSet {
-            richTextFieldState.isRunning = isRunning
+            // Update the immutable state with the new running status
+            richTextFieldState = richTextFieldState.copy(isRunning: isRunning)
         }
     }
     @Published var maxMessages: Int = 10
     @Published var maxTurns: Int = 10
 
-    // Observed app state
     @Published var observedApp: AccessibleApplication?
     @Published var focusedLines: String?
-
-    // Status
     @Published var isLoading = false
     @Published var error: ChatError?
     @Published var apiKey: String
 
-    // Common tools
+    private var selectedConversation: ConversationModel?
     let toolManager: ToolManager
     var tools: [JSONValue] = []
 
     #if os(macOS)
     let axManager: AXManager
     private var textAreaContent: TextAreaContent?
+    private var textAreaContents: [TextAreaContent] = []
     #endif
 
     var cancellables = Set<AnyCancellable>()
     let provider: Provider
 
-    init(apiKey: String, provider: Provider, model: ChatModel, conversationId: String? = nil, richTextFieldState: RichTextFieldState? = nil) {
+    init(
+        apiKey: String,
+        provider: Provider,
+        model: ChatModel,
+        conversationId: String,
+        richTextFieldState: RichTextFieldState? = nil
+    ) {
         self.apiKey = apiKey
         self.provider = provider
         self.model = model
@@ -78,27 +70,54 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         self.axManager = AXManager()
         #endif
 
-        self.availableTools = toolManager.getTools()
-        self.selectedConversationId = conversationId
-        self.richTextFieldState = richTextFieldState ?? RichTextFieldState()
-
-        updateTools()
+        self.availableCapabilities = toolManager.getAllAvailableCapabilities()
+        self.conversationId = conversationId
+        let richTextFieldState = richTextFieldState ?? RichTextFieldState(conversationId: conversationId)
+        self.initialRichTextFieldState = richTextFieldState
+        self.richTextFieldState = richTextFieldState.copy()
 
         #if os(macOS)
         setupToolsSubscription()
         setupTextAreaContentSubscription()
         #endif
+        Task {
+            self.selectedConversation = try? await conversationRepository.getConversation(id: conversationId)
+        }
     }
 
-    func setStoredConversationId(_ id: String?) {
-        selectedConversationId = id
+    func clearError() {
+        error = nil
     }
 
-    // MARK: - Common Functionality for Chat View Models
+    private func lastSelectedModelKey(for providerId: String) -> String {
+        return "lastSelectedModel_\(providerId)"
+    }
 
-    // Tools management
+    // MARK: - Tools management
     func updateTools() {
-        tools = self.toolManager.getToolsJSONValue(model: self.model.id)
+        var capabilityNames = self.selectedConversation?.metadata?.capabilities ?? []
+        capabilityNames = capabilityNames.map { $0.lowercased() }
+
+        let predicateBlock: (Capability) -> Bool = { capability in
+                switch capability {
+                case .tool(let tool):
+                    return capabilityNames.contains(tool.name.lowercased())
+                #if os(macOS)
+                case .mcpServer(let server):
+                    return capabilityNames.contains(server.serverName.lowercased())
+                #endif
+                }
+            }
+        self.selectedCapabilities = self.availableCapabilities.filter(predicateBlock)
+
+        // Update the immutable state with new capabilities
+        richTextFieldState = richTextFieldState.copy(
+            availableCapabilities: availableCapabilities,
+            selectedCapabilities: selectedCapabilities
+        )
+
+        tools = toolManager.getJSONValues(selectedCapabilities, model: model.id)
+        AppLog.log.debug("Update capabilities, selected capabilities: \(self.selectedCapabilities.map {$0.name}), tools: \(self.tools.count)")
     }
 
     private func setupToolsSubscription() {
@@ -106,26 +125,56 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         toolManager.mcpToolsPublisher
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                self.availableTools = self.toolManager.getTools()
-                updateTools()
+                self.availableCapabilities = self.toolManager.getAllAvailableCapabilities()
             }
             .store(in: &cancellables)
         #endif
     }
 
+    func updateSelectedCapabilities(_ capabilities: [Capability]) async {
+        do {            
+            guard let coversation = self.selectedConversation else {
+                AppLog.log.error("No selected conversation")
+                return
+            }
+            let newConversation = ConversationModel(
+                id: coversation.id,
+                title: coversation.title,
+                createdAt: coversation.createdAt,
+                updatedAt: Date(),
+                assistantId: nil,
+                metadata: ConversationMetadata(isPrimary: coversation.metadata?.isPrimary ?? false, capabilities: capabilities.map { $0.name })
+            )
+            try await conversationRepository.update(newConversation)
+            self.selectedConversation = newConversation
+
+            // Update the immutable state with new selected capabilities
+            richTextFieldState = richTextFieldState.copy(selectedCapabilities: capabilities)
+            self.selectedCapabilities = capabilities
+
+            updateTools()
+        } catch {
+            AppLog.log.error("Error getting conversation: \(error)")
+        }
+    }
+
     func startServer() async {
         #if os(macOS)
-//        await self.toolManager.startMcpServer()
+        await self.toolManager.startMcpServer()
         #endif
     }
 
-    // Observed app functionality
+    // MARK: - Observed app functionality
     func updateObservedApplication(to app: AccessibleApplication?) {
-        guard let app = app else { return }
+        guard let app = app else {
+            stopObserveApp()
+            return
+        }
         #if os(macOS)
         self.axManager.updateObservedApplication(to: app)
         #endif
         self.observedApp = app
+        richTextFieldState = richTextFieldState.copy(observedApp: observedApp)
     }
 
     func stopObserveApp() {
@@ -133,6 +182,8 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         self.axManager.stopObserving()
         self.observedApp = nil
         self.textAreaContent = nil
+        self.textAreaContents = []
+        richTextFieldState = richTextFieldState.copy(clearObservedApp: true)
         #endif
     }
 
@@ -141,47 +192,27 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         axManager.$textAreaContentList
             .sink { [weak self] newValue in
                 guard let self = self else { return }
+                self.textAreaContents = newValue
                 self.textAreaContent = newValue.first
                 self.focusedLines = self.textAreaContent?.focusedLines
+                self.richTextFieldState = richTextFieldState.copy(textAreaContents: textAreaContents)
             }
             .store(in: &cancellables)
         #endif
     }
 
-    // Message management
+    // MARK: - Message management
     func addAttachment(_ attachment: Attachment) {
         attachments.append(attachment)
     }
 
-    func clearError() {
-        error = nil
-    }
-
-    func loadConversations() async {
-        do {
-            let result = try await conversationRepository.fetchConversationsByProvider(
-                provider: provider,
-                limit: 100,
-                offset: 0
-            )
-            AppLog.log.debug("Fetched \(result.count) conversations for provider: \(self.provider.displayName)")
-            if selectedConversationId == nil, let firstId = conversations.first?.id {
-                selectedConversationId = firstId
-            }
-        } catch {
-            self.error = ChatError.sessionError(error.localizedDescription)
-            AppLog.log.error("Failed to fetch conversations: \(error)")
-        }
-    }
-
     func loadMessages() async {
-        guard let conversationId = selectedConversationId else { return }
         switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
         case .success(let messageModels):
             self.cueChatMessages = messageModels
                 .sorted(by: { $0.createdAt < $1.createdAt })
                 .compactMap { $0.toCueChatMessage() }
-            AppLog.log.debug("Loading messages for conversation \(conversationId) succeeded: \(self.cueChatMessages.count)")
+            AppLog.log.debug("Loading messages for conversation \(self.conversationId) succeeded: \(self.cueChatMessages.count)")
         case .failure(let error):
             self.error = ChatError.unknownError(error.localizedDescription)
         }
@@ -192,20 +223,11 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         cueChatMessages = cueChatMessages.filter { $0.id != message.id }
     }
 
-    func getOrCreateConversationId() async -> String? {
-        if let id = selectedConversationId { return id }
-        do {
-            let result = try await conversationRepository.createConversation(
-                title: "No title",
-                assistantId: "",
-                isPrimary: false,
-                provider: provider
-            )
-            selectedConversationId = result.id
-            return result.id
-        } catch {
-            self.error = ChatError.unknownError(error.localizedDescription)
-            return nil
+    func deleteAllMessages() {
+        self.cueChatMessages.removeAll()
+
+        Task {
+            await messageRepository.deleteAllCachedMessages(forConversation: conversationId)
         }
     }
 
@@ -216,12 +238,6 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
             self.cueChatMessages.append(message)
         }
 
-        if message.isUser {
-            DispatchQueue.main.async {
-                self.shouldScrollToUserMessage = true
-            }
-        }
-
         if persistInCache {
             Task {
                 await saveMessage(message)
@@ -230,10 +246,6 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
     }
 
     private func saveMessage(_ message: CueChatMessage) async {
-        guard let conversationId = selectedConversationId else {
-            AppLog.log.warning("Cannot save message because no conversation is selected")
-            return
-        }
         let messageModel = MessageModel(from: message, conversationId: conversationId)
         let saveResult = await messageRepository.saveMessage(messageModel: messageModel)
         if case .failure(let error) = saveResult {
@@ -241,7 +253,7 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         }
     }
 
-    // This method must be implemented by subclasses
+    // These methods must be implemented by subclasses
     func sendMessage() async {
         fatalError("sendMessage() must be implemented by subclasses")
     }

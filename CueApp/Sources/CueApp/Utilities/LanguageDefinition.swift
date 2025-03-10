@@ -134,7 +134,7 @@ public struct LanguageDefinitions {
             stringPattern: "\"\"\"[\\s\\S]*?\"\"\"|\"[^\"\\n]*\"|'[^'\\n]*'",
             typePattern: "\\b(Int|Double|Float|Boolean|String|Char|Long|Short|Byte|Any|Unit|List|Map|Set|Array|CustomType)\\b",
             numberPattern: "\\b\\d+\\.\\d+\\b|\\b\\d+\\b",
-            functionPattern: "\\bfun\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+            functionPattern: "\\b(?:(?:suspend|private|public|protected|internal|inline|tailrec|infix|operator)\\s+)*fun\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         ),
 
         "cpp": LanguageDefinition(

@@ -8,29 +8,20 @@ struct SettingsListMacOS: View {
     @ObservedObject var viewModel: SettingsViewModel
     @AppStorage("colorScheme") private var colorScheme: ColorSchemeOption = .system
     @AppStorage("hapticFeedbackEnabled") private var hapticFeedbackEnabled: Bool = true
-    @Binding var navigationPath: NavigationPath
+    @ObservedObject var router: AppDestinationRouter
     let dismiss: DismissAction
 
     var body: some View {
-        #if os(macOS)
-        ScrollView {
-            HStack {
-                Spacer()
-                contentView
-                Spacer()
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 32)
-            .frame(maxWidth: .infinity)
+        CenteredScrollView {
+            contentView
+                .padding()
         }
-        .frame(maxWidth: .infinity)
         .onAppear {
             updateAppearance()
         }
         .onChange(of: colorScheme) { _, _ in
             updateAppearance()
         }
-        #endif
     }
 
     var contentView: some View {
@@ -49,12 +40,12 @@ struct SettingsListMacOS: View {
                 GroupBox {
                     if featureFlags.enableProviders {
                         SettingsRow(systemIcon: "key.viewfinder", title: "Providers", showChevron: true, showDivider: true) {
-                            navigationPath.append(SettingsRoute.providers)
+                            router.navigate(to: AppDestination.providers)
                         }
                     }
                     if featureFlags.enableAssistants {
                         SettingsRow(systemIcon: "key", title: "API Keys", showChevron: true, showDivider: true) {
-                            navigationPath.append(SettingsRoute.assistantAPIKeys)
+                            router.navigate(to: AppDestination.assistantAPIKeys)
                         }
                     }
                     SettingsRow(
@@ -62,7 +53,7 @@ struct SettingsListMacOS: View {
                         title: "Connected Apps",
                         showChevron: true
                     ) {
-                        navigationPath.append(SettingsRoute.connectedApps)
+                        router.navigate(to: AppDestination.connectedApps)
                     }
                 }
             } header: {
@@ -72,23 +63,21 @@ struct SettingsListMacOS: View {
             Section {
                 GroupBox {
                     SettingsRow(
-                        systemIcon: "flag",
-                        title: "Feature Flags",
+                        systemIcon: "hammer",
+                        title: "MCP Servers",
                         value: "",
                         showChevron: true,
                         showDivider: true
                     ) {
-                        navigationPath.append(SettingsRoute.featureFlags)
+                        router.navigate(to: AppDestination.developer)
                     }
                     SettingsRow(
-                        systemIcon: "hammer",
-                        title: "Integrations",
+                        systemIcon: "flag",
+                        title: "Feature Flags",
                         value: "",
                         showChevron: true
                     ) {
-                        #if os(macOS)
-                        navigationPath.append(SettingsRoute.developer)
-                        #endif
+                        router.navigate(to: AppDestination.featureFlags)
                     }
                 }
             } header: {
@@ -155,9 +144,9 @@ struct SettingsListMacOS: View {
     }
 }
 
-#if os(macOS)
 extension SettingsListMacOS {
     private func updateAppearance() {
+        #if os(macOS)
         let newAppearance: NSAppearance? = {
             if let appearanceName = colorScheme.toNSAppearanceName() {
                 return NSAppearance(named: appearanceName)
@@ -177,10 +166,12 @@ extension SettingsListMacOS {
                 window.display() // Force a redraw
             }
         }
+        #endif
     }
 
 }
 extension ColorSchemeOption {
+    #if os(macOS)
     func toNSAppearanceName() -> NSAppearance.Name? {
         switch self {
         case .system:
@@ -191,5 +182,5 @@ extension ColorSchemeOption {
             return .darkAqua
         }
     }
+    #endif
 }
-#endif

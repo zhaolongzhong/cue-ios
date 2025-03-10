@@ -92,7 +92,7 @@ public struct LocalRequest: Encodable {
     }
 }
 
-public struct LocalResponse: Decodable, Sendable, DebugPrintable {
+public struct LocalResponse: Decodable, Sendable {
     public let model: String
     public let createdAt: Date
     public let message: OpenAI.AssistantMessage
@@ -156,7 +156,7 @@ extension LocalResponse: Identifiable {
     }
 }
 
-public struct LocalMessage: Codable, Sendable, DebugPrintable {
+public struct LocalMessage: Codable, Sendable {
     public let role: String
     public let content: String
 

@@ -10,15 +10,14 @@ struct ToolButton: View {
     let action: () -> Void
 
     var body: some View {
-        HoverButton {
-            Button(action: action) {
-                HStack(spacing: 2) {
-                    Image(systemName: "hammer")
-                        .font(.system(size: 12))
-                    Text("\(count)")
-                }
+        Button(action: action) {
+            HStack(spacing: 2) {
+                Image(systemName: "hammer")
+                    .font(.system(size: 12))
+                Text("\(count)")
             }
-            .buttonStyle(.plain)
         }
+        .buttonStyle(.plain)
+        .withIconHover()
     }
 }

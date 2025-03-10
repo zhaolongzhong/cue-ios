@@ -1,7 +1,7 @@
 #if os(macOS)
 import Cocoa
 
-struct LineRange {
+struct LineRange: Hashable, Sendable {
     let startLine: Int
     let endLine: Int
 }
@@ -138,5 +138,91 @@ extension AXUIElement {
 
         return LineRange(startLine: startLine, endLine: endLine)
     }
+
+    func axPosition() -> CGPoint {
+        var value: AnyObject?
+        let error = AXUIElementCopyAttributeValue(self, kAXPositionAttribute as CFString, &value)
+        if error == .success, let value = value, CFGetTypeID(value) == AXValueGetTypeID() {
+            let axValue = unsafeDowncast(value, to: AXValue.self)
+            var position = CGPoint.zero
+            if AXValueGetValue(axValue, AXValueType.cgPoint, &position) {
+                return position
+            }
+        }
+        return CGPoint.zero
+    }
+
+    func axRole() -> String? {
+        guard let value = getAttribute(kAXRoleAttribute as String) else { return nil }
+        return value as? String
+    }
+
+    func axTitle() -> String? {
+        guard let value = getAttribute(kAXTitleAttribute as String) else { return nil }
+        return value as? String
+    }
 }
+
+// MARK: - AXUIElement Extensions for Document Info
+
+extension AXUIElement {
+    // Base attribute getter with error handling
+    func getAttribute(_ attribute: String) -> AnyObject? {
+        var value: AnyObject?
+        let error = AXUIElementCopyAttributeValue(self, attribute as CFString, &value)
+        return error == .success ? value : nil
+    }
+
+    func getParent() -> AXUIElement? {
+        guard let value = getAttribute(kAXParentAttribute as String),
+            CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            return nil
+        }
+        return unsafeDowncast(value, to: AXUIElement.self)
+    }
+
+    func getFocusedWindow() -> AXUIElement? {
+        guard let value = getAttribute(kAXFocusedWindowAttribute as String),
+            CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            return nil
+        }
+        return unsafeDowncast(value, to: AXUIElement.self)
+    }
+
+    // Get document element
+    func getDocument() -> AXUIElement? {
+        guard let value = getAttribute(kAXDocumentAttribute as String),
+              CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            return nil
+        }
+        return unsafeDowncast(value, to: AXUIElement.self)
+    }
+
+    // Get URL if available (used in some browsers and document-based apps)
+    func axURL() -> String? {
+        guard let value = getAttribute("AXURL" as String) else { return nil }
+        return value as? String
+    }
+
+    // Try to get document URI attribute
+    func axDocumentURI() -> String? {
+        // Apple's documented attribute for document URI
+        if let value = getAttribute("AXDocumentURI" as String),
+           let uri = value as? String {
+            return uri
+        }
+
+        // Alternative attribute names that might be used
+        let alternativeNames = ["AXURI", "AXPath", "AXFileName"]
+        for name in alternativeNames {
+            if let value = getAttribute(name),
+               let uri = value as? String {
+                return uri
+            }
+        }
+
+        return nil
+    }
+}
+
 #endif

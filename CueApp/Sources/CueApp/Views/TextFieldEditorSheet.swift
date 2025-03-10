@@ -17,11 +17,7 @@ struct TextFieldEditorSheet: View {
     private var navigationView: some View {
         NavigationView {
             TextEditor(text: $text)
-                .scrollContentBackground(.hidden)
-                .padding(.all, 8)
-                .background(Color.secondary.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+                .styledTextField()
                 .navigationTitle(title)
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
