@@ -10,6 +10,7 @@ public final class AssistantsViewModel: ObservableObject {
     @Dependency(\.assistantRepository) private var assistantRepository
 
     @Published private(set) var assistants: [Assistant] = []
+    @Published private(set) var assistantsWithStatus: [AssistantWithStatus] = []
     @Published private(set) var clientStatuses: [String: ClientStatus] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var errorAlert: ErrorAlert?
@@ -26,12 +27,27 @@ public final class AssistantsViewModel: ObservableObject {
     private func setupSubscriptions() {
         setupClientStatusSubscription()
         setupPrimaryAssistantSubscription()
+        setupAssistantsWithStatusSubscription()
     }
 
     private func setupPrimaryAssistantSubscription() {
         $assistants
             .map { $0.first { $0.metadata?.isPrimary ?? false } }
             .assign(to: \.primaryAssistant, on: self)
+            .store(in: &cancellables)
+    }
+    
+    private func setupAssistantsWithStatusSubscription() {
+        // Combine assistants and client statuses into a consolidated model
+        Publishers.CombineLatest($assistants, $clientStatuses)
+            .map { assistants, statuses in
+                assistants.map { assistant in
+                    // Find the status for this assistant
+                    let status = self.getClientStatus(for: assistant)
+                    return AssistantWithStatus(assistant: assistant, status: status)
+                }.sortedByStatusAndActivity()
+            }
+            .assign(to: \.assistantsWithStatus, on: self)
             .store(in: &cancellables)
     }
 
@@ -72,6 +88,12 @@ public final class AssistantsViewModel: ObservableObject {
 
     func getClientStatus(for assistant: Assistant) -> ClientStatus? {
         clientStatusService.getClientStatus(for: assistant.id)
+    }
+    
+    // Helper method to get an AssistantWithStatus for a specific assistant
+    func getAssistantWithStatus(for assistant: Assistant) -> AssistantWithStatus {
+        let status = getClientStatus(for: assistant)
+        return AssistantWithStatus(assistant: assistant, status: status)
     }
 
     func getAssistant(for assistantId: String) -> Assistant? {

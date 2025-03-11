@@ -107,18 +107,17 @@ struct AssistantsListView: View {
     var body: some View {
         ScrollView {
             LazyVStack {
-                ForEach(assistantsViewModel.assistants) { assistant in
-                    AssistantRowV2(
-                        assistant: assistant,
-                        status: assistantsViewModel.getClientStatus(for: assistant),
+                ForEach(assistantsViewModel.assistantsWithStatus) { assistantWithStatus in
+                    AssistantRowV3(
+                        assistantWithStatus: assistantWithStatus,
                         actions: actions
                     )
                     .onTapGesture {
-                        actions?.onChat(assistant: assistant)
+                        actions?.onChat(assistant: assistantWithStatus.assistant)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            actions?.onDelete(assistant: assistant)
+                            actions?.onDelete(assistant: assistantWithStatus.assistant)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -137,6 +136,10 @@ struct AssistantsListView: View {
         .overlay {
             if assistantsViewModel.isLoading {
                 ProgressView()
+            }
+            else if assistantsViewModel.assistantsWithStatus.isEmpty {
+                Text("No assistants found")
+                    .foregroundColor(.secondary)
             }
         }
     }
