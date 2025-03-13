@@ -35,6 +35,11 @@ public struct Function: Codable, Sendable, Equatable {
     public let arguments: String
     public var encodeArgsAsDict: Bool = false
 
+    // Get the base function name (before any period)
+    public var baseName: String {
+        return name.split(separator: ".").first.map(String.init) ?? name
+    }
+
     public init(name: String, arguments: String) {
         self.name = name
         self.arguments = arguments
@@ -46,7 +51,18 @@ public struct Function: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        name = try container.decode(String.self, forKey: .name)
+
+        // Decode name and sanitize it if needed
+        let rawName = try container.decode(String.self, forKey: .name)
+        // Validate function name according to the pattern requirement '^[a-zA-Z0-9_-]+$'
+        if rawName.contains(".") {
+            // Extract the base name before the period if present
+            log.error("Function name '\(rawName)' contains a period. ")
+            name = rawName.split(separator: ".").first.map(String.init) ?? rawName
+        } else {
+            name = rawName
+        }
+
         if let stringValue = try? container.decode(String.self, forKey: .arguments) {
             arguments = stringValue
         } else if let dictionaryValue = try? container.decode([String: JSONValue].self, forKey: .arguments) {
@@ -63,10 +79,12 @@ public struct Function: Codable, Sendable, Equatable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(name, forKey: .name)
+
+        // Always encode the sanitized name
+        try container.encode(baseName, forKey: .name)
 
         if encodeArgsAsDict, let data = arguments.data(using: .utf8),
-               let decodedDict = try? JSONDecoder().decode([String: JSONValue].self, from: data) {
+           let decodedDict = try? JSONDecoder().decode([String: JSONValue].self, from: data) {
             try container.encode(decodedDict, forKey: .arguments)
         } else {
             try container.encode(arguments, forKey: .arguments)

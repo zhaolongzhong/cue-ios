@@ -83,8 +83,8 @@ extension OpenAI.ChatMessageParam {
         case .userMessage(_):
             if case .string(let text) = content {
                 return [.text(text)]
-            } else if case .array(let array) = content {
-                return array
+            } else if case .array(let contentBlocks) = content {
+                return contentBlocks
             }
             return []
         case .assistantMessage(let message, _):
@@ -138,4 +138,58 @@ extension OpenAI.ChatMessageParam {
             return false
         }
     }
+
+    public func toMessageParam(simple: Bool = false) -> OpenAI.ChatMessageParam {
+        switch self {
+        case .userMessage(let message):
+            return .userMessage(message)
+        case .assistantMessage(let message, _):
+            if simple {
+                return .assistantMessage(message.toMessageParam(), nil)
+            }
+            return .assistantMessage(message, nil)
+        case .toolMessage(let message):
+            if simple {
+                return .assistantMessage(message.toAssistantMessage(), nil)
+            }
+            return .toolMessage(message)
+        }
+    }
 }
+
+extension OpenAI.ToolMessage {
+    public func toAssistantMessage() -> OpenAI.AssistantMessage {
+        return OpenAI.AssistantMessage(role: "assistant",  content : "toolCallId:\(toolCallId), Result:\(content)")
+    }
+}
+
+extension OpenAI.AssistantMessage {
+    public func toMessageParam(simple: Bool = true) -> OpenAI.AssistantMessage {
+        // Create a combined content string
+        var combinedContent = content ?? ""
+
+        // If there are tool calls, convert them to a string representation
+        if let tools = toolCalls, !tools.isEmpty {
+            // Convert tool calls to a string representation
+            let toolCallsString = tools.map { toolCall -> String in
+                let functionName = toolCall.function.name
+                let arguments = toolCall.function.arguments
+                return "Function: \(functionName), Arguments: \(arguments)"
+            }.joined(separator: "\n")
+
+            // Add tool calls to the content
+            if !combinedContent.isEmpty {
+                combinedContent += "\n\nTool Calls:\n" + toolCallsString
+            } else {
+                combinedContent = "Tool Calls:\n" + toolCallsString
+            }
+        }
+
+        // Return a new message with the combined content
+        return OpenAI.AssistantMessage(
+            role: role,
+            content: combinedContent
+        )
+    }
+}
+

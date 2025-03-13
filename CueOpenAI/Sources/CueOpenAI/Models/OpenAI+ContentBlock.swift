@@ -8,9 +8,11 @@ extension OpenAI {
 
     public struct ImageURL: Codable, Equatable, Sendable {
         public let url: String
+        public let detail: String
 
-        public init(url: String) {
+        public init(url: String, detail: String = "high") {
             self.url = url
+            self.detail = detail
         }
     }
 

@@ -121,3 +121,9 @@ extension Gemini {
         }
     }
 }
+
+extension Gemini.ChatMessageParam {
+    public func toMessageParam(simple: Bool) -> Gemini.ChatMessageParam {
+        return self
+    }
+}

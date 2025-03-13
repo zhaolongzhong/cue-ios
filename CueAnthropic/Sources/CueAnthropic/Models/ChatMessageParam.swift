@@ -164,4 +164,67 @@ extension Anthropic.ChatMessageParam {
             return false
         }
     }
+
+    public func toMessageParam(simple: Bool = false) -> Anthropic.ChatMessageParam {
+        switch self {
+        case .userMessage(let message):
+            if simple {
+                return .userMessage(message.toMessageParam(role: "user", simple: true))
+            }
+            return .userMessage(message)
+        case .assistantMessage(let message, let contextId):
+            if simple {
+                return .assistantMessage(message.toMessageParam(role: "assistant", simple: true), contextId)
+            }
+            return .assistantMessage(message, contextId)
+        case .toolMessage(let message):
+            if simple {
+                return .userMessage(message.toMessageParam())
+            }
+            return .toolMessage(message)
+        }
+    }
+}
+
+extension Anthropic.MessageParam {
+    func toMessageParam(role: String, simple: Bool) -> Anthropic.MessageParam {
+        if !simple {
+            return self
+        }
+
+        var finalContent = ""
+        for contentBlock in self.content {
+            finalContent += contentBlock.text
+
+        }
+        let textBlock = Anthropic.ContentBlock.text(
+            Anthropic.TextBlock(text: finalContent, type: "text")
+        )
+        return Anthropic.MessageParam(role: role, content: [textBlock])
+    }
+}
+
+extension Anthropic.ToolResultMessage {
+    func toMessageParam() -> Anthropic.MessageParam {
+        var finalContent = ""
+        for resultContentBlock in self.content {
+            finalContent += resultContentBlock.toString()
+
+        }
+        let textBlock = Anthropic.ContentBlock.text(
+            Anthropic.TextBlock(text: finalContent, type: "text")
+        )
+        return Anthropic.MessageParam(role: "user", content: [textBlock])
+    }
+}
+
+extension Anthropic.ToolResultContent {
+    func toString() -> String {
+        var finalContent = "isError: \(self.isError), toolUserId:\(self.toolUseId), type: tool_result. content: "
+        for contentBlock in self.content {
+            finalContent += contentBlock.text
+
+        }
+        return finalContent
+    }
 }

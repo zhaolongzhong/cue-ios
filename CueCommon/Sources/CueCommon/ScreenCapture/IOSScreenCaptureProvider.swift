@@ -176,6 +176,8 @@ final class IOSScreenCaptureProvider: NSObject, ScreenCaptureProvider, @unchecke
             }
 
             self.recorder.startCapture(handler: { buffer, bufferType, error in
+                let processedData = bufferType == .video ? self.compressFrame(buffer) : nil
+
                 self.captureQueue.async { [weak self] in
                     guard let self = self else { return }
 
@@ -193,13 +195,10 @@ final class IOSScreenCaptureProvider: NSObject, ScreenCaptureProvider, @unchecke
                     }
 
                     // Process frames in both foreground and background
-                    if self.isCaptureSetup && error == nil && bufferType == .video {
-                        // In background mode (isPaused), we'll still process frames but at a lower quality
-                        if let frameData = self.compressFrame(buffer) {
-                            DispatchQueue.main.async { [weak self] in
-                                guard let self = self else { return }
-                                self.delegate?.screenCaptureProvider(self, didReceiveFrame: frameData)
-                            }
+                    if self.isCaptureSetup && error == nil && bufferType == .video, let frameData = processedData {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self = self else { return }
+                            self.delegate?.screenCaptureProvider(self, didReceiveFrame: frameData)
                         }
                     }
                 }
@@ -246,7 +245,7 @@ final class IOSScreenCaptureProvider: NSObject, ScreenCaptureProvider, @unchecke
 
         // Process the image in a single context
         let ciImage = CIImage(cvImageBuffer: imageBuffer)
-        let context = CIContext()
+        let _ = CIContext()
         let uiImage = UIImage(ciImage: ciImage)
         return uiImage.jpegData(compressionQuality: isPaused ? 0.5 : 0.7)  // Lower quality in background
     }
