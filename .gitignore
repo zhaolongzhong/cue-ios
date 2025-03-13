@@ -6,5 +6,6 @@ build/
 xcuserdata/
 Package.resolved
 **/Release.xcconfig
+**/Debug.xcconfig
 **/mcp_config.json
 TestResults.xcresult
