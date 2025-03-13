@@ -4,9 +4,9 @@ import Dependencies
 @MainActor
 final class SidePanelState: ObservableObject {
     @Published var isShowing = false
-    @Published var isShowingNewAssistant = false
+    @Published var isShowingNewAssistantSheet = false
 
-    private let navigationManager: HomeNavigationManager
+    let navigationManager: HomeNavigationManager
 
     var selectedAssistant: Assistant? {
         get { navigationManager.selectedAssistant }
@@ -49,16 +49,23 @@ final class SidePanelState: ObservableObject {
 }
 
 struct HomeSidePanel: View {
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
+    @EnvironmentObject private var dependencies: AppDependencies
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @ObservedObject private var sidePanelState: SidePanelState
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var navigationPath: NavigationPath
     private let onSelectAssistant: (Assistant?) -> Void
+    @State private var lastSelectedProvider: Provider?
+    @State private var selectedProvider: Provider?
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
+
+    var navigationManager: HomeNavigationManager {
+        sidePanelState.navigationManager
+    }
 
     init(
         sidePanelState: SidePanelState,
@@ -82,19 +89,6 @@ struct HomeSidePanel: View {
     var body: some View {
         NavigationStack {
             contentList
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        Button {
-                            onSelectAssistant(nil)
-                        } label: {
-                            Text("~")
-                                .font(.title2)
-                        }
-                    }
-                }
-                #endif
                 .onAppear {
                     Task {
                         await assistantsViewModel.fetchAssistants()
@@ -104,12 +98,11 @@ struct HomeSidePanel: View {
         .sheet(item: $assistantForDetails) { assistant in
             AssistantDetailView(
                 assistant: assistant,
-                assistantsViewModel: self.assistantsViewModel,
                 onUpdate: nil
             )
             .presentationCompactAdaptation(.popover)
         }
-        .sheet(isPresented: $sidePanelState.isShowingNewAssistant) {
+        .sheet(isPresented: $sidePanelState.isShowingNewAssistantSheet) {
             AddAssistantSheet(viewModel: assistantsViewModel)
         }
         .alert("Delete Assistant", isPresented: showDeleteAlert, presenting: assistantToDelete) { assistant in
@@ -130,25 +123,52 @@ struct HomeSidePanel: View {
     private var contentList: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(spacing: 16) {
-                    if featureFlags.enableCue {
-                        cueRow
-                        Divider()
-                            .opacity(0.5)
-                    }
-                    emailRow
-                    if featureFlags.enableProviders {
-                        if !providersViewModel.enabledProviders.isEmpty {
-                            Divider()
-                                .opacity(0.5)
-                            providersSection
+                LazyVStack(spacing: 16) {
+                    Group {
+                        if featureFlags.enableAssistants {
+                            AssistantsRow(
+                                onTap: {
+                                    self.lastSelectedProvider = self.selectedProvider
+                                    self.selectedProvider = nil
+                                }
+                            )
+                        }
+
+                        if featureFlags.enableEmail {
+                            SidebarEmailRow(
+                                onTap: { navigate(to: HomeDestination.email) }
+                            )
+                        }
+
+                        if featureFlags.enableProviders {
+                            if !providersViewModel.enabledProviders.isEmpty {
+                                ProvidersSection(
+                                    selectedProvider: Binding(
+                                        get: { self.selectedProvider },
+                                        set: {
+                                            self.lastSelectedProvider = self.selectedProvider
+                                            self.selectedProvider = $0
+                                        }
+                                    ),
+                                    providersViewModel: providersViewModel,
+                                    featureFlags: featureFlags
+                                )
+                            }
                         }
                     }
-                    if featureFlags.enableAssistants {
-                        assistantsSection
+                    .padding(.horizontal, 16)
+
+                    if selectedProvider != nil {
+                        conversationsSection
+                    } else {
+                        if featureFlags.enableAssistants {
+                            Divider()
+                                .opacity(0.2)
+                                .padding(.horizontal, 16)
+                            assistantsSection
+                        }
                     }
                 }
-                .padding(.horizontal, 8)
                 .padding(.bottom, 16)
             }
             .background(AppTheme.Colors.secondaryBackground)
@@ -164,59 +184,47 @@ struct HomeSidePanel: View {
         }
     }
 
-    private func navigate(to route: HomeDestination) {
+    private func navigate(to route: HomeDestination, hidePanel: Bool = true) {
         navigationPath.append(route)
-        sidePanelState.hidePanel()
+        if hidePanel {
+            sidePanelState.hidePanel()
+        }
     }
 
-    private var providersSection: some View {
-        Section(header: providersHeader) {
-            if providersViewModel.enabledProviders.isEmpty {
-                emptyProvidersStateView
-            } else {
-                ForEach(providersViewModel.enabledProviders, id: \.self) { provider in
-                    switch provider {
-                    case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
-                        ProviderSidebarRow(provider: provider) {
-                            navigate(to: .openai)
-                        }
-                    case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
-                        ProviderSidebarRow(provider: provider) {
-                            navigate(to: .anthropic)
-                        }
-                    case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
-                        ProviderSidebarRow(provider: provider) {
-                            navigate(to: .gemini)
-                        }
-                    default:
-                        AnyView(EmptyView())
+    private var conversationsSection: some View {
+        Group {
+            if let selectedProvider = selectedProvider {
+                ConversationsView(
+                    viewModel: dependencies.viewModelFactory.makeConversationViewModel(provider: selectedProvider),
+                    provider: selectedProvider
+                ) { conversationId in
+                    let hidePanel: Bool = lastSelectedProvider != nil
+                    lastSelectedProvider = selectedProvider
+                    switch selectedProvider {
+                    case .openai:
+                        navigate(to: .openai(conversationId), hidePanel: hidePanel)
+                    case .anthropic:
+                        navigate(to: .anthropic(conversationId), hidePanel: hidePanel)
+                    case .gemini:
+                        navigate(to: .gemini(conversationId), hidePanel: hidePanel)
+                    case .cue:
+                        navigate(to: .cue(conversationId), hidePanel: hidePanel)
+                    case .local:
+                        navigate(to: .local(conversationId), hidePanel: hidePanel)
                     }
                 }
             }
         }
-        #if os(iOS)
-        .listSectionSpacing(.compact)
-        #endif
-    }
-
-    private var emptyProvidersStateView: some View {
-        Text("No providers configured")
-            .foregroundColor(.secondary)
-            .font(.caption)
-    }
-
-    private var providersHeader: some View {
-        SectionHeader(
-            title: "Providers",
-            trailingIcon: .system("plus"),
-            trailingAction: {
-                coordinator.showProvidersSheet()
-            }
-        )
     }
 
     private var assistantsSection: some View {
-        Section(header: assistantsSectionHeader) {
+        VStack {
+            SectionHeader(
+                title: "Assistants",
+                trailingIcon: .system("plus"),
+                trailingAction: { sidePanelState.isShowingNewAssistantSheet = true }
+            )
+            .padding(.horizontal, 16)
             ForEach(assistantsViewModel.assistants) { assistant in
                 AssistantRow(
                     assistant: assistant,
@@ -231,43 +239,22 @@ struct HomeSidePanel: View {
                         }
                     )
                 )
+                .padding(.horizontal, 8)
+                .withHoverEffect()
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(navigationManager.selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
+                )
+                .padding(.horizontal, 8)
                 .onTapGesture {
+//                    selectedAssistant = assistant
                     sidePanelState.selectAssistant(assistant)
                     onSelectAssistant(assistant)
                 }
+                .tag(assistant)
             }
+            .scrollContentBackground(.hidden)
         }
-        #if os(iOS)
-        .listSectionSpacing(.compact)
-        #endif
-    }
-
-    private var cueRow: some View {
-        SidebarRowButton(
-            title: "Cue",
-            icon: .custom("~"),
-            action: {
-                navigate(to: HomeDestination.cue)
-            }
-        )
-    }
-
-    private var emailRow: some View {
-        SidebarRowButton(
-            title: "Email",
-            icon: .system("envelope"),
-            action: {
-                navigate(to: HomeDestination.email)
-            }
-        )
-    }
-
-    private var assistantsSectionHeader: some View {
-        SectionHeader(
-            title: "Assistants",
-            trailingIcon: .system("plus"),
-            trailingAction: { sidePanelState.isShowingNewAssistant = true }
-        )
     }
 
     private var settingsRow: some View {

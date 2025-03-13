@@ -86,6 +86,7 @@ public final class AssistantsViewModel: ObservableObject {
         switch await assistantRepository.listAssistants(skip: 0, limit: 20) {
         case .success(let fetchedAssistants):
             self.assistants = fetchedAssistants
+            AppLog.log.debug("Fetched \(self.assistants.count) assistants")
 
         case .failure(.fetchFailed(let error)):
             handleError(error, context: "Fetching assistants failed")
@@ -172,7 +173,8 @@ public final class AssistantsViewModel: ObservableObject {
         description: String? = nil,
         maxTurns: Int? = nil,
         context: JSONValue? = nil,
-        tools: [String]? = nil
+        tools: [String]? = nil,
+        color: String? = nil
     ) async -> Assistant? {
         let metadata = AssistantMetadataUpdate(
             isPrimary: isPrimary,
@@ -181,7 +183,8 @@ public final class AssistantsViewModel: ObservableObject {
             description: description,
             maxTurns: maxTurns,
             context: context,
-            tools: tools
+            tools: tools,
+            color: color
         )
 
         switch await assistantRepository.updateAssistant(id: id, name: nil, metadata: metadata) {

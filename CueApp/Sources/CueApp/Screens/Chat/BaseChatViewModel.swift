@@ -1,8 +1,3 @@
-//
-//  BaseChatViewModel.swift
-//  CueApp
-//
-
 import Foundation
 import Combine
 import Dependencies
@@ -10,178 +5,204 @@ import CueCommon
 import CueOpenAI
 
 @MainActor
-public class BaseChatViewModel: ObservableObject, ChatViewModel {
+public class BaseChatViewModel: ObservableObject, ChatViewModelProtocol {
     @Dependency(\.conversationRepository) var conversationRepository
     @Dependency(\.messageRepository) var messageRepository
 
-    // Common published properties
-    @Published var selectedConversationId: String? {
+    @Published var conversationId: String {
         didSet {
-            if oldValue != selectedConversationId && selectedConversationId != nil {
-                Task { await loadMessages() }
+            Task {
+                if !self.conversationId.isEmpty {
+                    self.selectedConversation = try? await conversationRepository.getConversation(id: conversationId)
+                    await setUpInitialMessages()
+                }
             }
         }
     }
     @Published var conversations: [ConversationModel] = []
     @Published var cueChatMessages: [CueChatMessage] = []
     @Published var isLoadingMore = false
-    @Published var newMessage: String = ""
     @Published var shouldScrollToUserMessage: Bool = false
+    @Published var initialRichTextFieldState: RichTextFieldState
     @Published var richTextFieldState: RichTextFieldState
 
-    // Configuration
     @Published var model: ChatModel
-    @Published var availableTools: [Tool] = [] {
+    @Published var availableCapabilities: [Capability] = [] {
+        didSet { updateTools() }
+    }
+    @Published var selectedCapabilities: [Capability] = []
+    @Published var attachments: [Attachment] = [] {
         didSet {
-            richTextFieldState.toolCount = availableTools.count
+            self.richTextFieldState = self.richTextFieldState.copy(attachments: attachments)
         }
     }
-    @Published var attachments: [Attachment] = []
     @Published var isStreamingEnabled: Bool = true
+    @Published var showLiveChat: Bool = false
     @Published var isToolEnabled: Bool = true
+    @Published var initialMessagesLoaded: Bool = false
     @Published var isRunning: Bool = false {
         didSet {
-            richTextFieldState.isRunning = isRunning
+            // Update the immutable state with the new running status
+            richTextFieldState = richTextFieldState.copy(isRunning: isRunning)
         }
     }
     @Published var maxMessages: Int = 10
     @Published var maxTurns: Int = 10
 
-    // Observed app state
-    @Published var observedApp: AccessibleApplication?
     @Published var focusedLines: String?
-
-    // Status
     @Published var isLoading = false
     @Published var error: ChatError?
     @Published var apiKey: String
 
-    // Common tools
+    private var selectedConversation: ConversationModel?
+    private var enabledCapabilities: [Capability] = []
     let toolManager: ToolManager
     var tools: [JSONValue] = []
 
     #if os(macOS)
     let axManager: AXManager
-    private var textAreaContent: TextAreaContent?
+    private var workingApps: [String: AccessibleApplication] = [:]
+    var textAreaContents: [String: TextAreaContent] = [:] {
+        didSet {
+            self.richTextFieldState = richTextFieldState.copy(textAreaContents: textAreaContents)
+            AppLog.log.debug("Text area contents updated: \(self.textAreaContents.values.map(\.app.name))")
+        }
+    }
     #endif
 
     var cancellables = Set<AnyCancellable>()
     let provider: Provider
+    let enableRemote: Bool
 
-    init(apiKey: String, provider: Provider, model: ChatModel, conversationId: String? = nil, richTextFieldState: RichTextFieldState? = nil) {
+    init(
+        apiKey: String,
+        provider: Provider,
+        model: ChatModel,
+        conversationId: String,
+        richTextFieldState: RichTextFieldState? = nil,
+        enabledTools: [any LocalTool] = [],
+        enableRemote: Bool = false
+    ) {
         self.apiKey = apiKey
         self.provider = provider
         self.model = model
-        self.toolManager = ToolManager()
+        self.toolManager = ToolManager(preEnabledTools: enabledTools)
+        self.enabledCapabilities = enabledTools.map { $0.toCapability() }
+        self.enableRemote = enableRemote
 
         #if os(macOS)
         self.axManager = AXManager()
         #endif
 
-        self.availableTools = toolManager.getTools()
-        self.selectedConversationId = conversationId
-        self.richTextFieldState = richTextFieldState ?? RichTextFieldState()
-
-        updateTools()
+        self.availableCapabilities = toolManager.getAllAvailableCapabilities()
+        self.conversationId = conversationId
+        let richTextFieldState = richTextFieldState ?? RichTextFieldState(conversationId: conversationId)
+        self.initialRichTextFieldState = richTextFieldState
+        self.richTextFieldState = richTextFieldState.copy()
 
         #if os(macOS)
         setupToolsSubscription()
         setupTextAreaContentSubscription()
         #endif
-    }
-
-    func setStoredConversationId(_ id: String?) {
-        selectedConversationId = id
-    }
-
-    // MARK: - Common Functionality for Chat View Models
-
-    // Tools management
-    func updateTools() {
-        tools = self.toolManager.getToolsJSONValue(model: self.model.id)
-    }
-
-    private func setupToolsSubscription() {
-        #if os(macOS)
-        toolManager.mcpToolsPublisher
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                self.availableTools = self.toolManager.getTools()
-                updateTools()
+        Task {
+            if !conversationId.isEmpty {
+                self.selectedConversation = try? await conversationRepository.getConversation(id: conversationId)
             }
-            .store(in: &cancellables)
-        #endif
-    }
-
-    func startServer() async {
-        #if os(macOS)
-//        await self.toolManager.startMcpServer()
-        #endif
-    }
-
-    // Observed app functionality
-    func updateObservedApplication(to app: AccessibleApplication?) {
-        guard let app = app else { return }
-        #if os(macOS)
-        self.axManager.updateObservedApplication(to: app)
-        #endif
-        self.observedApp = app
-    }
-
-    func stopObserveApp() {
-        #if os(macOS)
-        self.axManager.stopObserving()
-        self.observedApp = nil
-        self.textAreaContent = nil
-        #endif
-    }
-
-    private func setupTextAreaContentSubscription() {
-        #if os(macOS)
-        axManager.$textAreaContentList
-            .sink { [weak self] newValue in
-                guard let self = self else { return }
-                self.textAreaContent = newValue.first
-                self.focusedLines = self.textAreaContent?.focusedLines
-            }
-            .store(in: &cancellables)
-        #endif
-    }
-
-    // Message management
-    func addAttachment(_ attachment: Attachment) {
-        attachments.append(attachment)
+        }
     }
 
     func clearError() {
         error = nil
     }
 
-    func loadConversations() async {
-        do {
-            let result = try await conversationRepository.fetchConversationsByProvider(
-                provider: provider,
-                limit: 100,
-                offset: 0
-            )
-            AppLog.log.debug("Fetched \(result.count) conversations for provider: \(self.provider.displayName)")
-            if selectedConversationId == nil, let firstId = conversations.first?.id {
-                selectedConversationId = firstId
+    private func lastSelectedModelKey(for providerId: String) -> String {
+        return "lastSelectedModel_\(providerId)"
+    }
+
+    // MARK: - Tools management
+    func updateTools() {
+        var capabilityNames = self.selectedConversation?.metadata?.capabilities ?? []
+        capabilityNames = capabilityNames.map { $0.lowercased() }
+
+        let predicateBlock: (Capability) -> Bool = { capability in
+            switch capability {
+            case .localTool(let tool):
+                return capabilityNames.contains(tool.name.lowercased())
+            case .tool(let tool):
+                return capabilityNames.contains(tool.name.lowercased())
+            #if os(macOS)
+            case .mcpServer(let server):
+                return capabilityNames.contains(server.serverName.lowercased())
+            #endif
             }
+        }
+
+        self.selectedCapabilities = self.availableCapabilities.filter(predicateBlock)
+        self.selectedCapabilities.append(contentsOf: self.enabledCapabilities)
+
+        // Update the immutable state with new capabilities
+        richTextFieldState = richTextFieldState.copy(
+            availableCapabilities: availableCapabilities,
+            selectedCapabilities: selectedCapabilities
+        )
+
+        tools = toolManager.getJSONValues(selectedCapabilities, model: model.id)
+        AppLog.log.debug("Update capabilities, selected capabilities: \(self.selectedCapabilities.map {$0.name}), tools: \(self.tools.count)")
+    }
+
+    func updateSelectedCapabilities(_ capabilities: [Capability]) async {
+        do {
+            guard let coversation = self.selectedConversation else {
+                AppLog.log.error("No selected conversation")
+                return
+            }
+            let newConversation = ConversationModel(
+                id: coversation.id,
+                title: coversation.title,
+                createdAt: coversation.createdAt,
+                updatedAt: Date(),
+                assistantId: nil,
+                metadata: ConversationMetadata(isPrimary: coversation.metadata?.isPrimary ?? false, capabilities: capabilities.map { $0.name })
+            )
+            try await conversationRepository.update(newConversation, enableRemote: enableRemote)
+            self.selectedConversation = newConversation
+
+            // Update the immutable state with new selected capabilities
+            richTextFieldState = richTextFieldState.copy(selectedCapabilities: capabilities)
+            self.selectedCapabilities = capabilities
+            AppLog.log.debug("Updated selected capabilities to: \(capabilities.map(\.name))")
+
+            updateTools()
         } catch {
-            self.error = ChatError.sessionError(error.localizedDescription)
-            AppLog.log.error("Failed to fetch conversations: \(error)")
+            AppLog.log.error("Error getting conversation: \(error)")
         }
     }
 
-    func loadMessages() async {
-        guard let conversationId = selectedConversationId else { return }
-        switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
+    // MARK: - Message management
+    func addAttachment(_ attachment: Attachment) {
+        attachments.append(attachment)
+    }
+
+    func setUpInitialMessages() async {
+        guard !conversationId.isEmpty else {
+            AppLog.log.debug("Skip to load messages: empty conversation ID")
+            return
+        }
+        await loadMessages(conversationId)
+    }
+
+    func loadMessages(_ conversationId: String) async {
+        guard !conversationId.isEmpty else {
+            AppLog.log.error("loadMessages conversationId is empty")
+            return
+        }
+        switch await messageRepository.listMessages(conversationId: conversationId, skip: 0, limit: 50, enableRemote: enableRemote) {
         case .success(let messageModels):
+            AppLog.log.debug("Loading messages for conversation \(self.conversationId) succeeded: \(messageModels.count)")
             self.cueChatMessages = messageModels
                 .sorted(by: { $0.createdAt < $1.createdAt })
                 .compactMap { $0.toCueChatMessage() }
-            AppLog.log.debug("Loading messages for conversation \(conversationId) succeeded: \(self.cueChatMessages.count)")
+            self.initialMessagesLoaded = true
         case .failure(let error):
             self.error = ChatError.unknownError(error.localizedDescription)
         }
@@ -192,61 +213,111 @@ public class BaseChatViewModel: ObservableObject, ChatViewModel {
         cueChatMessages = cueChatMessages.filter { $0.id != message.id }
     }
 
-    func getOrCreateConversationId() async -> String? {
-        if let id = selectedConversationId { return id }
-        do {
-            let result = try await conversationRepository.createConversation(
-                title: "No title",
-                assistantId: "",
-                isPrimary: false,
-                provider: provider
-            )
-            selectedConversationId = result.id
-            return result.id
-        } catch {
-            self.error = ChatError.unknownError(error.localizedDescription)
-            return nil
+    func deleteAllMessages() {
+        self.cueChatMessages.removeAll()
+
+        Task {
+            await messageRepository.deleteAllCachedMessages(forConversation: conversationId)
         }
     }
 
-    func addOrUpdateMessage(_ message: CueChatMessage, persistInCache: Bool = false) {
+    func addOrUpdateMessage(_ message: CueChatMessage, persistInCache: Bool = false, enableRemote: Bool = false) {
         if let existingIndex = self.cueChatMessages.firstIndex(where: { $0.id == message.id }) {
             self.cueChatMessages[existingIndex] = message
         } else {
             self.cueChatMessages.append(message)
         }
 
-        if message.isUser {
-            DispatchQueue.main.async {
-                self.shouldScrollToUserMessage = true
-            }
-        }
-
-        if persistInCache {
+        if persistInCache || enableRemote {
             Task {
-                await saveMessage(message)
+                await saveMessage(message, enableRemote: enableRemote)
             }
         }
     }
 
-    private func saveMessage(_ message: CueChatMessage) async {
-        guard let conversationId = selectedConversationId else {
-            AppLog.log.warning("Cannot save message because no conversation is selected")
-            return
-        }
+    private func saveMessage(_ message: CueChatMessage, enableRemote: Bool = false) async {
         let messageModel = MessageModel(from: message, conversationId: conversationId)
-        let saveResult = await messageRepository.saveMessage(messageModel: messageModel)
+        let saveResult = await messageRepository.saveMessage(messageModel: messageModel, enableRemote: enableRemote)
         if case .failure(let error) = saveResult {
             self.error = ChatError.unknownError(error.localizedDescription)
         }
     }
 
-    // This method must be implemented by subclasses
+    // These methods must be implemented by subclasses
     func sendMessage() async {
         fatalError("sendMessage() must be implemented by subclasses")
     }
 
     func stopAction() async {
         fatalError("stopAction() must be implemented by subclasses")
+    }
+}
+
+// MARK: - MCP Servers
+extension BaseChatViewModel {
+    func startServer() async {
+        #if os(macOS)
+        await self.toolManager.startMcpServer()
+        #endif
+    }
+
+    private func setupToolsSubscription() {
+        #if os(macOS)
+        toolManager.mcpToolsPublisher
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.availableCapabilities = self.toolManager.getAllAvailableCapabilities()
+            }
+            .store(in: &cancellables)
+        #endif
+    }
+}
+
+// MARK: - Working app
+extension BaseChatViewModel {
+
+    // MARK: - Observed app functionality
+    func onUpdateWorkingApp(to app: AccessibleApplication, working: Bool) {
+        #if os(macOS)
+        if !working {
+            if !app.isVSCodeIDE {
+                self.axManager.stopObserving()
+            }
+
+            let fileNames = textAreaContents.values.filter { textAreaContent in
+                textAreaContent.app.bundleId == app.bundleId
+            }.compactMap { $0.fileName }
+
+            for key in fileNames {
+                textAreaContents.removeValue(forKey: key)
+            }
+
+            workingApps.removeValue(forKey: app.bundleId)
+        } else {
+            if !app.isVSCodeIDE {
+                #if os(macOS)
+                self.axManager.updateObservedApplication(to: app)
+                #endif
+            }
+            workingApps[app.bundleId] = app
+
+        }
+        richTextFieldState = richTextFieldState.copy(workingApps: workingApps)
+        #endif
+    }
+
+    private func setupTextAreaContentSubscription() {
+        #if os(macOS)
+        axManager.$textAreaContentList
+            .sink { [weak self] newValue in
+                guard let self = self else { return }
+                for content in newValue {
+                    if let fileName = content.fileName {
+                        self.textAreaContents[fileName] = content
+                    }
+                }
+            }
+            .store(in: &cancellables)
+        #endif
     }
 }

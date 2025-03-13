@@ -112,28 +112,6 @@ public final class AssistantService: Sendable {
         }
     }
 
-    func listMessages(conversationId: String, skip: Int = 0, limit: Int = 20) async throws -> [MessageModel] {
-        do {
-            let messages: [MessageModel] = try await NetworkClient.shared.request(
-                AssistantEndpoint.listMessages(conversationId: conversationId, skip: skip, limit: limit)
-            )
-            return messages
-        } catch {
-            throw mapNetworkError(error)
-        }
-    }
-
-    func getMessage(id: String) async throws -> MessageModel? {
-        do {
-            let message: MessageModel? = try await NetworkClient.shared.request(
-                AssistantEndpoint.getMessage(id: id)
-            )
-            return message
-        } catch {
-            throw mapNetworkError(error)
-        }
-    }
-
     func createPrimaryConversation(assistantId: String, name: String? = "default") async throws -> ConversationModel {
         do {
             let conversation: ConversationModel = try await NetworkClient.shared.request(

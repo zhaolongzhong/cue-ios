@@ -4,33 +4,37 @@ import CueCommon
 import CueOpenAI
 import CueAnthropic
 import CueMCP
+import Dependencies
 
 @MainActor
 public class ToolManager {
-    var localTools: [LocalTool] = []
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
+    var localTools: [any LocalTool] = []
     #if os(macOS)
-    let mcpManager: MCPServerManager?
+    let mcpManager = MCPServerManager.shared
     #endif
     private let mcpToolsSubject = CurrentValueSubject<[MCPTool], Never>([])
     var mcpToolsPublisher: AnyPublisher<[MCPTool], Never> {
         mcpToolsSubject.eraseToAnyPublisher()
     }
 
-    public init(enabledTools: [LocalTool] = []) {
-        #if os(macOS)
-        self.localTools.append(ScreenshotTool())
-        self.mcpManager = MCPServerManager()
-        #endif
-        self.localTools.append(contentsOf: enabledTools)
-    }
-    func startMcpServer() async {
-        #if os(macOS)
-        guard let mcpManager = self.mcpManager else {
-            return
+    public init(preEnabledTools: [any LocalTool] = []) {
+        if preEnabledTools.isEmpty {
+            #if os(macOS)
+            self.localTools.append(ScreenshotTool())
+            #endif
+        } else {
+            self.localTools.append(contentsOf: preEnabledTools)
         }
+    }
+    func startMcpServer(forceRestart: Bool = false) async {
+        #if os(macOS)
         do {
+            if !featureFlags.enableMCP {
+                return
+            }
             AppLog.log.debug("📱 Starting MCP servers...")
-            try await mcpManager.startAll()
+            try await mcpManager.startAll(forceRestart: forceRestart)
             notifyToolsUpdate()
         } catch {
             AppLog.log.error("❌ Failed to start MCP servers: \(error)")
@@ -41,18 +45,16 @@ public class ToolManager {
     #if os(macOS)
     private func notifyToolsUpdate() {
         var allTools: [MCPTool] = []
-        if let mcpManager = mcpManager {
-            for (serverName, tools) in mcpManager.serverTools {
-                AppLog.log.debug("Add tools for server: \(serverName)")
-                allTools.append(contentsOf: tools)
-            }
+        for (serverName, tools) in mcpManager.serverTools {
+            AppLog.log.debug("Add tools for server: \(serverName)")
+            allTools.append(contentsOf: tools)
         }
         mcpToolsSubject.send(allTools)
         AppLog.log.debug("Total mcp tools: \(allTools.count)")
     }
 
     func getMCPToolsBy(serverName: String) -> [MCPTool] {
-        return mcpManager?.serverTools[serverName] ?? []
+        return mcpManager.serverTools[serverName] ?? []
     }
     #endif
 
@@ -79,11 +81,83 @@ public class ToolManager {
             )
         }
         #if os(macOS)
-        if let mcpTools = mcpManager?.getTools() {
-            tools.append(contentsOf: mcpTools)
-        }
+        let mcpTools = mcpManager.getTools()
+        tools.append(contentsOf: mcpTools)
         #endif
         return tools
+    }
+
+    func getLocalCapabilities() -> [Capability] {
+        let tools = localTools.map { tool in
+            Tool(
+                function: .init(
+                    name: tool.name,
+                    description: tool.description,
+                    parameters: .init(
+                        properties: tool.parameterDefinition.schema,
+                        required: tool.parameterDefinition.required
+                    )
+                )
+            )
+        }
+        return tools.map { .localTool($0) }
+    }
+
+    func getMCPCapabilities() -> [Capability] {
+        #if os(macOS)
+        return mcpManager.servers.map { _, server in
+            .mcpServer(server)
+        }
+        #else
+        return []
+        #endif
+    }
+
+    func getAllAvailableCapabilities() -> [Capability] {
+        return getLocalCapabilities() + getMCPCapabilities()
+    }
+
+    func getJSONValues(_ capabilities: [Capability], model: String = ChatModel.gpt4oMini.id) -> [JSONValue] {
+        let isInputSchema = model.lowercased().contains("claude")
+        return capabilities.flatMap { capability -> [JSONValue] in
+            switch capability {
+            case .localTool(let tool):
+                do {
+                    if isInputSchema {
+                        return [try JSONValue(encodable: tool.toMCPTool())]
+                    }
+                    return [try JSONValue(encodable: tool)]
+                } catch {
+                    AppLog.log.error("Failed to encode tool: \(error)")
+                    return []
+                }
+            case .tool(let tool):
+                do {
+                    if isInputSchema {
+                        return [try JSONValue(encodable: tool.toMCPTool())]
+                    }
+                    return [try JSONValue(encodable: tool)]
+                } catch {
+                    AppLog.log.error("Failed to encode tool: \(error)")
+                    return []
+                }
+            #if os(macOS)
+            case .mcpServer(let server):
+                let mcpTools = mcpManager.serverTools[server.serverName] ?? []
+                return mcpTools.compactMap { tool in
+                    do {
+                        if isInputSchema {
+                            return try JSONValue(encodable: tool)
+                        }
+                        return try JSONValue(encodable: tool.toOpenAITool())
+                    } catch {
+                        AppLog.log.error("Failed to encode MCP tool: \(error)")
+                        return nil
+                    }
+                }
+            #endif
+            }
+        }
     }
 
     func getTools() -> [Tool] {
@@ -101,9 +175,8 @@ public class ToolManager {
         }
 
         #if os(macOS)
-        if let mcpTools = mcpManager?.getOpenAITools() {
-            tools.append(contentsOf: mcpTools)
-        }
+        let mcpTools = mcpManager.getOpenAITools()
+        tools.append(contentsOf: mcpTools)
         #endif
         return tools
     }
@@ -140,7 +213,7 @@ public class ToolManager {
         }
 
         #if os(macOS)
-        guard let mcpManager = mcpManager, mcpManager.hasTool(name: name) == true else {
+        guard mcpManager.hasTool(name: name) == true else {
             throw ToolError.toolNotFound(name)
         }
 
@@ -199,18 +272,7 @@ public class ToolManager {
 
     func callToolUse(_ toolUseBlock: Anthropic.ToolUseBlock) async -> Anthropic.ToolResultMessage {
         do {
-            var arguments: [String: Any] = [:]
-            for (key, value) in toolUseBlock.input {
-                switch value {
-                case .string(let str): arguments[key] = str
-                case .int(let int): arguments[key] = int
-                case .number(let double): arguments[key] = double
-                case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
-                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
-                case .null: arguments[key] = NSNull()
-                }
-            }
+            let arguments = toolUseBlock.input.toNativeDictionary
             let toolResult = try await callTool(name: toolUseBlock.name, arguments: arguments)
             let result = Anthropic.ToolResultContent(
                 isError: false,
@@ -252,22 +314,10 @@ public class ToolManager {
         return results
     }
 
-    func handleToolUse(_ toolBlock: Anthropic.ToolUseBlock) async -> String {
+    func handleToolUse(_ toolUseBlock: Anthropic.ToolUseBlock) async -> String {
         do {
-            var arguments: [String: Any] = [:]
-            for (key, value) in toolBlock.input {
-                switch value {
-                case .string(let str): arguments[key] = str
-                case .int(let int): arguments[key] = int
-                case .number(let double): arguments[key] = double
-                case .bool(let bool): arguments[key] = bool
-                case .array(let arr): arguments[key] = sanitizeForJSON(arr)
-                case .object(let dict): arguments[key] = sanitizeForJSON(dict)
-                case .null: arguments[key] = NSNull()
-                }
-            }
-
-            let result = try await self.callTool(name: toolBlock.name, arguments: arguments)
+            let arguments = toolUseBlock.input.toNativeDictionary
+            let result = try await self.callTool(name: toolUseBlock.name, arguments: arguments)
             return result
 
         } catch {
@@ -333,3 +383,22 @@ extension MCPServerManager {
     }
 }
 #endif
+
+extension LocalTool {
+    func toOpenAITool() -> Tool {
+        Tool(
+            function: .init(
+                name: self.name,
+                description: self.description,
+                parameters: .init(
+                    properties: self.parameterDefinition.schema,
+                    required: self.parameterDefinition.required
+                )
+            )
+        )
+    }
+
+    func toCapability() -> Capability {
+        .tool(self.toOpenAITool())
+    }
+}

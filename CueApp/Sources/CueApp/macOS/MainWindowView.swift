@@ -3,6 +3,7 @@ import CueOpenAI
 import Dependencies
 
 public struct MainWindowView: View {
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     // MARK: - Environment & State Objects
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
@@ -120,22 +121,35 @@ public struct MainWindowView: View {
                     onNewSession: handleNewSession
                 )
             case .chat(let assistant):
-                AssistantChatView(
-                    assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
-                    assistantsViewModel: assistantsViewModel
-                )
-                .id(assistant.id)
-            case .anthropic:
-                ChatViewFactory.createChatView(for: .anthropic, appDependencies: dependencies)
-            case .gemini:
-                ChatViewFactory.createChatView(for: .gemini, appDependencies: dependencies)
-            case .openai:
-                ChatViewFactory.createChatView(for: .openai, appDependencies: dependencies)
-            case .cue:
-                ChatViewFactory.createChatView(for: .cue, appDependencies: dependencies)
-            case .local:
-                ChatViewFactory.createChatView(for: .local, appDependencies: dependencies)
-            case .providers:
+                if featureFlags.enableCLIRunner {
+                    AssistantChatView(
+                        assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
+                        assistantsViewModel: assistantsViewModel
+                    )
+                    .id(assistant.id)
+                } else {
+                    AssistantChatViewV2(
+                        assistant: assistant, conversationId: "", provider: .openai, dependencies: dependencies
+                    )
+                    .id(assistant.id)
+                }
+
+            case .anthropic(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .anthropic, isCompanion: false, dependencies: dependencies)
+                    .id(conversationId)
+            case .gemini(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .gemini, dependencies: dependencies)
+                    .id(conversationId)
+            case .openai(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .openai, dependencies: dependencies)
+                    .id(conversationId)
+            case .local(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .local, dependencies: dependencies)
+                    .id(conversationId)
+            case .cue(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .cue, dependencies: dependencies)
+                    .id(conversationId)
+            default:
                 EmptyView()
             }
         }

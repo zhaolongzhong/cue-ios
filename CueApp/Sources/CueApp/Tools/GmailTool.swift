@@ -50,10 +50,14 @@ struct GmailParameters: ToolParameters, Sendable {
     let required: [String] = ["action"]
 }
 
-struct GmailTool: LocalTool, Sendable {
+struct GmailTool: LocalTool, Equatable, Sendable {
+    static func == (lhs: GmailTool, rhs: GmailTool) -> Bool {
+        return lhs.name == rhs.name
+    }
+
     let name: String = "manage_gmail"
     let description: String = "Manage Gmail: read inbox, get details, send email, and modify labels."
-    let parameterDefinition: ToolParameters = GmailParameters()
+    let parameterDefinition: any ToolParameters = GmailParameters()
 
     func call(_ args: ToolArguments) async throws -> String {
         guard let action = args.getString("action") else {

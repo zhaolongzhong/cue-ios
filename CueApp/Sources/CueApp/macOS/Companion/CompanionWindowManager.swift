@@ -9,9 +9,24 @@ public struct CompanionWindowIdentifier: Identifiable, Hashable {
     }
 }
 
+public struct LiveWindowIdentifier: Identifiable, Hashable {
+    public var id: String
+
+    public let provider: Provider
+    public let conversationId: String?
+
+    init(id: String, provider: Provider, conversationId: String? = nil) {
+        self.id = id
+        self.provider = provider
+        self.conversationId = conversationId
+    }
+}
+
 @MainActor
 public class CompanionWindowManager: ObservableObject {
     @Published public var activeWindows: [CompanionWindowIdentifier] = []
+    @Published public var activeLiveChatWindow: CompanionWindowConfig?
+
     private let configStore: WindowConfigurationStore
 
     public init(configStore: WindowConfigurationStore) {

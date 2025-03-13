@@ -2,59 +2,69 @@ import SwiftUI
 import Dependencies
 
 enum TabSelection: String {
-    case chat = "Chat"
-    case anthropic = "Anthropic"
+    case home = "Chat"
     case assistants = "Assistants"
     case settings = "Settings"
 }
 
 public struct AppTabView: View {
     @Dependency(\.webSocketService) public var webSocketService
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
-    @EnvironmentObject private var providerViewModel: ProvidersViewModel
-    @State private var selectedTab: TabSelection = .assistants
+    @EnvironmentObject private var providersViewModel: ProvidersViewModel
+    @ObservedObject var router: AppDestinationRouter
+    @State private var selectedTab: TabSelection = .home
+    @State private var isShowingNewAssistant = false
+
+    public init(router: AppDestinationRouter) {
+        self.router = router
+    }
 
     public var body: some View {
-        TabView(selection: $selectedTab) {
-            if !providerViewModel.openAIKey.isEmpty {
-                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
+        NavigationStack(path: $router.navigationPath) {
+            TabView(selection: $selectedTab) {
+                HomeDefaultView(viewModel: dependencies.viewModelFactory.makeHomeViewModel(), onNewSession: {
+                    router.navigate(to: AppDestination.email)
+                })
                 .tabItem {
-                    Label("Chat", systemImage: "wand.and.stars")
+                    Label("Home", systemImage: "wand.and.stars")
                 }
-                .tag(TabSelection.chat)
-            }
-            if !providerViewModel.anthropicKey.isEmpty {
-                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
-                    .tabItem {
-                        Label("Anthropic", systemImage: "character")
-                    }
-                    .tag(TabSelection.anthropic)
-            }
-            AssistantsView(viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel)
+                .tag(TabSelection.home)
+
+                AssistantsView(
+                    viewModelFactory: dependencies.viewModelFactory.makeAssistantsViewModel,
+                    navigationPath: $router.navigationPath
+                )
                 .tabItem {
                     Label("Assistants", systemImage: "bubble.left.and.bubble.right")
                 }
                 .tag(TabSelection.assistants)
-
-            SettingsView(viewModelFactory: dependencies.viewModelFactory.makeSettingsViewModel)
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(TabSelection.settings)
+                .id("AssistantsView")
+            }
+            .toolbar {
+                toolbarContent
+            }
+            .navigationTitle(selectedTab.rawValue)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .tint(Color(uiColor: .systemGray))
+            .withAppDestinations(router: router)
+            #endif
         }
-        .navigationTitle(selectedTab.rawValue)
         #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        .tint(Color(uiColor: .systemGray))
+        .withImageViewer()
         #endif
+        .sheet(isPresented: $isShowingNewAssistant) {
+            AddAssistantSheet(viewModel: dependencies.viewModelFactory.makeAssistantsViewModel())
+        }
         .onChange(of: selectedTab) { _, _ in
             #if os(iOS)
             HapticManager.shared.impact(style: .light)
             #endif
         }
         .onAppear {
-            AppLog.log.debug("AppTabView onAppear isAuthenticated:\(appStateViewModel.state.isAuthenticated)")
+            AppLog.log.debug("AppTabView onAppear isAuthenticated: \(appStateViewModel.state.isAuthenticated)")
             self.initialize(userId: appStateViewModel.state.currentUser?.id)
         }
         .onChange(of: appStateViewModel.state.currentUser) { _, _ in
@@ -68,6 +78,29 @@ public struct AppTabView: View {
         }
         Task {
             await webSocketService.connect()
+        }
+    }
+
+    @ToolbarContentBuilder
+    var toolbarContent: some ToolbarContent {
+        if selectedTab == .home {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    router.navigate(to: AppDestination.settings)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.primary.opacity(0.9))
+                }
+            }
+        } else if selectedTab == .assistants {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isShowingNewAssistant = true
+                } label: {
+                    Image(systemName: "plus")
+                        .foregroundColor(.primary.opacity(0.9))
+                }
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ import PhotosUI
 final class AttachmentService: AttachmentServiceProtocol {
 
     // Helper function to get file size
-    private func fileSize(for url: URL) -> Int64 {
+    func fileSize(for url: URL) -> Int64 {
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
             return attributes[FileAttributeKey.size] as? Int64 ?? 0
@@ -31,7 +31,7 @@ final class AttachmentService: AttachmentServiceProtocol {
 
         // Generate a safe filename (PhotosPicker item identifiers often contain paths that can't be used directly)
         let fileExtension = getFileExtension(from: data)
-        let uniqueFilename = "photo-\(UUID().uuidString).\(fileExtension)"
+        let uniqueFilename = "Photo-\(UUID().uuidString.prefix(6)).\(fileExtension)"
 
         let size = Int64(data.count)
         let createdAt = Date()
@@ -245,4 +245,59 @@ final class AttachmentService: AttachmentServiceProtocol {
         // This depends on where attachments are stored and how deletion should be handled
         print("Delete attachment \(attachment.name)")
     }
+
+    #if os(iOS)
+    // For iOS: Process UIImage from camera to create an Attachment
+    func processCameraImage(uiImage: UIImage) async -> Attachment? {
+        // Convert UIImage to Data
+        guard let imageData = uiImage.jpegData(compressionQuality: 0.8) else {
+            print("Failed to convert UIImage to jpeg data")
+            return nil
+        }
+
+        // Generate a filename for the camera image
+        let uniqueFilename = "camera-\(UUID().uuidString).jpg"
+
+        let size = Int64(imageData.count)
+        let createdAt = Date()
+        let base64String = imageData.base64EncodedString()
+        let image = Image(uiImage: uiImage)
+
+        print("Creating attachment from camera image: name=\(uniqueFilename), data size=\(imageData.count)")
+
+        // Create a temporary URL for the data
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent(uniqueFilename)
+
+        do {
+            try imageData.write(to: fileURL)
+            print("Successfully saved temporary camera image at: \(fileURL.path)")
+
+            return Attachment(
+                url: fileURL,
+                type: .image,
+                name: uniqueFilename,
+                size: size,
+                createdAt: createdAt,
+                base64String: base64String,
+                imageData: imageData,
+                thumbnail: image
+            )
+        } catch {
+            print("Error saving temporary camera image file: \(error)")
+
+            // Even if saving fails, return an attachment with the data in memory
+            return Attachment(
+                url: URL(string: "memory://\(uniqueFilename)")!, // Dummy URL
+                type: .image,
+                name: uniqueFilename,
+                size: size,
+                createdAt: createdAt,
+                base64String: base64String,
+                imageData: imageData,
+                thumbnail: image
+            )
+        }
+    }
+    #endif
 }

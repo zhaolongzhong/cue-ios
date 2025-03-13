@@ -73,6 +73,14 @@ public class ProviderDetailViewModel: ObservableObject {
         tempAPIKey = defaults.apiKey(for: provider) ?? ""
     }
 
+    func deleteKey() {
+        defaults.setAPIKey("", for: provider)
+    }
+
+    func getAPIKey() -> String {
+        return defaults.apiKey(for: provider) ?? ""
+    }
+
     func promptForBaseURL() {
         tempBaseURL = baseURL
         showingBaseURLAlert = true

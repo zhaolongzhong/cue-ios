@@ -76,8 +76,6 @@ public final class WebSocketConnection: NSObject, WebSocketConnectionProtocol, S
                     localWebSocketTask.sendPing { error in
                         if let error = error {
                             AppLog.websocket.error("Ping failed: \(error.localizedDescription)")
-                        } else {
-                            AppLog.websocket.debug("Ping successful")
                         }
                     }
                 } catch {
@@ -108,16 +106,12 @@ public final class WebSocketConnection: NSObject, WebSocketConnectionProtocol, S
         updateState(.disconnected)
         messagesContinuation.finish()
         stateStream.finish()
-
-        AppLog.websocket.debug("WebSocket connection closed")
     }
 
     private func sendPing() async {
         webSocketTask.sendPing { error in
             if let error = error {
                 AppLog.websocket.error("Ping failed: \(error.localizedDescription)")
-            } else {
-                AppLog.websocket.debug("Ping successful")
             }
         }
     }

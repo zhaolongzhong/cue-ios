@@ -14,10 +14,6 @@ public final class SettingsViewModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
-    init() {
-        refreshAppConfig()
-    }
-
     func refreshUserProfile() {
         Task {
             switch await authRepository.fetchUserProfile() {

@@ -22,7 +22,7 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
 
     var description: String {
         switch self {
-        case .openai: return "GPT-4 and other OpenAI models"
+        case .openai: return "GPT-4 and other OpenAI models inx"
         case .anthropic: return "Claude and other Anthropic models"
         case .gemini: return "Gemini Flash and Pro 2.0 models"
         case .cue: return "Many models"
@@ -44,16 +44,20 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
         case .openai: return "openai-icon"
         case .anthropic: return "anthropic"
         case .gemini: return "sparkle"
-        case .cue: return ""
-        case .local: return "lock.laptopcomputer"
+        case .cue: return "lasso.badge.sparkles"
+        #if os(macOS)
+        case .local: return "desktopcomputer.and.macbook"
+        #else
+        case .local: return "lock.iphone"
+        #endif
         }
     }
 
     var isSystemIcon: Bool {
         switch self {
-        case .openai, .anthropic, .cue:
+        case .openai, .anthropic:
             return false
-        case .gemini, .local:
+        case .gemini, .local, .cue:
             return true
         }
     }
@@ -71,7 +75,11 @@ public enum Provider: String, CaseIterable, Codable, Equatable, Identifiable, Ha
 extension Provider {
     @ViewBuilder
     var iconView: some View {
-        let size: CGFloat = 14
+        iconViewWithSize(14)
+    }
+
+    @ViewBuilder
+    func iconViewWithSize(_ size: CGFloat) -> some View {
         if self == .cue {
             EmptyView()
         } else if isSystemIcon {
@@ -87,7 +95,6 @@ extension Provider {
         }
     }
 }
-
 extension Provider {
     nonisolated(unsafe) static var localBaseURL: String = "http://localhost:11434"
 }

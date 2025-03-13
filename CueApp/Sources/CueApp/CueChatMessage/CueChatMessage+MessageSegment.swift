@@ -7,6 +7,7 @@ extension CueChatMessage {
         case code(language: String, code: String)
         case thinking(String)
         case file(FileData)
+        case image(ImageFileData)
 
         var text: String {
             switch self {
@@ -16,7 +17,7 @@ extension CueChatMessage {
                 return text
             case .thinking(let text):
                 return text
-            case .file:
+            case .file, .image:
                 return ""
             }
         }
@@ -50,12 +51,60 @@ extension CueChatMessage {
             lineIndex = newIndex
         }
 
+        // Use a buffer to collect consecutive text lines
+        var textBuffer: [String] = []
+
         // Process remaining lines
         while lineIndex < lines.count {
-            lineIndex = processNextSegment(lines: lines, startIndex: lineIndex, segments: &segments)
+            let line = String(lines[lineIndex])
+
+            // Check if this is the start of a code block or thinking section
+            if line.hasPrefix("```") || line.contains("<think>") {
+                // First, flush any text buffer if it's not empty
+                if !textBuffer.isEmpty {
+                    segments.append(.text(textBuffer.joined(separator: "\n")))
+                    textBuffer = []
+                }
+
+                // Now process the special block
+                lineIndex = processSpecialBlock(lines: lines, startIndex: lineIndex, segments: &segments)
+            } else {
+                // This is a regular text line, add to buffer
+                textBuffer.append(line)
+                lineIndex += 1
+            }
+        }
+
+        if !textBuffer.isEmpty {
+            segments.append(.text(textBuffer.joined(separator: "\n")))
         }
 
         return segments
+    }
+
+    // Processes code blocks and thinking blocks
+    private func processSpecialBlock(lines: [Substring], startIndex: Int, segments: inout [MessageSegment]) -> Int {
+        let line = String(lines[startIndex])
+
+        if line.hasPrefix("```") {
+            return extractCodeBlock(lines: lines, startIndex: startIndex, segments: &segments)
+        } else if line.contains("<think>") {
+            if line.contains("</think>") {
+                // Inline thinking
+                if let startRange = line.range(of: "<think>"),
+                   let endRange = line.range(of: "</think>") {
+                    let content = String(line[startRange.upperBound..<endRange.lowerBound])
+                    segments.append(.thinking(content))
+                }
+                return startIndex + 1
+            } else {
+                // Multi-line thinking
+                return extractThinkingBlock(lines: lines, startIndex: startIndex, segments: &segments)
+            }
+        }
+
+        // Fallback (should not happen with proper checks above)
+        return startIndex + 1
     }
 
     // Process initial thinking block if present
@@ -66,23 +115,6 @@ extension CueChatMessage {
         guard line.hasPrefix("<think>") else { return nil }
 
         return extractThinkingBlock(lines: lines, startIndex: startIndex, segments: &segments)
-    }
-
-    // Process a single segment starting at the given index
-    private func processNextSegment(lines: [Substring], startIndex: Int, segments: inout [MessageSegment]) -> Int {
-        let line = String(lines[startIndex])
-
-        if line.hasPrefix("```") {
-            return extractCodeBlock(lines: lines, startIndex: startIndex, segments: &segments)
-        } else if line.contains("<think>") && line.contains("</think>") {
-            return extractInlineThinking(line: line, segments: &segments)
-        } else {
-            let cleanLine = line.trimmingCharacters(in: .whitespaces)
-            if !cleanLine.isEmpty {
-                segments.append(.text(cleanLine))
-            }
-            return startIndex + 1
-        }
     }
 
     // Extract a thinking block
@@ -124,23 +156,11 @@ extension CueChatMessage {
         return index
     }
 
-    // Extract an inline thinking segment
-    private func extractInlineThinking(line: String, segments: inout [MessageSegment]) -> Int {
-        if let startRange = line.range(of: "<think>"),
-           let endRange = line.range(of: "</think>") {
-            let content = String(line[startRange.upperBound..<endRange.lowerBound])
-            segments.append(.thinking(content))
-        } else {
-            segments.append(.text(line))
-        }
-        return 1
-    }
-
     // Extract a code block
     private func extractCodeBlock(lines: [Substring], startIndex: Int, segments: inout [MessageSegment]) -> Int {
         let line = String(lines[startIndex])
         let language = line.dropFirst(3).trimmingCharacters(in: .whitespaces)
-        var blockLines = [line]
+        var blockLines = [String(line)]
         var index = startIndex + 1
 
         if language.lowercased() == "markdown" {
@@ -236,6 +256,10 @@ extension CueChatMessage {
                     let block = msg.contentBlocks[i]
                     if case .text(let text) = block, let fileData = extractFileData(from: text) {
                         finalSegments.append(.file(fileData))
+                        continue
+                    }
+                    if case .imageUrl(let imageUrl) = block {
+                        finalSegments.append(.image(ImageFileData(fileName: "", url: imageUrl.url)))
                     }
                 }
             } else {

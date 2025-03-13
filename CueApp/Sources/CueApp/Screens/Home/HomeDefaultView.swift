@@ -2,6 +2,7 @@ import SwiftUI
 import Dependencies
 
 struct HomeDefaultView: View {
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @ObservedObject var viewModel: HomeViewModel
     let onNewSession: () -> Void
 
@@ -22,8 +23,10 @@ struct HomeDefaultView: View {
         VStack(alignment: .center, spacing: 16) {
             greetingView
             quoteView
-            sessionButton
-                .padding(.top, 20)
+            if featureFlags.enableEmail {
+                sessionButton
+                    .padding(.top, 20)
+            }
         }
         .padding()
     }

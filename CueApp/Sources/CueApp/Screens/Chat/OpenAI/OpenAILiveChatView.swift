@@ -7,16 +7,15 @@ public struct OpenAILiveChatView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel: OpenAILiveChatViewModel
     @FocusState private var isFocused: Bool
-    @State private var showingToolsList = false
     @State private var isHovering = false
     @State private var animateDelta = false
 
+    private let conversationId: String?
     private let forceShowHeader: Bool
-    private let isCompanion: Bool
 
-    public init(viewModelFactory: @escaping () -> OpenAILiveChatViewModel, isCompanion: Bool = false) {
-        _viewModel = StateObject(wrappedValue: viewModelFactory())
-        self.isCompanion = isCompanion
+    public init(viewModelFactory: @escaping (String) -> OpenAILiveChatViewModel, conversationId: String) {
+        self.conversationId = conversationId
+        _viewModel = StateObject(wrappedValue: viewModelFactory(conversationId))
         #if os(macOS)
         self.forceShowHeader = false
         #else
@@ -38,6 +37,9 @@ public struct OpenAILiveChatView: View {
                             }
                         }
                         .padding(.horizontal)
+                        .onTapGesture {
+                            isFocused = false
+                        }
                     }
                     .scrollDismissesKeyboard(.immediately)
                     .frame(maxHeight: .infinity)
@@ -60,7 +62,9 @@ public struct OpenAILiveChatView: View {
                         handleRightButtonTap()
                     }
                 )
-                messageInputView
+                .padding(.bottom)
+
+                richTextField
             }
             CompanionHeaderView(title: "Live Chat", isHovering: $isHovering, forceShow: forceShowHeader) {
                 Task { @MainActor in
@@ -73,14 +77,11 @@ public struct OpenAILiveChatView: View {
                 await viewModel.startServer()
             }
         }
-        .onChange(of: viewModel.chatError) { _, error in
+        .onChange(of: viewModel.error) { _, error in
             if let error = error {
                 coordinator.showError(error.message)
                 viewModel.clearError()
             }
-        }
-        .sheet(isPresented: $showingToolsList) {
-            ToolsListView(tools: viewModel.availableTools)
         }
         #if os(macOS)
         .onHover { hovering in
@@ -89,21 +90,18 @@ public struct OpenAILiveChatView: View {
         #endif
     }
 
-    private var messageInputView: some View {
+    private var richTextField: some View {
         RichTextField(
-            inputMessage: $viewModel.newMessage,
             isFocused: $isFocused,
-            richTextFieldState: RichTextFieldState(toolCount: viewModel.availableTools.count),
+            richTextFieldState: viewModel.richTextFieldState,
             richTextFieldDelegate: richTextFieldDelegate
         )
+        .id(viewModel.conversationId)
     }
 
     @MainActor
     private var richTextFieldDelegate: RichTextFieldDelegate {
         ChatViewDelegate(
-            showToolsAction: {
-                showingToolsList = true
-            },
             sendAction: {
                 Task {
                     await viewModel.sendMessage()

@@ -35,7 +35,7 @@ class EmailScreenViewModel: ObservableObject {
 
     public init(summarizationService: EmailSummarizationService = EmailSummarizationService()) {
         self.summarizationService = summarizationService
-        self.toolManager = ToolManager(enabledTools: [GmailTool()])
+        self.toolManager = ToolManager(preEnabledTools: [GmailTool()])
     }
 
     public func updateApiKey(_ apiKey: String?) {

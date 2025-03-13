@@ -28,6 +28,7 @@ struct ConversationRow: View {
                         .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
+                .withIconHover()
             }
 
             // Main content button - title
@@ -45,34 +46,19 @@ struct ConversationRow: View {
             // Action buttons when not in select mode
             if !isSelectMode {
                 HStack(spacing: 4) {
-                    // Always reserve space for these buttons, but control opacity
-                    HoverButton {
-                        Button(action: onDelete) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 12))
-                                .foregroundColor(.red)
-                                .frame(height: 36)
-                                .contentShape(Rectangle())
+                    Menu {
+                        Button(action: onRename) {
+                            Label("Rename", systemImage: "pencil")
                         }
-                        .buttonStyle(.plain)
-                        .opacity(isHovering ? 1 : 0)
-                    }
-
-                    HoverButton(horizontalPadding: 0) {
-                        Menu {
-                            Button(action: onRename) {
-                                Label("Rename", systemImage: "pencil")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 12))
-                                .foregroundColor(.primary)
-                                .frame(height: 36)
-                                .contentShape(Rectangle())
+                        Button(action: onRename) {
+                            Label("Delete", systemImage: "trash")
                         }
-                        .buttonStyle(.plain)
-                        .opacity(isHovering ? 1 : 0)
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .asIcon(foregroundColor: .almostPrimary)
                     }
+                    .buttonStyle(.plain)
+                    .opacity(isHovering ? 1 : 0)
                 }
             }
         }

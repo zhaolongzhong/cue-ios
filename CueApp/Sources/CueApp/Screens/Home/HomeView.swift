@@ -1,6 +1,8 @@
 import SwiftUI
+import Dependencies
 
 struct HomeView: View {
+    @Dependency(\.featureFlagsViewModel) private var featureFlags
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
@@ -46,15 +48,17 @@ struct HomeView: View {
         }
         #if os(iOS)
         .fullScreenCover(isPresented: $coordinator.showLiveChat) {
-            switch coordinator.liveChatProvider {
-            case .openai:
-                OpenAILiveChatView(
-                    viewModelFactory: dependencies.viewModelFactory.makeOpenAILiveChatViewModel
-                )
-            case .gemini:
-                GeminiLiveChatView(viewModelFactory: dependencies.viewModelFactory.makeGeminiChatViewModel)
-            default:
-                EmptyView()
+            if let conversationId = coordinator.liveChatConfig.conversationId {
+                switch coordinator.liveChatConfig.provider {
+                case .openai:
+                    OpenAILiveChatView(
+                        viewModelFactory: dependencies.viewModelFactory.makeOpenAILiveChatViewModel, conversationId: conversationId
+                    )
+                case .gemini:
+                    GeminiLiveChatView(viewModelFactory: dependencies.viewModelFactory.makeGeminiChatViewModel, conversationId: conversationId)
+                default:
+                    EmptyView()
+                }
             }
         }
         #endif
@@ -139,22 +143,34 @@ private extension HomeView {
                 HomeDefaultView(viewModel: homeViewModel, onNewSession: {
                     homeViewModel.navigateToDestination(.email)
                 })
-            case .anthropic:
-                AnthropicChatView(dependencies.viewModelFactory.makeAnthropicChatViewModel)
-            case .gemini:
-                GeminiChatView(dependencies.viewModelFactory.makeGeminiChatViewModel)
-            case .openai:
-                OpenAIChatView(dependencies.viewModelFactory.makeOpenAIChatViewModel)
-            case .cue:
-                CueChatView(dependencies.viewModelFactory.makeCueChatViewModel)
-            case .local:
-                LocalChatView(dependencies.viewModelFactory.makeLocalChatViewModel)
+            case .anthropic(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .anthropic, dependencies: dependencies)
+                    .id(conversationId)
+            case .gemini(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .gemini, dependencies: dependencies)
+                    .id(conversationId)
+            case .openai(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .openai, dependencies: dependencies)
+                    .id(conversationId)
+            case .local(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .local, dependencies: dependencies)
+                    .id(conversationId)
+            case .cue(let conversationId):
+                SingleChatView(conversationId: conversationId, provider: .cue, dependencies: dependencies)
+                    .id(conversationId)
             case .chat(let assistant):
-                AssistantChatView(
-                    assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
-                    assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel()
-                )
-                .id(assistant.id)
+                if featureFlags.enableCLIRunner {
+                    AssistantChatView(
+                        assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
+                        assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel()
+                    )
+                    .id(assistant.id)
+                } else {
+                    AssistantChatViewV2(
+                        assistant: assistant, conversationId: "", provider: .openai, dependencies: dependencies
+                    )
+                    .id(assistant.id)
+                }
             case .email:
                 #if os(iOS)
                 EmailScreen(emailScreenViewModel: dependencies.viewModelFactory.makeEmailScreenViewModel())

@@ -4,12 +4,16 @@ import SwiftUI
 import AppKit
 #endif
 
-public enum AccessibleApplication: CaseIterable {
+public enum AccessibleApplication: CaseIterable, Sendable {
     case xcode
-    case terminal
+    case androidStudio
     case visualStudioCode
-    case textEdit
+    case cursor
+    case windsurf
+    case terminal
     case notes
+    case textEdit
+    case scriptEditor
 }
 
 extension AccessibleApplication {
@@ -17,28 +21,45 @@ extension AccessibleApplication {
         switch self {
         case .xcode:
             return "com.apple.dt.Xcode"
+        case .androidStudio:
+            return "com.google.android.studio"
+        case .visualStudioCode:
+            return "com.microsoft.VSCode"
+        case .cursor:
+            return "com.todesktop.230313mzl4w4u92"
+        case .windsurf:
+            return "com.exafunction.windsurf"
         case .terminal:
             return "com.apple.Terminal"
         case .textEdit:
             return "com.apple.TextEdit"
         case .notes:
             return "com.apple.Notes"
-        case .visualStudioCode:
-            return "com.microsoft.VSCode"
+        case .scriptEditor:
+            return "com.apple.ScriptEditor2"
         }
     }
+
     var name: String {
         switch self {
         case .xcode:
             return "Xcode"
+        case .androidStudio:
+            return "Android Studio"
+        case .visualStudioCode:
+            return "Code"
+        case .cursor:
+            return "Cursor"
+        case .windsurf:
+            return "Windsurf"
         case .terminal:
             return "Terminal"
         case .textEdit:
             return "TextEdit"
         case .notes:
             return "Notes"
-        case .visualStudioCode:
-            return "Visual Studio Code"
+        case .scriptEditor:
+            return "Script Editor"
         }
     }
 
@@ -52,37 +73,60 @@ extension AccessibleApplication {
         #endif
         return Image(systemName: "app")
     }
-}
 
-#if os(macOS)
-struct AXAppSelectionMenu: View {
-    @State private var selectedApp: AccessibleApplication = .textEdit
-    let onStartAXApp: ((AccessibleApplication) -> Void)?
-
-    var body: some View {
-        HoverButton {
-            Menu {
-                ForEach(AccessibleApplication.allCases, id: \.self) { app in
-                    Button {
-                        selectedApp = app
-                        onStartAXApp?(selectedApp)
-                    } label: {
-                        HStack {
-                            app.icon
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                            Text(app.name)
-                                .frame(minWidth: 200, alignment: .leading)
-                        }
-                    }
-                }
-            } label: {
-                Image(systemName: "link.badge.plus")
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+    var isVSCodeIDE: Bool {
+        switch self {
+        case .visualStudioCode, .windsurf, .cursor:
+            return true
+        default:
+            return false
         }
+
+    }
+
+    static func fromEditorName(_ editorName: String) -> AccessibleApplication? {
+        let normalizedName = editorName.lowercased()
+
+        if normalizedName.contains("visual studio code") ||
+           normalizedName.contains("vs code") ||
+           normalizedName.contains("vscode") {
+            return .visualStudioCode
+        }
+
+        if normalizedName.contains("windsurf") {
+            return .windsurf
+        }
+
+        if normalizedName.contains("cursor") {
+            return .cursor
+        }
+
+        if normalizedName.contains("xcode") {
+            return .xcode
+        }
+
+        if normalizedName.contains("android studio") {
+            return .androidStudio
+        }
+
+        if normalizedName.contains("terminal") {
+            return .terminal
+        }
+
+        if normalizedName.contains("textedit") || normalizedName.contains("text edit") {
+            return .textEdit
+        }
+
+        if normalizedName.contains("notes") {
+            return .notes
+        }
+
+        if normalizedName.contains("script editor") ||
+           normalizedName.contains("scripteditor") ||
+           normalizedName.contains("applescript editor") {
+            return .scriptEditor
+        }
+
+        return nil
     }
 }
-#endif

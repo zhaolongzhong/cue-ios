@@ -280,4 +280,19 @@ extension CueChatMessage {
             return nil
         }
     }
+
+    func toMessageParam(simple: Bool = false) -> CueChatMessage {
+        switch self {
+        case .local:
+            return self
+        case .openAI(let msg, _, _, _):
+            return .openAI(msg.toMessageParam(simple: simple), stableId: nil, streamingState: nil, createdAt: nil)
+        case .anthropic(let msg, _, _, _):
+            return .anthropic(msg.toMessageParam(simple: simple), stableId: nil, streamingState: nil, createdAt: nil)
+        case .gemini(let msg, _, _, _):
+            return .gemini(msg.toMessageParam(simple: simple), stableId: nil, streamingState: nil, createdAt: nil)
+        case .cue:
+            return self
+        }
+    }
 }

@@ -30,10 +30,10 @@ extension DependencyValues {
 }
 
 protocol ConversationRepositoryProtocol: Sendable {
-    func createConversation(title: String, assistantId: String?, isPrimary: Bool, provider: Provider?) async throws -> ConversationModel
+    func createConversation(title: String, assistantId: String?, isPrimary: Bool, provider: Provider?, enableRemote: Bool) async throws -> ConversationModel
     func save(_ conversationModel: ConversationModel) async throws
     func delete(id: String) async throws
-    func update(_ conversationModel: ConversationModel) async throws
+    func update(_ conversationModel: ConversationModel, enableRemote: Bool) async throws
     func listConversations(limit: Int, offset: Int) async throws -> [ConversationModel]
     func getConversation(id: String) async throws -> ConversationModel?
     func fetchConversationsByProvider(provider: Provider, limit: Int, offset: Int) async throws -> [ConversationModel]
@@ -41,6 +41,7 @@ protocol ConversationRepositoryProtocol: Sendable {
 
 actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
     @Dependency(\.assistantService) private var assistantService
+    @Dependency(\.conversationService) private var conversationService
     @Dependency(\.messageRepository) private var messageRepository
 
     private let database: AppDatabase
@@ -49,7 +50,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         self.database = database
     }
 
-    func createConversation(title: String, assistantId: String?, isPrimary: Bool = false, provider: Provider?) async throws -> ConversationModel {
+    func createConversation(title: String, assistantId: String?, isPrimary: Bool = false, provider: Provider?, enableRemote: Bool = false) async throws -> ConversationModel {
         let conversationId = "\(ConversationModel.getConversationIdPrefix(for: provider))_\(UUID().uuidString.lowercased().prefix(8))"
         let newConversation = ConversationModel(
             id: conversationId,
@@ -69,7 +70,12 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
     }
 
     func getConversation(id: String) async throws -> ConversationModel? {
-        return try await database.fetchConversation(id: id)
+        if let cache = try await database.fetchConversation(id: id) {
+            return cache
+        }
+        let conversation = try await conversationService.getConversation(id: id)
+        try await save(conversation)
+        return conversation
     }
 
     func getAllConversations(limit: Int = 100, offset: Int = 0) async throws -> [ConversationModel] {
@@ -97,7 +103,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         try await database.deleteConversation(id: id)
     }
 
-    func update(_ conversation: ConversationModel) async throws {
+    func update(_ conversation: ConversationModel, enableRemote: Bool = false) async throws {
         try await database.updateConversation(conversation)
     }
 
@@ -114,7 +120,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         if let existing = try await getPrimaryConversation() {
             var updatedConversation = existing
             // Create new metadata with isPrimary set to false
-            let newMetadata = ConversationMetadata(isPrimary: false)
+            let newMetadata = ConversationMetadata(isPrimary: false, capabilities: existing.metadata?.capabilities)
             // Use KeyPath assignment if your struct allows it, or create a new instance
             updatedConversation = ConversationModel(
                 id: existing.id,
@@ -130,7 +136,7 @@ actor ConversationRepository: ConversationRepositoryProtocol, Cleanable {
         // Now set the new conversation as primary
         if var conversation = try await database.fetchConversation(id: conversationId) {
             // Create new metadata with isPrimary set to true
-            let newMetadata = ConversationMetadata(isPrimary: true)
+            let newMetadata = ConversationMetadata(isPrimary: true, capabilities: conversation.metadata?.capabilities)
             // Use KeyPath assignment if your struct allows it, or create a new instance
             conversation = ConversationModel(
                 id: conversation.id,

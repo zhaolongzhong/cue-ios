@@ -1,5 +1,5 @@
 //
-//  BaseChatView+Extensions.swift
+//  BaseChatViewModel+Extensions.swift
 //  CueApp
 //
 
@@ -15,6 +15,11 @@ import UIKit
 // Extension to add common content handling functionality
 extension BaseChatViewModel {
 
+    @MainActor
+    func cleanupAttachments() {
+        attachments.removeAll()
+    }
+
     /// Collects all content from text input, text area, and attachments
     /// - Returns: OpenAI ContentBlocks that can be converted to provider-specific formats
     @MainActor
@@ -22,8 +27,8 @@ extension BaseChatViewModel {
         var contentBlocks: [OpenAI.ContentBlock] = []
 
         // Add user's input message if not empty
-        if !newMessage.isEmpty {
-            contentBlocks.append(OpenAI.ContentBlock.text(newMessage))
+        if !richTextFieldState.inputMessage.isEmpty {
+            contentBlocks.append(OpenAI.ContentBlock.text(richTextFieldState.inputMessage))
         }
 
         // Add attachment content
@@ -31,13 +36,8 @@ extension BaseChatViewModel {
         if !attachmentBlocks.isEmpty {
             contentBlocks.append(contentsOf: attachmentBlocks)
         }
-
+        cleanupAttachments()
         return contentBlocks
-    }
-
-    @MainActor
-    func cleanupAttachments() {
-        attachments.removeAll()
     }
 
     /// Gets text area content if available
@@ -45,11 +45,10 @@ extension BaseChatViewModel {
     @MainActor
     func getTextAreaContext() -> String? {
         #if os(macOS)
-        if let textAreaContent = self.axManager.textAreaContentList.first {
-            return textAreaContent.getTextAreaContext()
-        }
-        #endif
+        return self.textAreaContents.values.map { $0.getTextAreaContext() }.joined(separator: "\n")
+        #else
         return nil
+        #endif
     }
 
     @MainActor
@@ -112,7 +111,7 @@ extension BaseChatViewModel {
         var anthropicBlocks = toAnthropicContentBlocks(contentBlocks)
 
         // Add text area content if available
-        if let textAreaContext = getTextAreaContext() {
+        if let textAreaContext = getTextAreaContext(), !textAreaContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let textAreaBlock = Anthropic.ContentBlock.text(Anthropic.TextBlock(text: textAreaContext, type: "text"))
             anthropicBlocks.append(textAreaBlock)
         }
@@ -122,7 +121,7 @@ extension BaseChatViewModel {
             Anthropic.MessageParam(role: "user", content: anthropicBlocks)
         )
 
-        return (userMessage, newMessage)
+        return (userMessage, richTextFieldState.inputMessage)
     }
 }
 
@@ -167,7 +166,7 @@ extension BaseChatViewModel {
 
         let newContent = ModelContent(role: "user", parts: parts)
         let userMessage = Gemini.ChatMessageParam.userMessage(newContent)
-        return (userMessage, newMessage)
+        return (userMessage, richTextFieldState.inputMessage)
     }
 }
 
@@ -181,7 +180,7 @@ extension BaseChatViewModel {
         var contentBlocks = await collectContentBlocks()
 
         // Get text area context
-        if let textAreaContext = getTextAreaContext() {
+        if let textAreaContext = getTextAreaContext(), !textAreaContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             contentBlocks.append(OpenAI.ContentBlock.text(textAreaContext))
         }
 
@@ -192,8 +191,7 @@ extension BaseChatViewModel {
                 contentBlocks: contentBlocks
             )
         )
-
-        return (userMessage, newMessage)
+        return (userMessage, richTextFieldState.inputMessage)
     }
 }
 
@@ -225,6 +223,6 @@ extension BaseChatViewModel {
             OpenAI.MessageParam(role: "user", content: .string(userMessageString))
         )
 
-        return (simpleUserMessage, newMessage)
+        return (simpleUserMessage, richTextFieldState.inputMessage)
     }
 }

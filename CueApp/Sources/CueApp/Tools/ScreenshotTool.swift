@@ -36,9 +36,13 @@ struct ScreenshotParameters: ToolParameters, Sendable {
 }
 
 struct ScreenshotTool: LocalTool, Sendable {
+    static func == (lhs: ScreenshotTool, rhs: ScreenshotTool) -> Bool {
+        return lhs.name == rhs.name
+    }
+
     let name: String = "screenshot"
     let description: String = "Take screenshots of specific areas or full screen"
-    let parameterDefinition: ToolParameters = ScreenshotParameters()
+    let parameterDefinition: any ToolParameters = ScreenshotParameters()
 
     func call(_ args: ToolArguments) async throws -> String {
         guard let type = args.getString("type")?.lowercased() else {

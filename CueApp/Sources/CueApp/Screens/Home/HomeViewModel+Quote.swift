@@ -18,9 +18,9 @@ extension HomeViewModel {
     func generateQuotes() async -> [QuoteContent] {
         let cueClient = CueClient()
         var messageParams: [CueChatMessage] = []
-
+        let topics: [String] = ["personal growth", "innovation", "entrepreneurship", "philosophy"]
         let prompt = """
-        Generate 3 meaningful quotes that would resonate with someone who values personal growth and innovation and entrepreneurship. Format your response as a JSON array where each quote has 'text' and optional 'source' fields.
+        Generate 10 meaningful quotes that would resonate with someone who values \(String(describing: topics.randomElement())). Format your response as a JSON array where each quote has 'text' and optional 'source' fields.
 
         Requirements:
         - Mix of both famous quotes and original insights

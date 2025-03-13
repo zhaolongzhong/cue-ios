@@ -7,7 +7,6 @@ import Combine
 @MainActor
 public class ConversationsViewModel: ObservableObject {
     @Dependency(\.conversationRepository) private var conversationRepository
-
     // Main conversation state
     @Published var conversations: [ConversationModel] = []
     @Published var selectedConversationId: String?
@@ -28,6 +27,7 @@ public class ConversationsViewModel: ObservableObject {
     private var allConversations: [ConversationModel] = []
 
     private var cancellables = Set<AnyCancellable>()
+    private let enableRemote: Bool
 
     public enum SortOrder {
         case dateModifiedDesc
@@ -36,17 +36,58 @@ public class ConversationsViewModel: ObservableObject {
         case titleDesc
     }
 
-    public init(selectedConversationId: String? = nil, provider: Provider? = nil) {
-        self.selectedConversationId = selectedConversationId
+    public init(provider: Provider? = nil, enableRemote: Bool = true) {
         self.currentProvider = provider
+        self.enableRemote = enableRemote
 
         setupSearchDebounce()
 
         if let provider = provider {
             Task {
-                await fetchConversations(provider: provider)
+                await loadSelectedConversation(provider: provider)
             }
         }
+     }
+
+    private func lastSelectedConversationKey(for providerId: String) -> String {
+        return "lastSelectedConversationId_\(providerId)"
+    }
+
+    private func loadSelectedConversation(provider: Provider) async {
+        // First try to get the last selected conversation ID from UserDefaults
+        let key = lastSelectedConversationKey(for: provider.id)
+        if let savedId = UserDefaults.standard.string(forKey: key) {
+            self.selectedConversationId = savedId
+            AppLog.log.debug("Restored selected conversation for provider \(provider.id): \(savedId)")
+        }
+
+        // Fetch conversations regardless
+        await fetchConversations(provider: provider)
+
+        // After fetching, check if the selected ID exists in the conversations
+        if let selectedId = selectedConversationId,
+           !conversations.contains(where: { $0.id == selectedId }) {
+            // If the saved ID doesn't exist in fetched conversations, clear it
+            selectedConversationId = nil
+        }
+
+        // If we still don't have a valid selected conversation, select the first one
+        if selectedConversationId == nil, let firstId = conversations.first?.id {
+            selectedConversationId = firstId
+            saveSelectedConversation(id: firstId, providerId: provider.id)
+            AppLog.log.debug("Selected first conversation for provider \(provider.id): \(firstId)")
+        } else if conversations.isEmpty {
+            // If there are no conversations at all, create a default one
+            if let newConversation = await createConversation(provider: provider) {
+                selectedConversationId = newConversation.id
+                saveSelectedConversation(id: newConversation.id, providerId: provider.id)
+            }
+        }
+    }
+
+    private func saveSelectedConversation(id: String, providerId: String) {
+        let key = lastSelectedConversationKey(for: providerId)
+        UserDefaults.standard.set(id, forKey: key)
     }
 
     private func setupSearchDebounce() {
@@ -161,7 +202,7 @@ public class ConversationsViewModel: ObservableObject {
     // MARK: - CRUD Operations
 
     /// Creates a new conversation
-    public func createConversation(title: String = "New Conversation", provider: Provider) async -> String? {
+    public func createConversation(title: String = "New Conversation", provider: Provider) async -> ConversationModel? {
         isLoading = true
         defer { isLoading = false }
 
@@ -170,12 +211,14 @@ public class ConversationsViewModel: ObservableObject {
                 title: title,
                 assistantId: "",
                 isPrimary: false,
-                provider: provider
+                provider: provider,
+                enableRemote: enableRemote
             )
+            self.selectedConversationId = result.id
             // Add to local arrays
             self.allConversations.insert(result, at: 0)
             applyFiltersAndUpdateConversations()
-            return result.id
+            return result
         } catch {
             self.error = error
             AppLog.log.error("Failed to create conversation: \(error)")
@@ -195,11 +238,11 @@ public class ConversationsViewModel: ObservableObject {
             createdAt: conversation.createdAt,
             updatedAt: Date(),
             assistantId: nil,
-            metadata: ConversationMetadata(isPrimary: false)
+            metadata: ConversationMetadata(isPrimary: false, capabilities: conversation.metadata?.capabilities)
         )
 
         do {
-            try await conversationRepository.update(newConversation)
+            try await conversationRepository.update(newConversation, enableRemote: enableRemote)
             // Update in local array
             if let index = allConversations.firstIndex(where: { $0.id == conversationId }) {
                 allConversations[index] = newConversation

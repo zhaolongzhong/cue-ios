@@ -48,11 +48,16 @@ struct FileData {
     let content: String
 }
 
+struct ImageFileData {
+    let fileName: String
+    let url: String
+}
+
 extension Attachment {
     var mimeType: String {
         let fileExtension: String
         if self.imageData != nil {
-            fileExtension = self.name.components(separatedBy: ".").last?.lowercased() ?? "jpg"            
+            fileExtension = self.name.components(separatedBy: ".").last?.lowercased() ?? "jpg"
         } else if self.type == .image {
             fileExtension = url.pathExtension.lowercased()
         } else {

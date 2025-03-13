@@ -40,15 +40,13 @@ public class AppDependencies: ObservableObject, AppStateDelegate {
 @MainActor
 public class ViewModelFactory {
     private var assistantsViewModel: AssistantsViewModel?
+    private var homeViewModel: HomeViewModel?
     private var chatViewModels: [String: AssistantChatViewModel] = [:]
+    private var baseChatViewModels: [String: BaseChatViewModel] = [:]
+    private var conversationViewModels: [String: ConversationsViewModel] = [:]
     private var settingsViewModel: SettingsViewModel?
-    private var openAILiveChatViewModel: OpenAILiveChatViewModel?
-    private var geminiChatViewModel: GeminiChatViewModel?
-    private var openAIChatViewModel: OpenAIChatViewModel?
-    private var anthropicChatViewModel: AnthropicChatViewModel?
-    private var cueChatViewModel: CueChatViewModel?
-    private var localChatViewModel: LocalChatViewModel?
     private var emailScreenViewModel: EmailScreenViewModel?
+    private var mcpServersViewModel: MCPServersViewModel?
 
     let providersViewModel: ProvidersViewModel
 
@@ -56,13 +54,24 @@ public class ViewModelFactory {
         self.providersViewModel = providersViewModel
     }
 
+    func makeHomeViewModel() -> HomeViewModel {
+        if let homeViewModel = self.homeViewModel {
+            return homeViewModel
+        }
+
+        let homeViewModel = HomeViewModel()
+        self.homeViewModel = homeViewModel
+        return homeViewModel
+    }
+
     func makeAssistantsViewModel() -> AssistantsViewModel {
         if let assistantsViewModel = self.assistantsViewModel {
             return assistantsViewModel
         }
 
-        self.assistantsViewModel = AssistantsViewModel()
-        return self.assistantsViewModel!
+        let assistantsViewModel = AssistantsViewModel()
+        self.assistantsViewModel = assistantsViewModel
+        return assistantsViewModel
     }
 
     func makeAssistantChatViewModel(assistant: Assistant) -> AssistantChatViewModel {
@@ -71,6 +80,16 @@ public class ViewModelFactory {
         } else {
             let newViewModel = AssistantChatViewModel(assistant: assistant)
             chatViewModels[assistant.id] = newViewModel
+            return newViewModel
+        }
+    }
+
+    func makeAssistantChatViewModelV2(assistant: Assistant, conversationId: String = "") -> AssistantChatViewModelV2 {
+        if let existing = baseChatViewModels[assistant.id] as? AssistantChatViewModelV2 {
+            return existing
+        } else {
+            let newViewModel = AssistantChatViewModelV2(assistant: assistant, conversationId: conversationId)
+            baseChatViewModels[assistant.id] = newViewModel
             return newViewModel
         }
     }
@@ -88,6 +107,16 @@ public class ViewModelFactory {
         }
     }
 
+    func makeConversationViewModel(provider: Provider) -> ConversationsViewModel {
+        if let existing = conversationViewModels[provider.id] {
+            return existing
+        } else {
+            let newViewModel = ConversationsViewModel(provider: provider)
+            conversationViewModels[provider.id] = newViewModel
+            return newViewModel
+        }
+    }
+
     public func makeSettingsViewModel() -> SettingsViewModel {
         if let settingsViewModel = self.settingsViewModel {
             return settingsViewModel
@@ -98,64 +127,67 @@ public class ViewModelFactory {
         }
     }
 
-    public func makeOpenAILiveChatViewModel() -> OpenAILiveChatViewModel {
-        if let openAILiveChatViewModel = self.openAILiveChatViewModel {
-            return openAILiveChatViewModel
+    func makeBaseChatViewModel(
+        _ conversationId: String,
+        provider: Provider,
+        richTextFieldState: RichTextFieldState? = nil
+    ) -> BaseChatViewModel {
+        if let existing = baseChatViewModels[conversationId] {
+            return existing
         } else {
-            let realtimeChatViewModel = OpenAILiveChatViewModel(apiKey: providersViewModel.openAIKey)
-            self.openAILiveChatViewModel = realtimeChatViewModel
-            return realtimeChatViewModel
+            switch provider {
+            case .openai:
+                let newViewModel = self.makeOpenAIChatViewModel(conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            case .anthropic:
+                let newViewModel = self.makeAnthropicChatViewModel(conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            case .gemini:
+                let newViewModel = self.makeGeminiChatViewModel(conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            case .local:
+                let newViewModel = self.makeLocalChatViewModel(conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            case .cue:
+                let newViewModel = self.makeCueChatViewModel(conversationId: conversationId)
+                baseChatViewModels[conversationId] = newViewModel
+                return newViewModel
+            }
         }
     }
 
-    public func makeOpenAIChatViewModel() -> OpenAIChatViewModel {
-        if let openAIChatViewModel = self.openAIChatViewModel {
-            return openAIChatViewModel
-        } else {
-            let openAIChatViewModel = OpenAIChatViewModel(apiKey: providersViewModel.openAIKey)
-            self.openAIChatViewModel = openAIChatViewModel
-            return openAIChatViewModel
-        }
+    public func makeOpenAILiveChatViewModel(conversationId: String) -> OpenAILiveChatViewModel {
+        let realtimeChatViewModel = OpenAILiveChatViewModel(conversationId: conversationId, apiKey: providersViewModel.openAIKey)
+        return realtimeChatViewModel
     }
 
-    public func makeGeminiChatViewModel() -> GeminiChatViewModel {
-        if let geminiChatViewModel = self.geminiChatViewModel {
-            return geminiChatViewModel
-        } else {
-            let geminiChatViewModel = GeminiChatViewModel(apiKey: providersViewModel.geminiKey)
-            self.geminiChatViewModel = geminiChatViewModel
-            return geminiChatViewModel
-        }
+    public func makeOpenAIChatViewModel(_ conversationId: String) -> OpenAIChatViewModel {
+        let openAIChatViewModel = OpenAIChatViewModel(conversationId: conversationId, apiKey: providersViewModel.openAIKey)
+        return openAIChatViewModel
     }
 
-    public func makeAnthropicChatViewModel() -> AnthropicChatViewModel {
-        if let anthropicChatViewModel = self.anthropicChatViewModel {
-            return anthropicChatViewModel
-        } else {
-            let anthropicChatViewModel = AnthropicChatViewModel(apiKey: providersViewModel.anthropicKey)
-            self.anthropicChatViewModel = anthropicChatViewModel
-            return anthropicChatViewModel
-        }
+    public func makeGeminiChatViewModel(_ conversationId: String) -> GeminiChatViewModel {
+        let geminiChatViewModel = GeminiChatViewModel(conversationId: conversationId, apiKey: providersViewModel.geminiKey)
+        return geminiChatViewModel
     }
 
-    public func makeCueChatViewModel() -> CueChatViewModel {
-        if let cueChatViewModel = self.cueChatViewModel {
-            return cueChatViewModel
-        } else {
-            let cueChatViewModel = CueChatViewModel()
-            self.cueChatViewModel = cueChatViewModel
-            return cueChatViewModel
-        }
+    public func makeAnthropicChatViewModel(_ conversationId: String) -> AnthropicChatViewModel {
+        let anthropicChatViewModel = AnthropicChatViewModel(conversationId: conversationId, apiKey: providersViewModel.anthropicKey)
+        return anthropicChatViewModel
     }
 
-    public func makeLocalChatViewModel() -> LocalChatViewModel {
-        if let localChatViewModel = self.localChatViewModel {
-            return localChatViewModel
-        } else {
-            let localChatViewModel = LocalChatViewModel(apiKey: providersViewModel.openAIKey)
-            self.localChatViewModel = localChatViewModel
-            return localChatViewModel
-        }
+    public func makeCueChatViewModel(conversationId: String) -> CueChatViewModel {
+        let cueChatViewModel = CueChatViewModel(conversationId: conversationId)
+        return cueChatViewModel
+    }
+
+    public func makeLocalChatViewModel(_ conversationId: String) -> LocalChatViewModel {
+        let localChatViewModel = LocalChatViewModel(conversationId: conversationId, apiKey: providersViewModel.openAIKey)
+        return localChatViewModel
     }
 
     func makeLoginViewModel() -> LoginViewModel {
@@ -176,11 +208,22 @@ public class ViewModelFactory {
         return emailScreenViewModel
     }
 
+    func makeMCPServersViewModel() -> MCPServersViewModel {
+        if let mcpServersViewModel = self.mcpServersViewModel {
+            return mcpServersViewModel
+        }
+
+        let mcpServersViewModel = MCPServersViewModel()
+        self.mcpServersViewModel = mcpServersViewModel
+        return mcpServersViewModel
+    }
+
     func cleanup() {
         AppLog.log.debug("ViewModelFactory cleanup, set assistantsViewModel and chatViewModel to nil")
         self.assistantsViewModel?.cleanup()
         self.assistantsViewModel = nil
         self.chatViewModels.values.forEach { $0.cleanup() }
         self.chatViewModels.removeAll()
+        self.baseChatViewModels.removeAll()
     }
 }

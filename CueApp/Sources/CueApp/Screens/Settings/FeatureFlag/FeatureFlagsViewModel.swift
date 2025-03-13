@@ -11,6 +11,10 @@ extension FeatureFlagsViewModel {
         case enableLocal
         case enableMediaOptions
         case enableAssistants
+        case enableEmail
+        case enableTabView
+        case enableMCP
+        case enableCLIRunner
 
         var key: String { rawValue }
     }
@@ -55,6 +59,18 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
     @Published var enableAssistants: Bool {
         didSet { UserDefaults.standard.set(enableAssistants, forKey: Keys.enableAssistants.key) }
     }
+    @Published var enableEmail: Bool {
+        didSet { UserDefaults.standard.set(enableEmail, forKey: Keys.enableEmail.key) }
+    }
+    @Published var enableTabView: Bool {
+        didSet { UserDefaults.standard.set(enableTabView, forKey: Keys.enableTabView.key) }
+    }
+    @Published var enableMCP: Bool {
+        didSet { UserDefaults.standard.set(enableMCP, forKey: Keys.enableMCP.key) }
+    }
+    @Published var enableCLIRunner: Bool {
+        didSet { UserDefaults.standard.set(enableCLIRunner, forKey: Keys.enableCLIRunner.key) }
+    }
 
     init() {
         enableProviders = UserDefaults.standard.bool(forKey: Keys.enableProviders.key)
@@ -63,7 +79,13 @@ final class FeatureFlagsViewModel: ObservableObject, @unchecked Sendable {
         enableAnthropic = UserDefaults.standard.bool(forKey: Keys.enableAnthropic.key)
         enableGemini = UserDefaults.standard.bool(forKey: Keys.enableGemini.key)
         enableLocal = UserDefaults.standard.bool(forKey: Keys.enableLocal.key)
+        UserDefaults.standard.register(defaults: [Keys.enableMediaOptions.key: true])
         enableMediaOptions = UserDefaults.standard.bool(forKey: Keys.enableMediaOptions.key)
         enableAssistants = UserDefaults.standard.bool(forKey: Keys.enableAssistants.key)
+        enableEmail = UserDefaults.standard.bool(forKey: Keys.enableEmail.key)
+        enableTabView = UserDefaults.standard.bool(forKey: Keys.enableTabView.key)
+        UserDefaults.standard.register(defaults: [Keys.enableMCP.key: true])
+        enableMCP = UserDefaults.standard.bool(forKey: Keys.enableMCP.key)
+        enableCLIRunner = UserDefaults.standard.bool(forKey: Keys.enableCLIRunner.key)
     }
 }

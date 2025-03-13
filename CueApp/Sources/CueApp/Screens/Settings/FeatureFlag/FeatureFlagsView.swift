@@ -11,20 +11,13 @@ struct FeatureFlagsView: View {
     }
 
     var body: some View {
-        ScrollView {
+        CenteredScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 providersSection
                 featuresSection
             }
             .padding()
-            #if os(macOS)
-            .frame(maxWidth: 600)
-            #endif
         }
-        #if os(macOS)
-        .frame(minWidth: 500, minHeight: 300)
-        #endif
-        .navigationTitle("Feature Flags")
         .defaultNavigationBar(title: "Feature Flags")
     }
 
@@ -103,6 +96,23 @@ struct FeatureFlagsView: View {
                         title: "Assistants",
                         description: "Enable custom assistants feature",
                         isOn: $featureFlags.enableAssistants
+                    )
+                    FeatureFlagToggleRow(
+                        title: "Email",
+                        description: "Enable email management",
+                        isOn: $featureFlags.enableEmail
+                    )
+                    FeatureFlagToggleRow(
+                        title: "Tab View",
+                        description: "Enable tab view",
+                        isOn: $featureFlags.enableTabView
+                    )
+                    Divider().padding(.vertical, 8)
+
+                    FeatureFlagToggleRow(
+                        title: "CLI Runner",
+                        description: "Enable cli runner",
+                        isOn: $featureFlags.enableCLIRunner
                     )
                 }
                 .padding(4)

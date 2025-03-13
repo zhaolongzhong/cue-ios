@@ -27,31 +27,30 @@ extension ToolManager {
         AppLog.log.debug("Local tools before validation: \(functionDeclarations.count)")
 
         #if os(macOS)
-        if let mcpTools = mcpManager?.getOpenAITools() {
-            let convertedMcpTools = mcpTools.map { openAITool in
-                // Convert OpenAI properties to Schema dictionary
-                let parameters: [String: Schema] = openAITool.function.parameters.properties.mapValues { property in
-                    Schema(
-                        type: convertToDataType(property.type),
-                        description: property.description,
-                        items: property.items.map { items in
-                            Schema(type: convertToDataType(items.type))
-                        }
-                    )
-                }
-
-                return FunctionDeclaration(
-                    name: openAITool.function.name,
-                    description: openAITool.function.description,
-                    parameters: parameters,
-                    requiredParameters: openAITool.function.parameters.required
+        let mcpTools = mcpManager.getOpenAITools()
+        let convertedMcpTools = mcpTools.map { openAITool in
+            // Convert OpenAI properties to Schema dictionary
+            let parameters: [String: Schema] = openAITool.function.parameters.properties.mapValues { property in
+                Schema(
+                    type: convertToDataType(property.type),
+                    description: property.description,
+                    items: property.items.map { items in
+                        Schema(type: convertToDataType(items.type))
+                    }
                 )
             }
 
-            if convertedMcpTools.count > 0 {
-                AppLog.log.debug("Mcp tools before validation: \(convertedMcpTools.count)")
-                functionDeclarations.append(contentsOf: convertedMcpTools)
-            }
+            return FunctionDeclaration(
+                name: openAITool.function.name,
+                description: openAITool.function.description,
+                parameters: parameters,
+                requiredParameters: openAITool.function.parameters.required
+            )
+        }
+
+        if convertedMcpTools.count > 0 {
+            AppLog.log.debug("Mcp tools before validation: \(convertedMcpTools.count)")
+            functionDeclarations.append(contentsOf: convertedMcpTools)
         }
         #endif
 

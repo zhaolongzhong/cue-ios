@@ -12,7 +12,7 @@ struct SectionHeader: View {
     var alignment: HorizontalAlignment = .leading
     var fontStyle: Font = .subheadline
     var fontWeight: Font.Weight = .semibold
-    var textColor: Color = .secondary
+    var textColor: Color = .primary
     var spacing: CGFloat = 8
     var padding: EdgeInsets = EdgeInsets(top: 8, leading: 0, bottom: 4, trailing: 0)
     var trailingIcon: IconType?
@@ -22,19 +22,18 @@ struct SectionHeader: View {
     var body: some View {
         HStack(spacing: spacing) {
             Text(title)
-                .font(fontStyle)
-                .fontWeight(fontWeight)
-                .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
-                .foregroundColor(textColor)
+                .withSideBarTitle()
 
             if let trailingIcon {
                 if let trailingAction {
                     Button(action: trailingAction) {
                         iconView(for: trailingIcon)
+                            .withIconHover()
                     }
                     .buttonStyle(.plain)
                 } else {
                     iconView(for: trailingIcon)
+                        .withIconHover()
                 }
             }
         }
@@ -46,9 +45,7 @@ struct SectionHeader: View {
         switch type {
         case .system(let name):
             Image(systemName: name)
-                .font(.system(size: 16))
-                .frame(width: 24, height: 24)
-                .foregroundColor(textColor)
+                .asIcon(foregroundColor: textColor)
         case .custom(let text):
             Text(text)
                 .font(.system(size: 18, weight: .light, design: .monospaced))

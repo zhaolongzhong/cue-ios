@@ -20,7 +20,7 @@ public class AppCoordinator: ObservableObject {
     @Published public var showSettings = false
     @Published public var showProviders = false
     @Published public var showLiveChat = false
-    @Published public var liveChatProvider: Provider = .gemini
+    @Published public var liveChatConfig = CompanionWindowConfig(provider: .gemini)
 
     #if os(macOS)
     private let updater: SPUUpdater?
@@ -50,9 +50,9 @@ public class AppCoordinator: ObservableObject {
         showProviders = true
     }
 
-    func showLiveChatSheet(_ liveChatProvider: Provider) {
+    func showLiveChatSheet(_ config: CompanionWindowConfig) {
         showLiveChat = true
-        self.liveChatProvider = liveChatProvider
+        self.liveChatConfig = config
     }
 
     public func showError(_ message: String) {

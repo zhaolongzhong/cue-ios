@@ -16,7 +16,6 @@ public struct ProviderDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 providerDetailsHeader
-                Divider()
                 providerSettingsSection
             }
             .padding()
@@ -44,8 +43,7 @@ public struct ProviderDetailView: View {
 
     private var providerDetailsHeader: some View {
         HStack(spacing: 12) {
-            provider.iconView
-                .frame(width: 40, height: 40)
+            provider.iconViewWithSize(24)
 
             VStack(alignment: .leading) {
                 Text(provider.displayName)
@@ -76,34 +74,7 @@ struct GenericProviderSettingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if provider.requiresAPIKey {
-                GroupBox {
-                    Button {
-                        viewModel.promptForAPIKey()
-                    } label: {
-                        HStack {
-                            Image(systemName: "key")
-                                .frame(width: 24)
-
-                            VStack(alignment: .leading) {
-                                Text("API Key")
-                                    .foregroundColor(.primary)
-                                SecretView(secret: viewModel.tempAPIKey)
-                            }
-
-                            Spacer()
-                            if !viewModel.hasAPIKey {
-                                Text("Not set")
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
+                ProviderKeyRow(provider: provider, viewModel: viewModel)
             }
         }
     }
@@ -247,32 +218,33 @@ struct LocalProviderSettingsSection: View {
     }
 
     private var advancedSettingsView: some View {
-        CollapsibleSettingsSection(
-            title: "Advanced",
-            headerView: {
-                ProviderDetailSectionHeader(title: "Advanced")
-            },
-            content: {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Reset Settings")
-                                .foregroundColor(.primary)
-                            Text("Restore default server URL and other settings")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        Section {
+            GroupBox {
+                CollapsibleSettingsSection(
+                    title: "Advanced",
+                    content: {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Reset Settings")
+                                        .foregroundColor(.primary)
+                                    Text("Restore default server URL and other settings")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Reset") {
+                                    viewModel.resetBaseURLToDefault()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                            .padding(.vertical, 4)
                         }
-                        Spacer()
-                        Button("Reset") {
-                            viewModel.resetBaseURLToDefault()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
-                    .padding(.vertical, 4)
-                }
+                )
             }
-        )
+        }
     }
 
     private var serverSettingsView: some View {

@@ -11,8 +11,8 @@ struct SidebarAssistantActions: AssistantActions {
     }
 
     func onDetails(assistant: Assistant) {
-       onDetailsPressed(assistant)
-   }
+        onDetailsPressed(assistant)
+    }
 
     func onSetPrimary(assistant: Assistant) {
         assistantsViewModel.setPrimaryAssistant(id: assistant.id)
@@ -26,9 +26,11 @@ struct SidebarAssistantActions: AssistantActions {
 struct Sidebar: View {
     @Dependency(\.authRepository) var authRepository
     @Dependency(\.featureFlagsViewModel) private var featureFlags
+    @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var providersViewModel: ProvidersViewModel
     @ObservedObject private var assistantsViewModel: AssistantsViewModel
     @Binding private var selectedAssistant: Assistant?
+    @State private var selectedProvider: Provider?
     @State private var isShowingNewAssistantSheet = false
     @State private var assistantForDetails: Assistant?
     @State private var assistantToDelete: Assistant?
@@ -83,9 +85,9 @@ struct Sidebar: View {
         .sheet(item: $assistantForDetails) { assistant in
             AssistantDetailView(
                 assistant: assistant,
-                assistantsViewModel: self.assistantsViewModel,
                 onUpdate: nil
             )
+            .sheetWidth(.medium)
             .presentationCompactAdaptation(.popover)
         }
         .sheet(isPresented: $isShowingNewAssistantSheet) {
@@ -102,105 +104,63 @@ struct Sidebar: View {
         ScrollView {
             LazyVStack {
                 Group {
-                    if featureFlags.enableCue {
-                        cueRow
+                    if featureFlags.enableAssistants {
+                        AssistantsRow(
+                            onTap: { selectedProvider = nil }
+                        )
                     }
-                    emailRow
+                    if featureFlags.enableEmail {
+                        SidebarEmailRow(
+                            onTap: { homeNavigationManager.navigateTo(.email) }
+                        )
+                    }
                     if featureFlags.enableProviders {
                         if !providersViewModel.enabledProviders.isEmpty {
-                            Divider()
-                                .opacity(0.5)
-                            providersSection
+                            ProvidersSection(
+                                selectedProvider: $selectedProvider,
+                                providersViewModel: providersViewModel,
+                                featureFlags: featureFlags
+                            )
                         }
                     }
                 }
                 .padding(.horizontal, 16)
-                if featureFlags.enableAssistants {
-                    assistantsSection
-                }
-            }
-        }
-    }
 
-    private var cueRow: some View {
-        SidebarRowButton(
-            title: "Cue",
-            icon: .custom("~"),
-            action: {
-                homeNavigationManager.navigateTo(.cue)
-            }
-        )
-    }
-
-    private var emailRow: some View {
-        SidebarRowButton(
-            title: "Email",
-            icon: .system("envelope"),
-            action: {
-                homeNavigationManager.navigateTo(.home)
-            }
-        )
-    }
-
-    private var emptyProvidersStateView: some View {
-        Text("No providers configured")
-            .foregroundColor(.secondary)
-            .font(.caption)
-    }
-
-    private var providersHeader: some View {
-        SectionHeader(
-            title: "Providers",
-            trailingIcon: .system("plus"),
-            trailingAction: {
-                homeNavigationManager.navigateTo(.openai)
-                #if os(macOS)
-                openWindow(id: WindowId.providersManagement.rawValue)
-                #endif
-            }
-        )
-    }
-
-    private var providersSection: some View {
-        VStack(spacing: 0) {
-            providersHeader
-
-            if providersViewModel.enabledProviders.isEmpty {
-                emptyProvidersStateView
-            } else {
-                ForEach(providersViewModel.enabledProviders, id: \.self) { provider in
-                    switch provider {
-                    case .openai where providersViewModel.isProviderEnabled(.openai) && featureFlags.enableOpenAI:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.openai)
-                        }
-                    case .anthropic where providersViewModel.isProviderEnabled(.anthropic) && featureFlags.enableAnthropic:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.anthropic)
-                        }
-                    case .gemini where providersViewModel.isProviderEnabled(.gemini) && featureFlags.enableGemini:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.gemini)
-                        }
-                    case .local where featureFlags.enableLocal:
-                        ProviderSidebarRow(provider: provider) {
-                            homeNavigationManager.navigateTo(.local)
-                        }
-                    default:
-                        AnyView(EmptyView())
+                if selectedProvider != nil {
+                    conversationsSection
+                } else {
+                    if featureFlags.enableAssistants {
+                        Divider()
+                            .opacity(0.2)
+                            .padding(.horizontal, 16)
+                        assistantsSection
                     }
                 }
             }
         }
-        #if os(iOS)
-        .listSectionSpacing(.compact)
-        #endif
+    }
+
+    private var conversationsSection: some View {
+        Group {
+            if let selectedProvider = selectedProvider {
+                ConversationsView(
+                    viewModel: dependencies.viewModelFactory.makeConversationViewModel(provider: selectedProvider),
+                    provider: selectedProvider
+                ) { conversationId in
+                    homeNavigationManager.navigateToConversation(provider: selectedProvider, conversationId: conversationId)
+                }
+            }
+        }
     }
 
     private var assistantsSection: some View {
         VStack {
-            assistantsSectionHeader
-                .padding(.horizontal, 16)
+            SectionHeader(
+                title: "Assistants",
+                trailingIcon: .system("plus"),
+                trailingAction: { isShowingNewAssistantSheet = true }
+            )
+            .padding(.horizontal, 16)
             ForEach(assistantsViewModel.assistants) { assistant in
                 AssistantRow(
                     assistant: assistant,
@@ -216,6 +176,7 @@ struct Sidebar: View {
                     )
                 )
                 .padding(.horizontal, 8)
+                .withHoverEffect()
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(selectedAssistant == assistant ? AppTheme.Colors.separator.opacity(0.5) : Color.clear)
@@ -228,34 +189,5 @@ struct Sidebar: View {
             }
             .scrollContentBackground(.hidden)
         }
-    }
-
-    private var assistantsSectionHeader: some View {
-        SectionHeader(
-            title: "Assistants",
-            trailingIcon: .system("plus"),
-            trailingAction: { isShowingNewAssistantSheet = true }
-        )
-    }
-}
-
-struct ProviderSidebarRow: View {
-    let provider: Provider
-    let action: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                ProviderAvatar(
-                    iconName: provider.iconName,
-                    isSystemImage: provider.isSystemIcon
-                )
-
-                Text(provider.displayName)
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
     }
 }

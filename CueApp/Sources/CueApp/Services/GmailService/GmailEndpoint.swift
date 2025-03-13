@@ -17,10 +17,10 @@ extension GmailEndpoint: Endpoint {
 
     var path: String {
         switch self {
-        case .listInbox(let maxResults):
-            return "/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=\(maxResults)"
+        case .listInbox:
+            return "/gmail/v1/users/me/messages"
         case .getMessageDetails(let id):
-            return "/gmail/v1/users/me/messages/\(id)/?format=full"
+            return "/gmail/v1/users/me/messages/\(id)"
         case .sendMessage:
             return "/gmail/v1/users/me/messages/send"
         case .replyToMessage:
@@ -58,9 +58,10 @@ extension GmailEndpoint: Endpoint {
     var queryParameters: [String: String]? {
         switch self {
         case .listInbox(let maxResults):
-            var params: [String: String] = ["labelIds": "INBOX"]
-            params["maxResults"] = String(maxResults)
-            return params
+            return [
+                "labelIds": "INBOX",
+                "maxResults": String(maxResults)
+            ]
         case .getMessageDetails:
             return ["format": "full"]
         default:

@@ -1,21 +1,22 @@
 import SwiftUI
 
 struct AssistantDetailView: View {
+    @EnvironmentObject private var dependencies: AppDependencies
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: AssistantDetailViewModel
+    @State private var showColorPicker = false
+    let onUpdate: ((Assistant) -> Void)?
 
     init(
         assistant: Assistant,
-        assistantsViewModel: AssistantsViewModel,
         onUpdate: ((Assistant) -> Void)? = nil
     ) {
         _viewModel = StateObject(
             wrappedValue: AssistantDetailViewModel(
-                assistant: assistant,
-                assistantsViewModel: assistantsViewModel,
-                onUpdate: onUpdate
+                assistant: assistant
             )
         )
+        self.onUpdate = onUpdate
     }
 
     var body: some View {
@@ -26,9 +27,6 @@ struct AssistantDetailView: View {
                 assistantSettingsSection
             }
             .padding()
-            #if os(macOS)
-            .frame(maxWidth: 600)
-            #endif
         }
         .navigationTitle("\(viewModel.assistant.name) Details")
         .defaultNavigationBar(title: "\(viewModel.assistant.name) Details")
@@ -77,22 +75,41 @@ struct AssistantDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showColorPicker) {
+            ColorPickerSheetV2(
+                colorPalette: viewModel.assistant.assistantColor,
+                onColorSelected: { color in
+                    Task {
+                        if let assistant = await viewModel.updateMetadata(color: color.hexString) {
+                            onUpdate?(assistant)
+                        }
+                    }
+                }
+            )
+        }
+        .onChange(of: viewModel.assistant) { _, assistant in
+            onUpdate?(assistant)
+        }
     }
 
     private var assistantDetailsHeader: some View {
         HStack(spacing: 12) {
-            Image(systemName: "person.circle")
-                .font(.system(size: 24))
-                .foregroundColor(.blue)
-                .frame(width: 40, height: 40)
+            Button {
+                showColorPicker = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(viewModel.assistant.assistantColor.color)
+                        .frame(width: 40, height: 40)
+
+                    InitialsAvatar(text: viewModel.assistant.name.prefix(1).uppercased(), size: 36)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
 
             VStack(alignment: .leading) {
                 Text(viewModel.assistant.name)
                     .font(.headline)
-
-                Text(viewModel.description.isEmpty ? "No description" : viewModel.description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
             }
         }
     }
@@ -102,33 +119,63 @@ struct AssistantDetailView: View {
             // Basic Settings Section
             Section {
                 GroupBox {
-                    settingRow(
-                        title: "Name",
-                        value: viewModel.assistant.name
-                    ) {
+                    // Remove the button and use a custom view for context menu support
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Name")
+                                .font(.body)
+                        }
+                        Spacer()
+
+                        Text(viewModel.assistant.name)
+                            .foregroundColor(.secondary)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .contentShape(Rectangle()) // Important for tap gesture
+                    .onTapGesture {
                         viewModel.prepareNameEdit()
                     }
-                    .padding(.all, 4)
+                    .contextMenu {
+                        Button {
+                            #if os(macOS)
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(viewModel.assistant.id, forType: .string)
+                            #else
+                            UIPasteboard.general.string = viewModel.assistant.id
+                            #endif
+                        } label: {
+                            Label("Copy Assistant ID", systemImage: "doc.on.doc")
+                        }
+                    }
 
                     Divider()
-                        .padding(.all, 4)
 
                     settingRow(
-                        title: "ID",
-                        value: viewModel.assistant.id,
-                        isCopiable: true
+                        title: "Bio",
+                        description: "Brief description of this assistant",
+                        value: viewModel.description.isEmpty ? "Add" : ""
                     ) {
-                        // No action for ID, just for display
+                        viewModel.showingDescriptionEdit = true
                     }
-                    .padding(.all, 4)
                 }
             } header: {
                 AssistantDetailSectionHeader(title: "Basic")
             }
 
-            // Model Settings Section
+            // Assistant Settings Section
             Section {
                 GroupBox {
+                    settingRow(
+                        title: "Instruction",
+                        description: "Instruction for the assistant",
+                        value: viewModel.instruction.isEmpty ? "Add" : ""
+                    ) {
+                        viewModel.showingInstructionEdit = true
+                    }
+
                     HStack {
                         VStack(alignment: .leading) {
                             Text("Model")
@@ -136,8 +183,8 @@ struct AssistantDetailView: View {
                         }
                         Spacer()
                         Picker("", selection: $viewModel.selectedModel) {
-                            ForEach(viewModel.availableModels, id: \.self) { model in
-                                Text(model)
+                            ForEach(viewModel.availableModelsV2, id: \.self) { model in
+                                Text(model.displayName)
                                     .lineLimit(1)
                                     .tag(model)
                             }
@@ -145,56 +192,25 @@ struct AssistantDetailView: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(minWidth: 120)
-                        .onChange(of: viewModel.selectedModel) { _, newValue in
+                        .onReceive(viewModel.$selectedModel) { newModel in
                             Task {
-                                await viewModel.updateMetadata(model: newValue)
+                                await viewModel.updateMetadata(model: newModel.id)
                             }
                         }
                     }
-                    .padding(.all, 4)
 
                     Divider()
-                        .padding(.all, 4)
 
                     settingRow(
-                        title: "Max Turns",
-                        description: "Maximum number of turns to run automatically",
+                        title: "Max Steps",
+                        description: "Maximum number of steps to run automatically",
                         value: "\(viewModel.maxTurns)"
                     ) {
                         viewModel.prepareMaxTurnsEdit()
                     }
-                    .padding(.all, 4)
                 }
             } header: {
-                AssistantDetailSectionHeader(title: "Model Settings")
-            }
-
-            // Content Settings Section
-            Section {
-                GroupBox {
-                    settingRow(
-                        title: "Instruction",
-                        description: "System prompt for the assistant",
-                        value: viewModel.instruction.isEmpty ? "Not set" : "Edit"
-                    ) {
-                        viewModel.showingInstructionEdit = true
-                    }
-                    .padding(.all, 4)
-
-                    Divider()
-                        .padding(.all, 4)
-
-                    settingRow(
-                        title: "Description",
-                        description: "Brief description of this assistant",
-                        value: viewModel.description.isEmpty ? "Not set" : "Edit"
-                    ) {
-                        viewModel.showingDescriptionEdit = true
-                    }
-                    .padding(.all, 4)
-                }
-            } header: {
-                AssistantDetailSectionHeader(title: "Content")
+                AssistantDetailSectionHeader(title: "Settings")
             }
         }
     }
@@ -248,7 +264,6 @@ struct AssistantDetailView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(PlainButtonStyle())

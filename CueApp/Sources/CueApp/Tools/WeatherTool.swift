@@ -22,9 +22,13 @@ struct WeatherParameters: ToolParameters, Sendable {
 }
 
 struct WeatherTool: LocalTool, Sendable {
+    static func == (lhs: WeatherTool, rhs: WeatherTool) -> Bool {
+        return lhs.name == rhs.name
+    }
+
     let name: String = "get_current_weather"
     let description: String = "Get the current weather in a given location"
-    let parameterDefinition: ToolParameters = WeatherParameters()
+    let parameterDefinition: any ToolParameters = WeatherParameters()
 
     func call(_ args: ToolArguments) async throws -> String {
         guard let location = args.getString("location") else {

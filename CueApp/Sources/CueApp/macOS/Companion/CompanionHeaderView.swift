@@ -33,7 +33,6 @@ public struct CompanionHeaderView: View {
                 }
                 HStack {
                     Spacer()
-
                     DismissButton(action: onDismiss)
                         .padding(.trailing, 4)
                 }

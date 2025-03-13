@@ -36,10 +36,17 @@ final class EnvironmentConfig: URLConfiguration, Sendable {
             ? domain.replacingOccurrences(of: "localhost", with: "127.0.0.1")
             : domain
 
+        let domainWithWWW: String
+        if !normalizedDomain.contains("localhost") && !normalizedDomain.contains("127.0.0.1") && !normalizedDomain.starts(with: "www.") {
+            domainWithWWW = "www." + normalizedDomain
+        } else {
+            domainWithWWW = normalizedDomain
+        }
+
         // Construct the base URLs
-        self.baseURLValue = "\(scheme)://\(normalizedDomain)"
-        self.baseAPIURLValue = "\(scheme)://\(normalizedDomain)/api/v1"
-        self.baseWebSocketURLValue = "\(wsScheme)://\(normalizedDomain)/api/v1/ws"
+        self.baseURLValue = "\(scheme)://\(domainWithWWW)"
+        self.baseAPIURLValue = "\(scheme)://\(domainWithWWW)/api/v1"
+        self.baseWebSocketURLValue = "\(wsScheme)://\(domainWithWWW)/api/v1/ws"
 
         // Initialize clientId
         if let existingClientId = UserDefaults.standard.string(forKey: clientIdKey) {

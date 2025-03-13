@@ -28,14 +28,14 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
     let logger = Logger(subsystem: "OpenAI", category: "OpenAIChatViewModel")
     private var enableStreaming: Bool = true
 
-    public init(apiKey: String, conversationId: String? = nil) {
+    public init(conversationId: String, apiKey: String) {
         self.openai = OpenAI(apiKey: apiKey)
         super.init(
             apiKey: apiKey,
             provider: .openai,
             model: .gpt4oMini,
             conversationId: conversationId,
-            richTextFieldState: RichTextFieldState(showVoiceChat: true)
+            richTextFieldState: RichTextFieldState(conversationId: conversationId, showVoiceChat: true, showAXApp: true)
         )
     }
 
@@ -62,13 +62,13 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
 
         isLoading = true
         isRunning = true
-        newMessage = ""
+        richTextFieldState = richTextFieldState.copy(inputMessage: "")
 
-        if isStreamingEnabled {
-            await startStreamingTask(messageParams)
-        } else {
+//        if isStreamingEnabled {
+//            await startStreamingTask(messageParams)
+//        } else {
             await sendMessageWithoutStreaming(messageParams)
-        }
+//        }
     }
 
     override func stopAction() async {
@@ -102,7 +102,7 @@ public final class OpenAIChatViewModel: BaseChatViewModel {
 extension OpenAIChatViewModel {
 
     func startStreamingTask(_ messageParams: [CueChatMessage]) async {
-        AppLog.log.debug("Starting agent loop for streaming conversation: \(String(describing: self.selectedConversationId))")
+        AppLog.log.debug("Starting agent loop for streaming conversation: \(String(describing: self.conversationId))")
 
         do {
             let completionRequest = CompletionRequest(
@@ -221,5 +221,6 @@ extension OpenAIChatViewModel {
         }
         self.error = chatError
         ErrorLogger.log(chatError)
+        self.isRunning = false
     }
 }

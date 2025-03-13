@@ -6,45 +6,40 @@ struct APIKeysView: View {
     @State private var selectedKey: APIKey?
 
     var body: some View {
-        ScrollView {
-            HStack {
-                Spacer()
-                LazyVStack {
-                    if viewModel.isLoading && viewModel.apiKeys.isEmpty {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .listRowSeparator(.hidden)
-                    }
-
-                    errorMessage
-
-                    ForEach(viewModel.apiKeys) { key in
-                        APIKeyRow(
-                            key: key,
-                            selectedKey: $selectedKey,
-                            onDelete: { key in
-                                Task {
-                                    await viewModel.deleteKey(key)
-                                }
-                            }
-                        )
+        CenteredScrollView {
+            LazyVStack {
+                if viewModel.isLoading && viewModel.apiKeys.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .listRowSeparator(.hidden)
-                        .task {
-                            await viewModel.loadMoreIfNeeded(currentItem: key)
-                        }
-                    }
+                }
 
-                    if viewModel.isLoading && !viewModel.apiKeys.isEmpty {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .listRowSeparator(.hidden)
+                errorMessage
+
+                ForEach(viewModel.apiKeys) { key in
+                    APIKeyRow(
+                        key: key,
+                        selectedKey: $selectedKey,
+                        onDelete: { key in
+                            Task {
+                                await viewModel.deleteKey(key)
+                            }
+                        }
+                    )
+                    .listRowSeparator(.hidden)
+                    .task {
+                        await viewModel.loadMoreIfNeeded(currentItem: key)
                     }
                 }
-                .padding()
-                .scrollContentBackground(.hidden)
-                .frame(maxWidth: 600)
-                Spacer()
+
+                if viewModel.isLoading && !viewModel.apiKeys.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .listRowSeparator(.hidden)
+                }
             }
+            .scrollContentBackground(.hidden)
+            .padding()
         }
         .refreshable {
             await viewModel.refresh()

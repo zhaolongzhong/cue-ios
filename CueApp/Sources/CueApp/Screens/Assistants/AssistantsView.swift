@@ -1,12 +1,7 @@
 import SwiftUI
 import Combine
 
-enum AppDestination: Hashable {
-    case chat(Assistant)
-    case details(Assistant)
-}
-
-struct NavigationAssistantActions: AssistantActions {
+struct AssistantActionsHelper: AssistantActions {
     var navigationPath: Binding<NavigationPath>
     var assistantsViewModel: AssistantsViewModel
     var setAssistantToDelete: (Assistant) -> Void
@@ -28,69 +23,46 @@ struct NavigationAssistantActions: AssistantActions {
     }
 }
 
+protocol AssistantActions {
+    func onDelete(assistant: Assistant)
+    func onDetails(assistant: Assistant)
+    @MainActor func onSetPrimary(assistant: Assistant)
+    func onChat(assistant: Assistant)
+}
+
 struct AssistantsView: View {
     @EnvironmentObject private var dependencies: AppDependencies
     @EnvironmentObject private var appStateViewModel: AppStateViewModel
     @StateObject private var assistantsViewModel: AssistantsViewModel
     @State private var isShowingNameDialog = false
     @State private var newAssistantName = ""
-    @State private var navigationPath = NavigationPath()
     @State private var isShowingDeleteConfirmation = false
     @State private var assistantToDelete: Assistant?
-
     private var showDeleteAlert: Binding<Bool> {
         Binding(
             get: { assistantToDelete != nil },
             set: { if !$0 { assistantToDelete = nil } }
         )
     }
+    @Binding var navigationPath: NavigationPath
 
-    init(viewModelFactory: @escaping () -> AssistantsViewModel) {
+    init(viewModelFactory: @escaping () -> AssistantsViewModel, navigationPath: Binding<NavigationPath>) {
         self._assistantsViewModel = StateObject(wrappedValue: viewModelFactory())
+        self._navigationPath = navigationPath
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            AssistantsListView(
+        AssistantsListView(
+            assistantsViewModel: assistantsViewModel,
+            actions: AssistantActionsHelper(
+                navigationPath: $navigationPath,
                 assistantsViewModel: assistantsViewModel,
-                actions: NavigationAssistantActions(
-                    navigationPath: $navigationPath,
-                    assistantsViewModel: assistantsViewModel,
-                    setAssistantToDelete: { assistant in
-                        assistantToDelete = assistant
-                    }
-                )
+                setAssistantToDelete: { assistant in
+                    assistantToDelete = assistant
+                }
             )
-            .defaultNavigationBar(showCustomBackButton: false, title: "Assistants")
-            #if os(iOS)
-            .listStyle(InsetGroupedListStyle())
+        )
 
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button {
-                        isShowingNameDialog = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
-            #endif
-            .navigationDestination(for: AppDestination.self) { destination in
-                switch destination {
-                case .chat(let assistant):
-                    AssistantChatView(
-                        assistantChatViewModel: dependencies.viewModelFactory.makeAssistantChatViewModel(assistant: assistant),
-                        assistantsViewModel: dependencies.viewModelFactory.makeAssistantsViewModel()
-                    )
-                case .details(let assistant):
-                    AssistantDetailView(
-                        assistant: assistant,
-                        assistantsViewModel: assistantsViewModel,
-                        onUpdate: nil
-                    )
-                }
-            }
-        }
         .alert("Delete Assistant", isPresented: showDeleteAlert, presenting: assistantToDelete) { assistant in
             Button("Delete", role: .destructive) {
                 Task {
@@ -123,6 +95,48 @@ struct AssistantsView: View {
                 if appStateViewModel.state.isAuthenticated {
                     await assistantsViewModel.fetchAssistants()
                 }
+            }
+        }
+    }
+}
+
+struct AssistantsListView: View {
+    @ObservedObject var assistantsViewModel: AssistantsViewModel
+    let actions: AssistantActions?
+
+    var body: some View {
+        ScrollView {
+            LazyVStack {
+                ForEach(assistantsViewModel.assistants) { assistant in
+                    AssistantRowV2(
+                        assistant: assistant,
+                        status: assistantsViewModel.getClientStatus(for: assistant),
+                        actions: actions
+                    )
+                    .onTapGesture {
+                        actions?.onChat(assistant: assistant)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            actions?.onDelete(assistant: assistant)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .tint(.orange)
+                    }
+                    Divider().background(AppTheme.Colors.separator.opacity(0.1))
+                        .padding(.vertical, 8)
+                        .padding(.leading, 46)
+                }
+            }
+            .padding()
+        }
+        .refreshable {
+            assistantsViewModel.refreshAssistants()
+        }
+        .overlay {
+            if assistantsViewModel.isLoading {
+                ProgressView()
             }
         }
     }

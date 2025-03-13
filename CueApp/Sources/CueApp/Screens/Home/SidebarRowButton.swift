@@ -53,6 +53,7 @@ struct SidebarRowButton: View {
             .foregroundColor(.primary)
         })
         .buttonStyle(.plain)
+        .withHoverEffect()
     }
 
     @ViewBuilder

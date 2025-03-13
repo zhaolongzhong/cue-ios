@@ -17,10 +17,10 @@ final class AssistantChatViewModel: ObservableObject {
     @Published private(set) var currentConnectionState: ConnectionState = .disconnected
     @Published private(set) var clientStatus: ClientStatus?
     @Published var errorAlert: ErrorAlert?
-    @Published var newMessage: String = ""
     @Published var showAssistantDetails = false
     @Published var isInputEnabled = true
     @Published var isLoadingMore = false
+    @Published var richTextFieldState: RichTextFieldState
 
     private var primaryConversation: ConversationModel?
     private var cancellables = Set<AnyCancellable>()
@@ -33,6 +33,7 @@ final class AssistantChatViewModel: ObservableObject {
 
     init(assistant: Assistant) {
         self.assistant = assistant
+        self.richTextFieldState =  RichTextFieldState()
         setupConnectionStateSubscription()
         setupMessageHandler()
     }
@@ -101,9 +102,9 @@ final class AssistantChatViewModel: ObservableObject {
         )
 
         Task {
-            switch await messageRepository.saveMessage(messageModel: messageModel) {
+            switch await messageRepository.saveMessage(messageModel: messageModel, enableRemote: false) {
             case .success:
-                newMessage = ""
+                richTextFieldState = richTextFieldState.copy(inputMessage: "")
             case .failure(let error):
                 handleError(error, context: "Failed to send message")
             }
@@ -123,34 +124,18 @@ final class AssistantChatViewModel: ObservableObject {
              return
          }
 
-         await loadCachedMessages(conversationId: conversationId)
-         subscribeToMessages(conversationId: conversationId)
-         await fetchRemoteMessages(conversationId: conversationId)
+        subscribeToMessages(conversationId: conversationId)
+        await loadMessages(conversationId: conversationId)
      }
 
-    private func loadCachedMessages(conversationId: String) async {
-        switch await messageRepository.fetchCachedMessages(forConversation: conversationId, skip: 0, limit: 50) {
-        case .success(let messages):
-            self.messageModels = messages.map { .cue($0) }
-            AppLog.log.debug("Initial messages loaded: \(messages.count)")
-        case .failure(let error):
-            handleError(error, context: "Loading cached messages failed")
-        }
-    }
-
-    private func fetchRemoteMessages(conversationId: String) async {
-        switch await messageRepository.listMessages(conversationId: conversationId, skip: 0, limit: 50) {
+    private func loadMessages(conversationId: String) async {
+        switch await messageRepository.listMessages(conversationId: conversationId, skip: 0, limit: 50, enableRemote: true) {
         case .success(let messages):
             self.messageModels = messages.map { .cue($0) }
             self.messageCount = messages.count
-        case .failure(.fetchFailed(let error)):
-            handleError(error, context: "Fetching messages failed")
-
-        case .failure(.invalidConversationId):
-            handleError(MessageRepositoryError.invalidConversationId, context: "Invalid conversation")
-
+            AppLog.log.debug("Initial messages loaded: \(messages.count)")
         case .failure(let error):
-            handleError(error, context: "Unknown error occurred")
+            handleError(error, context: "Loading cached messages failed")
         }
     }
 
@@ -176,7 +161,8 @@ final class AssistantChatViewModel: ObservableObject {
             let result = await messageRepository.listMessages(
                 conversationId: conversationId,
                 skip: self.messageCount,
-                limit: 20
+                limit: 20,
+                enableRemote: true
             )
 
             guard !Task.isCancelled else {
@@ -200,12 +186,14 @@ final class AssistantChatViewModel: ObservableObject {
 
     // MARK: - Message Handling
     func sendMessage() async {
-        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard richTextFieldState.isMessageValid else {
+            return
+        }
         if self.clientStatus == nil {
             self.clientStatus = clientStatusService.getClientStatus(for: self.assistant.id)
         }
 
-        let messageToSend = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let messageToSend = richTextFieldState.inputMessage
         guard let userId = authRepository.currentUser?.id else {
             return
         }
@@ -231,7 +219,7 @@ final class AssistantChatViewModel: ObservableObject {
 
         do {
             try webSocketService.send(event: clientEvent)
-            newMessage = ""
+            richTextFieldState = richTextFieldState.copy(inputMessage: "")
         } catch {
             errorAlert = ErrorAlert(
                 title: "Error",

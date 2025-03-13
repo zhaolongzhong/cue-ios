@@ -15,7 +15,7 @@ extension AppTheme {
             #if os(iOS)
             Color(uiColor: .systemBackground)
             #elseif os(macOS)
-            Color(nsColor: .textBackgroundColor)
+            Color(nsColor: .windowBackgroundColor)
             #endif
         }
 

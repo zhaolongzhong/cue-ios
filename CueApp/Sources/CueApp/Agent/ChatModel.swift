@@ -14,6 +14,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
     case deepSeekR17B = "deepseek-r1:7b"
     case llama323B = "llama3.2:latest"
     case qwen257B = "qwen2.5:7b"
+    case qwen32B = "qwq:32b"
 
     var id: String {
         return self.rawValue
@@ -34,6 +35,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
         case .deepSeekR17B: return "Deep Seek R1 7B"
         case .llama323B: return "LLaMA 3.2 3B"
         case .qwen257B: return "Qwen 2.5 7B"
+        case .qwen32B: return "Qwen 32B"
         }
     }
 
@@ -45,7 +47,7 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
             return .anthropic
         case .gemini20Pro, .gemini20FlashExp:
             return .gemini
-        case .deepSeekR17B, .llama323B, .qwen257B:
+        case .deepSeekR17B, .llama323B, .qwen257B, .qwen32B:
             return .local
         }
     }
@@ -72,6 +74,12 @@ public enum ChatModel: String, CaseIterable, Codable, Equatable, Hashable {
         default:
             return true
         }
+    }
+}
+
+public extension ChatModel {
+    init?(rawString: String) {
+        self.init(rawValue: rawString)
     }
 }
 

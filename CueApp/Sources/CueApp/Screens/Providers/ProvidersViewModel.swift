@@ -89,6 +89,7 @@ public final class ProvidersViewModel: ObservableObject {
         do {
             var providers = try [.openai, .anthropic, .gemini].filter(isProviderEnabled)
             providers.append(.local)
+            providers.append(.cue)
             return providers
         } catch {
             debugPrint("Error: \(error)")

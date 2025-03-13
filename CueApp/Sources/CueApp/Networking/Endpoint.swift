@@ -5,7 +5,7 @@ protocol Endpoint {
     var path: String { get }
     var method: HTTPMethod { get }
     var headers: [String: String]? { get }
-    var parameters: [String: Any]? { get }
+    var queryParameters: [String: String]? { get }
     var body: Data? { get }
     var requiresAuth: Bool { get }
 }
@@ -27,7 +27,7 @@ extension Endpoint {
         ]
     }
 
-    var parameters: [String: Any]? {
+    var queryParameters: [String: String]? {
         nil
     }
 
@@ -44,17 +44,16 @@ extension Endpoint {
             throw NetworkError.invalidURL
         }
 
-        urlComponents.path = path
+        // Set the path correctly without encoding the query delimiter
+        urlComponents.path += (path.hasPrefix("/") ? path : "/" + path)
 
-        if let parameters = parameters {
-            urlComponents.queryItems = parameters.map {
-                URLQueryItem(name: $0.key, value: "\($0.value)")
-            }
+        // Ensure query parameters are set properly as separate components
+        if let queryParams = queryParameters, !queryParams.isEmpty {
+            urlComponents.queryItems = queryParams.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
 
-        let urlString = baseURL + path
-
-        guard let url = URL(string: urlString) else {
+        // Use the proper URL construction with query parameters
+        guard let url = urlComponents.url else {
             throw NetworkError.invalidURL
         }
 
